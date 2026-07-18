@@ -36,6 +36,13 @@ async function getWeather():Promise<Weather> {
   return {temperatureF:Math.round(j.current.temperature_2m),...mapped,windSpeedMph:Math.round(j.current.wind_speed_10m),windDirection:windDirection(j.current.wind_direction_10m),humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:tm(j.daily.sunrise[0]),sunsetLocal:tm(j.daily.sunset[0]),observationTime:j.current.time,stale:false};
 }
 function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"◒", "heavy-rain":"◒",thunderstorm:"ϟ",snow:"✣",fog:"≋",overcast:"●","partly-cloudy":"◕",sunrise:"◒",sunset:"◓",neutral:"—"} as Record<Theme,string>)[c]; }
+function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
+  const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
+  const rise=parse(sunrise), set=parse(sunset); if(!Number.isFinite(rise)||!Number.isFinite(set)) return clock<360||clock>1200?"night":"day";
+  if(clock>=rise-30&&clock<=rise+60) return "sunrise";
+  if(clock>=set-60&&clock<=set+20) return "sunset";
+  return clock<rise-30||clock>set+20?"night":"day";
+}
 
 export default function Home() {
   const [now,setNow]=useState(new Date()); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null);
@@ -48,11 +55,14 @@ export default function Home() {
   const local=parts(now,CONFIG.timeZone), utc=parts(now,"UTC");
   const localTime=`${local.hour}:${local.minute}:${local.second}`, utcTime=`${utc.hour}:${utc.minute}:${utc.second}`;
   const displayTheme=debug||weather.condition;
+  const phase=debug&&["night","sunrise","sunset"].includes(debug)?debug:solarPhase(local,weather.sunriseLocal,weather.sunsetLocal);
+  const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
+  const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const updated=weather.observationTime?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(weather.observationTime))+"Z":"—";
   const zone=local.timeZoneName||"LOCAL";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  return <main className={`display theme-${displayTheme}`}>
-    <div className="sky" aria-hidden="true"><i className="cloud c1"/><i className="cloud c2"/><i className="weather-fx"/><i className="horizon"/><i className="runway"/></div>
+  return <main className={`display theme-${condition} phase-${phase}`}>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/airfield-blue-hour.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="fog-layer"/><i className="weather-fx"/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
