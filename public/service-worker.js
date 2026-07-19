@@ -1,1 +1,24 @@
-const CACHE="airfield-clock-v8";const CORE=["./","./manifest.json","./airfield-lightning-overlay.png","./assets/backgrounds/clear-day.png","./assets/backgrounds/clear-night.png","./assets/backgrounds/partly-cloudy-day.png","./assets/backgrounds/partly-cloudy-night.png","./assets/backgrounds/overcast-day.png","./assets/backgrounds/overcast-night.png","./assets/backgrounds/rain-day.png","./assets/backgrounds/rain-night.png","./assets/backgrounds/thunderstorm-day.png","./assets/backgrounds/thunderstorm-night.png","./assets/backgrounds/fog-day.png","./assets/backgrounds/fog-night.png","./assets/backgrounds/snow-day.png","./assets/backgrounds/snow-night.png","./assets/backgrounds/sunrise.png","./assets/backgrounds/sunset.png"];self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x))))));self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("./"))))});
+const CACHE="airfield-clock-v9";
+// Shell cached immediately on install so the display boots offline without waiting on wallpapers.
+const SHELL=["./","./manifest.json","./airfield-lightning-overlay.png","./assets/backgrounds/clear-day.png","./assets/backgrounds/clear-night.png"];
+// Full wallpaper set; populated in the background (or on demand) rather than blocking the page.
+const WALLPAPERS=["partly-cloudy-day","partly-cloudy-night","overcast-day","overcast-night","rain-day","rain-night","thunderstorm-day","thunderstorm-night","fog-day","fog-night","snow-day","snow-night","sunrise","sunset"].map(n=>"./assets/backgrounds/"+n+".png");
+const CORE=[...SHELL,...WALLPAPERS];
+self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)))});
+self.addEventListener("activate",e=>e.waitUntil((async()=>{
+  const cache=await caches.open(CACHE);
+  const others=(await caches.keys()).filter(k=>k!==CACHE);
+  // Reuse still-valid responses from prior cache versions instead of re-downloading ~26 MB.
+  for(const url of CORE){
+    if(await cache.match(url)) continue;
+    for(const k of others){ const r=await (await caches.open(k)).match(url); if(r){ await cache.put(url,r.clone()); break; } }
+  }
+  await Promise.all(others.map(k=>caches.delete(k)));
+  await self.clients.claim();
+  // Fill any still-missing wallpapers in the background; failures are non-fatal.
+  for(const url of CORE){ if(!(await cache.match(url))) cache.add(url).catch(()=>{}); }
+})()));
+self.addEventListener("fetch",e=>{
+  if(e.request.method!=="GET") return;
+  e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("./"))));
+});

@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
 type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL" };
 type SolarDay = { date:string; sunriseLocal:string; sunsetLocal:string };
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
-type Weather = { temperatureF:number; feelsLikeF:number; condition:Theme; description:string; windSpeedKt:number; windDirection:string; windDegrees:number|null; windGustKt:number|null; humidity:number; sunriseLocal:string; sunsetLocal:string; solarDays:SolarDay[]; observationTime:string; forecast:Forecast[]; birdRisk:string; birdBasis:string; birdUpdated:string; source:"METAR"|"MODEL"; stale:boolean };
+type CloudCoverage = "CLR"|"FEW"|"SCT"|"BKN"|"OVC"|"VV";
+type Phase = "day"|"night"|"sunrise"|"sunset";
+type Weather = { temperatureF:number; feelsLikeF:number; condition:Theme; description:string; windSpeedKt:number; windDirection:string; windDegrees:number|null; windGustKt:number|null; humidity:number; sunriseLocal:string; sunsetLocal:string; solarDays:SolarDay[]; observationTime:string; forecast:Forecast[]; birdRisk:string; birdBasis:string; birdUpdated:string; source:"METAR"|"MODEL"; stale:boolean; cloudCoverage:CloudCoverage; cloudBaseFt:number|null; visibilitySm:number|null; phenomena:string[] };
 type OpsBoardWeather = { metar?:string; taf?:string; metarFetchStatus?:string; tafFetchStatus?:string; metarObservedZ?:string; bwc?:string; bwcAhasRisk?:string; bwcBasedOn?:string; bwcUpdatedZ?:string; bwcFetchStatus?:string };
+// Normalized scene object (Phase 2A): the single source of truth the renderer reads, kept
+// deliberately separate from weather parsing so animation layers never re-parse METAR.
+type SceneModel = { baseScene:string; cloudCoverage:CloudCoverage; cloudBaseFt:number|null; phenomena:string[]; intensity:"light"|"moderate"|"heavy"; vicinityOnly:boolean; windDirectionDeg:number|null; windSpeedKt:number; gustKt:number|null; visibilitySm:number|null; timePhase:Phase };
 
 const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:2, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json" };
-const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", windSpeedKt:0, windDirection:"—", windDegrees:null, windGustKt:null, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", solarDays:[], observationTime:"", forecast:[], birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", stale:true };
+const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", windSpeedKt:0, windDirection:"—", windDegrees:null, windGustKt:null, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", solarDays:[], observationTime:"", forecast:[], birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", stale:true, cloudCoverage:"CLR", cloudBaseFt:null, visibilitySm:null, phenomena:[] };
 const DEBUG_THEMES: Theme[] = ["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset"];
 
 function parts(date:Date, zone:string) {
@@ -90,6 +95,44 @@ function aviationCondition(text:string):Pick<Weather,"condition"|"description"> 
   if(has(/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/)) return {condition:"clear",description:"Clear"};
   return {condition:"overcast",description:"Cloudy"};
 }
+// Parse the most operationally significant cloud layer, ceiling, and visibility from a raw METAR.
+function parseSky(raw:string):{cloudCoverage:CloudCoverage;cloudBaseFt:number|null;visibilitySm:number|null} {
+  const core=(raw||"").toUpperCase().split(/\sRMK\s/)[0];
+  const rank:Record<string,number>={CLR:0,FEW:1,SCT:2,BKN:3,OVC:4,VV:5};
+  let best:{cov:CloudCoverage;base:number|null}={cov:"CLR",base:null};
+  const re=/\b(FEW|SCT|BKN|OVC|VV)(\d{3})\b/g; let m:RegExpExecArray|null;
+  while((m=re.exec(core))){ const cov=m[1] as CloudCoverage, base=Number(m[2])*100;
+    if(rank[cov]>rank[best.cov] || (rank[cov]===rank[best.cov] && best.base!==null && base<best.base)) best={cov,base};
+  }
+  let vis:number|null=null;
+  const vm=core.match(/(?:^|\s)(?:(\d{1,2})|(\d)\s+(\d)\/(\d)|(\d)\/(\d)|M(\d)\/(\d))SM(?:\s|$)/);
+  if(vm){ if(vm[1]) vis=Number(vm[1]); else if(vm[2]) vis=Number(vm[2])+Number(vm[3])/Number(vm[4]); else if(vm[5]) vis=Number(vm[5])/Number(vm[6]); else if(vm[7]) vis=Number(vm[7])/Number(vm[8]); }
+  else if(/\bCAVOK\b/.test(core)) vis=10;
+  return {cloudCoverage:best.cov, cloudBaseFt:best.base, visibilitySm:vis};
+}
+// Extract present-weather tokens (intensity+descriptor+phenomena groups) from a raw METAR/TAF.
+function extractPhenomena(raw:string):string[] {
+  const core=(raw||"").toUpperCase().split(/\sRMK\s/)[0];
+  const re=/(?:^|\s)((?:[+-]|VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|DS|SS|TS|SH)+)(?=\s|$)/g;
+  const out:string[]=[]; let m:RegExpExecArray|null;
+  while((m=re.exec(core))) out.push(m[1]);
+  return out;
+}
+function coverageFromCondition(c:Theme):CloudCoverage { return c==="overcast"?"OVC":c==="partly-cloudy"?"SCT":c==="clear"?"CLR":c==="fog"?"OVC":"BKN"; }
+function phenomenaFromCondition(c:Theme):string[] { return c==="heavy-rain"?["+RA"]:c==="rain"?["RA"]:c==="snow"?["SN"]:c==="thunderstorm"?["TSRA"]:c==="fog"?["FG"]:[]; }
+function deriveIntensity(phenomena:string[]):"light"|"moderate"|"heavy" {
+  if(phenomena.some(p=>p.startsWith("+"))) return "heavy";
+  const precip=phenomena.filter(p=>/(?:DZ|RA|SN|SG|PL|GR|GS|UP)/.test(p));
+  if(!precip.length) return "light";
+  return precip.every(p=>p.startsWith("-")||p.startsWith("VC"))?"light":"moderate";
+}
+// Assemble the normalized scene object from the resolved weather, active condition, and solar phase.
+// `debug` forces phenomena to match the simulated condition so debug scenes animate correctly.
+function buildScene(weather:Weather, condition:Theme, phase:Phase, debug:boolean):SceneModel {
+  const live=weather.phenomena||[];
+  const phenomena=debug||!live.length?phenomenaFromCondition(condition):live;
+  return { baseScene:sceneFor(condition,phase), cloudCoverage:debug?coverageFromCondition(condition):(weather.cloudCoverage||"CLR"), cloudBaseFt:debug?null:(weather.cloudBaseFt??null), phenomena, intensity:deriveIntensity(phenomena), vicinityOnly:phenomena.length>0&&phenomena.every(p=>p.startsWith("VC")), windDirectionDeg:weather.windDegrees, windSpeedKt:weather.windSpeedKt, gustKt:weather.windGustKt, visibilitySm:debug?null:(weather.visibilitySm??null), timePhase:phase };
+}
 function signedCelsius(token:string) { return token.startsWith("M")?-Number(token.slice(1)):Number(token); }
 function cToF(c:number) { return Math.round((c*9/5)+32); }
 function parseMetar(raw:string) {
@@ -120,7 +163,7 @@ async function getModelWeather():Promise<Weather> {
   const forecast:Forecast[]=[2,5,8].map(offset=>{const i=Math.min(start+offset,j.hourly.time.length-1),condition=mapCode(j.hourly.weather_code[i],0);return {time:tm(j.hourly.time[i]),iso:utcIso(j.hourly.time[i]),temperatureF:Math.round(j.hourly.temperature_2m[i]),...condition,precipitation:Math.round(j.hourly.precipitation_probability[i]||0),source:"MODEL"}});
   const windDegrees=Math.round(j.current.wind_direction_10m);
   const solarDays:SolarDay[]=j.daily.time.map((date:string,i:number)=>({date,sunriseLocal:tm(j.daily.sunrise[i]),sunsetLocal:tm(j.daily.sunset[i])}));
-  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,windSpeedKt:Math.round(j.current.wind_speed_10m),windDirection:windDirection(windDegrees),windDegrees,windGustKt:null,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:j.current.time,forecast,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",stale:false};
+  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,windSpeedKt:Math.round(j.current.wind_speed_10m),windDirection:windDirection(windDegrees),windDegrees,windGustKt:null,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:j.current.time,forecast,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",stale:false,cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:phenomenaFromCondition(mapped.condition)};
 }
 async function getWeather():Promise<Weather> {
   const model=await getModelWeather();
@@ -130,7 +173,8 @@ async function getWeather():Promise<Weather> {
     const metarValid=/\b(?:METAR\s+)?KMEM\b/.test(rawMetar.toUpperCase())&&!/UNAVAILABLE|ERROR/.test(rawMetar.toUpperCase());
     const tafValid=/\bTAF\s+KMEM\b/.test(rawTaf.toUpperCase())&&!/UNAVAILABLE|ERROR/.test(rawTaf.toUpperCase());
     const metar=metarValid?parseMetar(rawMetar):null, reference=ops.metarObservedZ?new Date(ops.metarObservedZ):new Date();
-    return {...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?(ops.metarObservedZ||model.observationTime):model.observationTime,forecast:tafValid?tafForecast(model.forecast,rawTaf,reference):model.forecast,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",stale:metarValid?ops.metarFetchStatus!=="OK":model.stale};
+    const sky=metarValid?parseSky(rawMetar):null, phenomena=metarValid?extractPhenomena(rawMetar):null;
+    return {...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?(ops.metarObservedZ||model.observationTime):model.observationTime,forecast:tafValid?tafForecast(model.forecast,rawTaf,reference):model.forecast,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",stale:metarValid?ops.metarFetchStatus!=="OK":model.stale,cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:phenomena&&phenomena.length?phenomena:model.phenomena};
   } catch { return model; }
 }
 function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"🌧", "heavy-rain":"🌧",thunderstorm:"⛈",snow:"❄",fog:"≋",overcast:"☁","partly-cloudy":"⛅",sunrise:"☀",sunset:"☀",neutral:"—"} as Record<Theme,string>)[c]; }
@@ -179,6 +223,8 @@ function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset") {
 
 export default function Home() {
   const [now,setNow]=useState(()=>new Date(0)); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
+  const [aScene,setAScene]=useState("clear-night"); const [bScene,setBScene]=useState("clear-night"); const [active,setActive]=useState<"a"|"b">("a");
+  const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),250); return()=>clearInterval(id); },[]);
   useEffect(()=>{ setFlybys(Array.from({length:3},(_,i)=>({top:11+Math.random()*25,cycle:96+i*23+Math.random()*19,delay:7+i*39+Math.random()*16,scale:.78+Math.random()*.25,tilt:-2+Math.random()*4,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
   useEffect(()=>{
@@ -193,6 +239,17 @@ export default function Home() {
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const scene=sceneFor(condition,phase);
+  const sceneModel=buildScene(weather,condition,phase,!!debug);
+  // Crossfade the wallpaper between two ping-pong layers: preload the incoming image, then flip the
+  // active slot so CSS transitions opacity. Exactly two layers ever exist, so rapid scene changes
+  // (live METAR or debug) can never accumulate stale layers or timers.
+  useEffect(()=>{
+    const {active:ac,a,b}=cfRef.current, shown=ac==="a"?a:b; if(shown===scene) return;
+    let cancelled=false; const img=new Image(); img.decoding="async";
+    const commit=()=>{ if(cancelled) return; if(cfRef.current.active==="a"){setBScene(scene);setActive("b");} else {setAScene(scene);setActive("a");} };
+    img.onload=commit; img.onerror=commit; img.src=`${imageBase}/assets/backgrounds/${scene}.png`;
+    return ()=>{ cancelled=true; };
+  },[scene,imageBase]);
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
   const updated=weather.observationTime?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(weather.observationTime))+"Z":"—";
   const zone=local.timeZoneName||"LOCAL";
@@ -200,8 +257,8 @@ export default function Home() {
   const birdRisk=debugBird||weather.birdRisk;
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  return <main className={`display theme-${condition} phase-${phase}`}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${scene}.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
+  return <main className={`display theme-${condition} phase-${phase}`} data-coverage={sceneModel.cloudCoverage} data-base={sceneModel.cloudBaseFt??""} data-intensity={sceneModel.intensity} data-vicinity={sceneModel.vicinityOnly?"1":"0"} data-wind={sceneModel.windSpeedKt} data-winddir={sceneModel.windDirectionDeg??""} data-vis={sceneModel.visibilitySm??""}>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud c1"/><i className="cloud c2"/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">

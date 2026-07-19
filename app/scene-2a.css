@@ -1,0 +1,52 @@
+/* ============================================================================
+   Phase 2A — scene crossfades, explicit layering, and localized contrast scrims.
+   Imported LAST so these rules win over the earlier tuning files.
+
+   Stacking hierarchy (all inside .display, which sets `isolation:isolate`):
+     .sky        z-index:-3  — self-contained context holding EVERY weather layer:
+                               wallpaper (.sky-base) < clouds (.cloud) <
+                               precipitation / fog / particles (.rain-field,
+                               .snow-field, .weather-fx, .fog-layer) <
+                               lightning (.lightning-layer). Because .sky owns a
+                               non-auto z-index it forms its own stacking context,
+                               so nothing inside it can ever paint above the UI.
+     .shade      z-index:-1  — localized contrast scrims (this file).
+     .burn-shift z-index:auto(0) and .debug z-index:5 — the complete UI.
+   Weather effects therefore never render over the clocks, cards, BWC, or footer.
+   ============================================================================ */
+
+/* --- Wallpaper crossfade -------------------------------------------------- */
+/* Two stacked .sky-base layers ping-pong; opacity is transitioned (a transition,
+   not an animation, so it survives prefers-reduced-motion). ~6s sits in the
+   requested 4–8s window. filter still eases so per-scene grading is smooth. */
+.sky-base{transition:opacity 6s ease, filter 3s ease; will-change:opacity}
+
+/* --- Localized contrast protection --------------------------------------- */
+/* One scrim element, strength driven by --scrim so bright daytime weather gets
+   more protection and night backgrounds are never crushed. */
+.display{--scrim:.6}
+.phase-sunrise,.phase-sunset{--scrim:.64}
+.phase-night{--scrim:.48}
+.phase-day.theme-snow,
+.phase-day.theme-fog,
+.phase-day.theme-overcast,
+.phase-day.theme-rain,
+.phase-day.theme-heavy-rain,
+.phase-day.theme-thunderstorm{--scrim:.72}
+
+.shade{
+  opacity:var(--scrim);
+  background:
+    /* header band */
+    linear-gradient(180deg,rgba(1,6,9,.8),rgba(1,6,9,.3) 12%,transparent 24%),
+    /* soft pool behind the Local clock */
+    radial-gradient(58% 40% at 26% 44%,rgba(1,5,8,.52),transparent 70%),
+    /* soft pool behind the Zulu clock */
+    radial-gradient(58% 40% at 74% 44%,rgba(1,5,8,.52),transparent 70%),
+    /* stronger deck behind the three info cards */
+    linear-gradient(0deg,rgba(1,6,9,.92),rgba(1,6,9,.36) 24%,transparent 46%),
+    /* gentle side vignette */
+    linear-gradient(90deg,rgba(1,6,9,.34),transparent 50%,rgba(1,6,9,.3));
+}
+/* Win over the earlier .phase-night .shade opacity so --scrim stays authoritative. */
+.phase-night .shade{opacity:var(--scrim)}
