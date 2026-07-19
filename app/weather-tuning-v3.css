@@ -24,8 +24,14 @@
 .theme-thunderstorm .weather-fx{opacity:.06;animation-duration:.8s}
 .theme-rain .sky::after,.theme-heavy-rain .sky::after,.theme-thunderstorm .sky::after{background:linear-gradient(180deg,rgba(4,9,14,.2),transparent 48%,rgba(0,4,7,.42)),linear-gradient(90deg,rgba(0,5,8,.38),transparent 50%,rgba(0,5,8,.35))}
 
-.theme-snow .weather-fx{background-image:radial-gradient(circle,#fff 0 1.5px,transparent 2.3px),radial-gradient(circle,#dceafb 0 2px,transparent 3px),radial-gradient(circle,#fff 0 1px,transparent 1.8px);background-size:164px 188px,251px 286px,127px 149px;background-position:0 0,61px 87px,28px 49px;opacity:.16;animation:weatherSnowV3 18s linear infinite;mask-image:linear-gradient(180deg,transparent,black 9%,black 92%,transparent)}
+.theme-snow .weather-fx{background-image:radial-gradient(circle,#fff 0 1.7px,transparent 2.5px),radial-gradient(circle,#dceafb 0 2.2px,transparent 3.2px),radial-gradient(circle,#fff 0 1.2px,transparent 2px);background-size:128px 146px,205px 226px,96px 112px;background-position:0 0,61px 87px,28px 49px;opacity:.3;animation:weatherSnowV3 13s linear infinite;mask-image:linear-gradient(180deg,transparent,black 7%,black 94%,transparent)}
 .theme-snow .sky::after{background:linear-gradient(180deg,rgba(126,154,169,.08),transparent 58%,rgba(2,8,11,.36)),linear-gradient(90deg,rgba(2,8,11,.28),transparent 50%,rgba(2,8,11,.27))}
+
+/* Water beads sit on the virtual glass; the airfield photograph remains untouched. */
+.glass-droplets{position:absolute;inset:-2%;z-index:6;pointer-events:none;opacity:0;background-image:radial-gradient(ellipse 8px 12px at 7% 13%,rgba(244,253,255,.34) 0 9%,rgba(145,190,207,.12) 30%,rgba(225,246,252,.42) 47%,rgba(5,15,21,.28) 55%,transparent 67%),radial-gradient(ellipse 13px 18px at 18% 34%,rgba(244,253,255,.28) 0 8%,rgba(146,194,211,.12) 31%,rgba(225,246,252,.38) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 6px 10px at 27% 17%,rgba(244,253,255,.35) 0 8%,rgba(145,190,207,.1) 30%,rgba(225,246,252,.4) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 10px 15px at 39% 42%,rgba(244,253,255,.3) 0 8%,rgba(145,190,207,.11) 31%,rgba(225,246,252,.42) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 7px 11px at 51% 20%,rgba(244,253,255,.34) 0 8%,rgba(145,190,207,.11) 30%,rgba(225,246,252,.42) 48%,rgba(5,15,21,.26) 56%,transparent 68%),radial-gradient(ellipse 14px 20px at 63% 36%,rgba(244,253,255,.3) 0 8%,rgba(145,190,207,.11) 31%,rgba(225,246,252,.4) 48%,rgba(5,15,21,.26) 56%,transparent 68%),radial-gradient(ellipse 6px 9px at 72% 12%,rgba(244,253,255,.35) 0 8%,rgba(145,190,207,.11) 30%,rgba(225,246,252,.43) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 11px 17px at 84% 28%,rgba(244,253,255,.31) 0 8%,rgba(145,190,207,.11) 31%,rgba(225,246,252,.4) 48%,rgba(5,15,21,.27) 56%,transparent 68%),radial-gradient(ellipse 7px 12px at 93% 48%,rgba(244,253,255,.34) 0 8%,rgba(145,190,207,.1) 30%,rgba(225,246,252,.41) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 12px 19px at 14% 68%,rgba(244,253,255,.28) 0 8%,rgba(145,190,207,.11) 31%,rgba(225,246,252,.38) 48%,rgba(5,15,21,.24) 56%,transparent 68%),radial-gradient(ellipse 8px 13px at 58% 72%,rgba(244,253,255,.32) 0 8%,rgba(145,190,207,.1) 30%,rgba(225,246,252,.41) 48%,rgba(5,15,21,.25) 56%,transparent 68%),radial-gradient(ellipse 10px 16px at 79% 66%,rgba(244,253,255,.3) 0 8%,rgba(145,190,207,.11) 31%,rgba(225,246,252,.39) 48%,rgba(5,15,21,.25) 56%,transparent 68%);filter:drop-shadow(0 2px 2px rgba(1,8,12,.45));transform:translateY(-5px)}
+.theme-rain .glass-droplets{opacity:.28;animation:glassDropletDrift 24s ease-in-out infinite alternate}
+.theme-heavy-rain .glass-droplets{opacity:.4;animation:glassDropletDrift 18s ease-in-out infinite alternate}
+.theme-thunderstorm .glass-droplets{opacity:.34;animation:glassDropletDrift 20s ease-in-out infinite alternate}
 
 .theme-fog .fog-layer{inset:47% -18% -8%;opacity:.15;filter:blur(30px);animation:fogDriftV3 36s ease-in-out infinite alternate}
 .theme-fog .sky::after{background:linear-gradient(180deg,rgba(185,202,207,.04),transparent 42%,rgba(2,8,11,.24)),linear-gradient(90deg,rgba(3,8,11,.2),transparent 52%,rgba(3,8,11,.2))}
@@ -35,11 +41,25 @@
 .theme-thunderstorm .sky::before{content:"";position:absolute;z-index:5;top:9%;left:67%;width:clamp(54px,5vw,100px);height:42%;background:linear-gradient(180deg,#f8fbff,#acd8ff 72%,transparent);clip-path:polygon(45% 0,64% 0,53% 30%,73% 30%,42% 66%,55% 66%,23% 100%,37% 58%,25% 58%,47% 23%,36% 23%);filter:drop-shadow(0 0 7px #d7edff) drop-shadow(0 0 22px #79bfff);opacity:0;animation:stormBoltV3 8s steps(1,end) infinite}
 
 .weather-glyph,.forecast-grid span{font-family:"Segoe UI Symbol","Segoe UI Emoji",sans-serif}
+.weather-copy{min-width:0;gap:4px!important}
+.feels-like{display:inline-flex!important;align-items:baseline;gap:6px;width:max-content;padding:4px 9px;border-left:2px solid var(--cyan);background:rgba(88,215,245,.13);color:#e9f5f7!important;font-size:clamp(9px,.78vw,14px)!important;font-weight:700;letter-spacing:.11em!important}
+.feels-like strong{color:var(--white);font:700 1.22em/1 Consolas,monospace;letter-spacing:.02em}
+.weather-stats{display:flex!important;align-items:center;flex-wrap:wrap;gap:3px 12px;color:#b7c5ca!important}
+.wind-data{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.wind-data i{display:inline-grid;place-items:center;width:17px;height:17px;color:var(--cyan);font:700 17px/1 "Segoe UI Symbol",sans-serif;font-style:normal;transform-origin:center}
+.wind-data i.variable{color:#f0b35a}
+.bird-risk{display:inline-flex!important;width:max-content;max-width:100%;padding:3px 7px;border:1px solid rgba(240,179,90,.32);background:rgba(240,179,90,.08);color:#efbe79!important;font-weight:700;letter-spacing:.11em!important;white-space:nowrap}
+.bird-risk.risk-low{color:#72dbbd!important;border-color:rgba(114,219,189,.28);background:rgba(114,219,189,.07)}
+.bird-risk.risk-severe,.bird-risk.risk-high{color:#ff8a75!important;border-color:rgba(255,100,80,.38);background:rgba(255,88,65,.09)}
+.burn-shift{animation:pixelShift 960s steps(1,end) infinite}
 
 @keyframes weatherRainV3{to{background-position:64px 310px,155px 520px}}
-@keyframes weatherSnowV3{to{background-position:48px 188px,-34px 286px,55px 149px}}
+@keyframes weatherSnowV3{to{background-position:48px 146px,-34px 226px,55px 112px}}
+@keyframes glassDropletDrift{from{transform:translate3d(0,-5px,0)}to{transform:translate3d(.15%,11px,0)}}
 @keyframes fogDriftV3{from{transform:translate3d(-5%,0,0) scale(1)}to{transform:translate3d(8%,-1%,0) scale(1.06)}}
 @keyframes stormAmbientV3{0%,49%,52%,54%,100%{filter:none}50%{filter:brightness(1.5)}51%,53%{filter:brightness(1.15)}}
 @keyframes stormBoltV3{0%,49%,52%,100%{opacity:0}50%{opacity:1}51%{opacity:.32}}
+@keyframes pixelShift{0%,19%{transform:translate(0,0)}20%,39%{transform:translate(2px,-1px)}40%,59%{transform:translate(-2px,1px)}60%,79%{transform:translate(1px,2px)}80%,100%{transform:translate(-1px,-2px)}}
 
-@media(prefers-reduced-motion:reduce){.theme-rain .weather-fx,.theme-heavy-rain .weather-fx,.theme-thunderstorm .weather-fx,.theme-snow .weather-fx,.theme-fog .fog-layer,.theme-thunderstorm .sky,.theme-thunderstorm .sky::before{animation:none!important}.theme-thunderstorm .sky::before{opacity:.18}}
+@media(prefers-reduced-motion:reduce){.theme-rain .weather-fx,.theme-heavy-rain .weather-fx,.theme-thunderstorm .weather-fx,.theme-rain .glass-droplets,.theme-heavy-rain .glass-droplets,.theme-thunderstorm .glass-droplets,.theme-snow .weather-fx,.theme-fog .fog-layer,.theme-thunderstorm .sky,.theme-thunderstorm .sky::before{animation:none!important}.theme-thunderstorm .sky::before{opacity:.18}}
+@media(max-width:1100px){.weather-copy{gap:2px!important}.bird-risk{font-size:6px!important;padding:2px 4px}.feels-like{padding:2px 5px}.weather-stats{gap:2px 7px}.wind-data i{width:14px;height:14px;font-size:14px}}
