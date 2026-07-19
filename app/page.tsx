@@ -27,24 +27,67 @@ function mapCode(code:number, wind:number): Pick<Weather,"condition"|"descriptio
   if(code===0) return {condition:"clear",description:"Clear"};
   if(code<=2) return {condition:"partly-cloudy",description:"Partly cloudy"};
   if(code===3) return {condition:"overcast",description:"Overcast"};
-  if([45,48].includes(code)) return {condition:"fog",description:"Fog"};
-  if(code>=71&&code<=77) return {condition:"snow",description:"Snow"};
-  if(code>=95) return {condition:"thunderstorm",description:"Thunderstorm"};
-  if(code>=80 || (code>=61&&code<=67)) return {condition: wind>20?"heavy-rain":"rain",description:wind>20?"Heavy rain":"Rain"};
+  if(code===45||code===48) return {condition:"fog",description:code===48?"Freezing fog":"Fog"};
+  if(code>=95) return {condition:"thunderstorm",description:code>=96?"Thunderstorm, hail":"Thunderstorm"};
+  if((code>=71&&code<=77)||code===85||code===86) return {condition:"snow",description:code===77?"Snow grains":code===75||code===86?"Heavy snow":"Snow"};
+  if(code===56||code===57) return {condition: code===57?"heavy-rain":"rain",description:"Freezing drizzle"};
+  if(code===66||code===67) return {condition: code===67?"heavy-rain":"rain",description:"Freezing rain"};
+  if(code>=51&&code<=55) return {condition:"rain",description:code===51?"Light drizzle":"Drizzle"};
+  if(code>=61&&code<=65) return {condition: (code===65||wind>20)?"heavy-rain":"rain",description:(code===65||wind>20)?"Heavy rain":"Rain"};
+  if(code>=80&&code<=82) return {condition: (code===82||wind>20)?"heavy-rain":"rain",description:(code===82||wind>20)?"Heavy rain":"Rain showers"};
   return {condition:"overcast",description:"Cloudy"};
 }
+// Maps the full METAR/TAF present-weather vocabulary onto the eight available scene families so every
+// reported condition drives a matching background + animation. `core` strips remarks before matching.
 function aviationCondition(text:string):Pick<Weather,"condition"|"description"> {
   const core=(text||"").toUpperCase().split(/\sRMK\s/)[0];
-  if(/(?:^|\s)(?:\+|-|VC)?TS[A-Z]*(?:\s|$)/.test(core)) return {condition:"thunderstorm",description:"Thunderstorms"};
-  if(/(?:^|\s)\+(?:SH)?RA(?:\s|$)/.test(core)) return {condition:"heavy-rain",description:"Heavy rain"};
-  if(/(?:^|\s)(?:\+|-|VC)?(?:SH)?RA(?:\s|$)|(?:^|\s)(?:\+|-)?DZ(?:\s|$)/.test(core)) return {condition:"rain",description:"Rain"};
-  if(/(?:^|\s)(?:\+|-)?(?:SH)?SN(?:\s|$)|(?:^|\s)(?:SG|PL)(?:\s|$)/.test(core)) return {condition:"snow",description:"Snow"};
-  if(/(?:^|\s)(?:FG|BR|HZ)(?:\s|$)/.test(core)) return {condition:"fog",description:/\bFG\b/.test(core)?"Fog":"Mist / haze"};
-  if(/\bOVC\d{3}\b/.test(core)) return {condition:"overcast",description:"Overcast"};
-  if(/\bBKN\d{3}\b/.test(core)) return {condition:"overcast",description:"Broken clouds"};
-  if(/\bSCT\d{3}\b/.test(core)) return {condition:"partly-cloudy",description:"Scattered clouds"};
-  if(/\bFEW\d{3}\b/.test(core)) return {condition:"partly-cloudy",description:"Few clouds"};
-  if(/\b(?:CLR|SKC|NSC|CAVOK)\b/.test(core)) return {condition:"clear",description:"Clear"};
+  const has=(re:RegExp)=>re.test(core);
+  // Convective / severe first — these dominate the whole-screen scene regardless of what else is reported.
+  if(has(/(?:^|\s)\+?FC(?:\s|$)/)) return {condition:"thunderstorm",description:/\+FC/.test(core)?"Tornado":"Funnel cloud"};
+  if(has(/(?:^|\s)(?:\+|-|VC)?TS/)) return {condition:"thunderstorm",description:/\+TS/.test(core)?"Severe thunderstorm":has(/TS(?:GR|GS)/)?"Thunderstorm, hail":has(/TSSN/)?"Thunderstorm, snow":has(/TSRA/)?"Thunderstorm, rain":has(/VCTS/)?"Thunderstorm nearby":"Thunderstorm"};
+  if(has(/(?:^|\s)SQ(?:\s|$)/)) return {condition:"thunderstorm",description:"Squall"};
+  if(has(/(?:^|\s)(?:\+|-|VC|SH)*GR(?:\s|$)/)) return {condition:"thunderstorm",description:"Hail"};
+  if(has(/(?:^|\s)(?:\+|-|VC|SH)*GS(?:\s|$)/)) return {condition:"thunderstorm",description:"Small hail"};
+  // Freezing precipitation.
+  if(has(/FZRA/)) return {condition:/\+FZRA/.test(core)?"heavy-rain":"rain",description:"Freezing rain"};
+  if(has(/FZDZ/)) return {condition:"rain",description:"Freezing drizzle"};
+  // Frozen precipitation (snow, grains, pellets, ice crystals, blowing/drifting snow).
+  const snow=has(/(?:^|\s)(?:\+|-|VC)?(?:MI|PR|BC|DR|BL|SH)?SN(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?SG(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?PL(?:\s|$)/)||has(/(?:^|\s)IC(?:\s|$)/);
+  const rain=has(/(?:^|\s)(?:\+|-|VC)?(?:SH)?RA(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?DZ(?:\s|$)/);
+  if(snow&&rain) return {condition:"snow",description:"Rain and snow"};
+  if(snow) {
+    if(has(/PL/)) return {condition:"snow",description:"Ice pellets"};
+    if(has(/SG/)) return {condition:"snow",description:"Snow grains"};
+    if(has(/IC/)) return {condition:"snow",description:"Ice crystals"};
+    if(has(/BLSN|DRSN/)) return {condition:"snow",description:"Blowing snow"};
+    return {condition:"snow",description:/\+(?:SH)?SN/.test(core)?"Heavy snow":/-(?:SH)?SN/.test(core)?"Light snow":"Snow"};
+  }
+  // Liquid precipitation.
+  if(rain) {
+    if(/\+(?:SH)?RA/.test(core)) return {condition:"heavy-rain",description:"Heavy rain"};
+    if(has(/(?:\+|-)?DZ/)&&!has(/RA/)) return {condition:"rain",description:/-DZ/.test(core)?"Light drizzle":"Drizzle"};
+    if(has(/SHRA/)) return {condition:"rain",description:"Rain showers"};
+    return {condition:"rain",description:/-RA/.test(core)?"Light rain":"Rain"};
+  }
+  if(has(/(?:^|\s)UP(?:\s|$)/)) return {condition:"rain",description:"Precipitation"};
+  if(has(/(?:^|\s)VCSH(?:\s|$)/)) return {condition:"rain",description:"Showers nearby"};
+  // Obscurations / low visibility — all mapped to the fog scene.
+  if(has(/(?:^|\s)(?:FZ)?FG(?:\s|$)/)) return {condition:"fog",description:/FZFG/.test(core)?"Freezing fog":/\bMIFG\b/.test(core)?"Shallow fog":"Fog"};
+  if(has(/(?:^|\s)(?:\+|-)?(?:DS|SS)(?:\s|$)/)) return {condition:"fog",description:/DS/.test(core)?"Dust storm":"Sandstorm"};
+  if(has(/(?:^|\s)PO(?:\s|$)/)) return {condition:"fog",description:"Dust whirls"};
+  if(has(/(?:^|\s)(?:BL|DR)?DU(?:\s|$)/)) return {condition:"fog",description:"Blowing dust"};
+  if(has(/(?:^|\s)(?:BL|DR)?SA(?:\s|$)/)) return {condition:"fog",description:"Blowing sand"};
+  if(has(/(?:^|\s)FU(?:\s|$)/)) return {condition:"fog",description:"Smoke"};
+  if(has(/(?:^|\s)VA(?:\s|$)/)) return {condition:"fog",description:"Volcanic ash"};
+  if(has(/(?:^|\s)BR(?:\s|$)/)) return {condition:"fog",description:"Mist"};
+  if(has(/(?:^|\s)HZ(?:\s|$)/)) return {condition:"fog",description:"Haze"};
+  if(has(/(?:^|\s)PY(?:\s|$)/)) return {condition:"fog",description:"Spray"};
+  // Cloud amount when no significant weather is present.
+  if(has(/\bOVC\d{3}\b/)) return {condition:"overcast",description:"Overcast"};
+  if(has(/\bBKN\d{3}\b/)) return {condition:"overcast",description:"Broken clouds"};
+  if(has(/\bSCT\d{3}\b/)) return {condition:"partly-cloudy",description:"Scattered clouds"};
+  if(has(/\bFEW\d{3}\b/)) return {condition:"partly-cloudy",description:"Few clouds"};
+  if(has(/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/)) return {condition:"clear",description:"Clear"};
   return {condition:"overcast",description:"Cloudy"};
 }
 function signedCelsius(token:string) { return token.startsWith("M")?-Number(token.slice(1)):Number(token); }
