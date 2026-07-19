@@ -38,7 +38,7 @@ async function getWeather():Promise<Weather> {
   const forecast=[2,5,8].map(offset=>{const i=Math.min(start+offset,j.hourly.time.length-1);return {time:tm(j.hourly.time[i]),temperatureF:Math.round(j.hourly.temperature_2m[i]),condition:mapCode(j.hourly.weather_code[i],0).condition,precipitation:Math.round(j.hourly.precipitation_probability[i]||0)}});
   return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,windSpeedMph:Math.round(j.current.wind_speed_10m),windDirection:windDirection(j.current.wind_direction_10m),humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:tm(j.daily.sunrise[0]),sunsetLocal:tm(j.daily.sunset[0]),observationTime:j.current.time,forecast,stale:false};
 }
-function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"◒", "heavy-rain":"◒",thunderstorm:"ϟ",snow:"✣",fog:"≋",overcast:"●","partly-cloudy":"◕",sunrise:"◒",sunset:"◓",neutral:"—"} as Record<Theme,string>)[c]; }
+function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"🌧", "heavy-rain":"🌧",thunderstorm:"⛈",snow:"❄",fog:"≋",overcast:"☁","partly-cloudy":"⛅",sunrise:"☀",sunset:"☀",neutral:"—"} as Record<Theme,string>)[c]; }
 function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
   const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
   const rise=parse(sunrise), set=parse(sunset); if(!Number.isFinite(rise)||!Number.isFinite(set)) return clock<360||clock>1200?"night":"day";
@@ -49,7 +49,7 @@ function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:strin
 function solarProgress(nowParts:Record<string,string>, sunrise:string, sunset:string) { const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}, current=Number(nowParts.hour)*60+Number(nowParts.minute), rise=parse(sunrise), set=parse(sunset); return Number.isFinite(rise)&&Number.isFinite(set)?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0; }
 
 export default function Home() {
-  const [now,setNow]=useState(new Date()); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null);
+  const [now,setNow]=useState(()=>new Date(0)); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null);
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),250); return()=>clearInterval(id); },[]);
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null; if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim);
@@ -62,7 +62,7 @@ export default function Home() {
   const phase=debug&&["night","sunrise","sunset"].includes(debug)?debug:solarPhase(local,weather.sunriseLocal,weather.sunsetLocal);
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
-  const scene=condition==="thunderstorm"?"storm":condition==="snow"?"snow":condition==="fog"?"fog":phase==="sunrise"?"sunrise":phase==="sunset"?"sunset":phase==="night"?"night":condition==="clear"||condition==="partly-cloudy"?"clear":"blue-hour";
+  const scene=condition==="thunderstorm"?"storm":condition==="rain"||condition==="heavy-rain"?"rain":condition==="snow"?"snow":condition==="fog"?"fog":phase==="sunrise"?"sunrise":phase==="sunset"?"sunset":phase==="night"?"night":condition==="clear"||condition==="partly-cloudy"?"clear":"blue-hour";
   const solarPct=solarProgress(local,weather.sunriseLocal,weather.sunsetLocal);
   const updated=weather.observationTime?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(weather.observationTime))+"Z":"—";
   const zone=local.timeZoneName||"LOCAL";
