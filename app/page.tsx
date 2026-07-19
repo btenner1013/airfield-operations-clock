@@ -62,12 +62,13 @@ export default function Home() {
   const phase=debug&&["night","sunrise","sunset"].includes(debug)?debug:solarPhase(local,weather.sunriseLocal,weather.sunsetLocal);
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
+  const scene=condition==="thunderstorm"?"storm":condition==="snow"?"snow":condition==="fog"?"fog":phase==="sunrise"?"sunrise":phase==="sunset"?"sunset":phase==="night"?"night":condition==="clear"||condition==="partly-cloudy"?"clear":"blue-hour";
   const solarPct=solarProgress(local,weather.sunriseLocal,weather.sunsetLocal);
   const updated=weather.observationTime?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(weather.observationTime))+"Z":"—";
   const zone=local.timeZoneName||"LOCAL";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
   return <main className={`display theme-${condition} phase-${phase}`}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/airfield-blue-hour.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="fog-layer"/><i className="weather-fx"/><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/airfield-${scene}.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="fog-layer"/><i className="weather-fx"/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
