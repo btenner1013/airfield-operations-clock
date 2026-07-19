@@ -163,3 +163,28 @@
 .wx-sunset{background:linear-gradient(145deg,#ffd184,#f36a4b 48%,#9f5bd1)}
 .wx-neutral{background:linear-gradient(145deg,#d9e4e8,#80949c)}
 .forecast-grid .wx-symbol{filter:drop-shadow(0 0 5px rgba(120,190,220,.18))}
+
+/* V6: restrained high-altitude flybys with fading twin contrails. */
+.air-traffic{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;font-style:normal}
+.flyby{position:absolute;left:-275px;width:275px;height:18px;opacity:0;animation:highAltitudeFlyby linear infinite;will-change:transform,opacity}
+.flight-shape{position:absolute;right:0;top:0;width:268px;height:16px;transform-origin:right center}
+.contrails{position:absolute;right:13px;top:3px;width:245px;height:8px;opacity:.66;filter:blur(.25px)}
+.contrails b{position:absolute;right:0;width:100%;height:1px;background:linear-gradient(90deg,transparent 0,rgba(245,249,250,.08) 22%,rgba(248,251,252,.38) 66%,rgba(255,255,255,.76) 100%);box-shadow:0 0 2px rgba(255,255,255,.18)}
+.contrails b:first-child{top:1px}.contrails b:last-child{top:5px}
+.aircraft{position:absolute;right:0;top:2px;width:17px;height:11px}
+.airframe{position:absolute;left:0;top:4px;width:17px;height:2px;border-radius:70% 100% 100% 70%;background:linear-gradient(90deg,#86949a,#f1f5f5 60%,#fff);box-shadow:0 0 2px rgba(255,255,255,.4)}
+.airframe::before{content:"";position:absolute;left:7px;top:-4px;width:7px;height:10px;background:#d8e0e2;clip-path:polygon(43% 0,70% 0,60% 39%,100% 48%,100% 61%,58% 57%,66% 100%,40% 100%,43% 57%,0 62%,0 48%,44% 39%)}
+.airframe::after{content:"";position:absolute;left:1px;top:-2px;width:4px;height:6px;background:#b8c3c7;clip-path:polygon(0 0,55% 0,100% 42%,100% 62%,45% 55%,38% 100%,0 100%)}
+.wing-strobe,.anti-collision{display:none;position:absolute;border-radius:50%;z-index:3}
+.phase-night .wing-strobe,.phase-night .anti-collision{display:block}
+.phase-night .airframe{background:linear-gradient(90deg,#43515a,#9caab0 65%,#d8e3e7);box-shadow:none}.phase-night .airframe::before,.phase-night .airframe::after{background:#687b84}
+.phase-night .contrails{opacity:.16;filter:blur(.55px)}
+.wing-strobe{left:10px;width:2px;height:2px;background:#fff;box-shadow:0 0 3px 1px #fff,0 0 7px 2px rgba(166,224,255,.92);animation:wingtipDoubleFlash 2.7s steps(1,end) infinite}
+.strobe-port{top:-3px}.strobe-starboard{bottom:-2px;animation-delay:.06s}
+.anti-collision{left:7px;top:4px;width:2px;height:2px;background:#ff3b32;box-shadow:0 0 4px 1px rgba(255,38,31,.9);animation:antiCollisionPulse 1.25s ease-in-out infinite}
+.theme-partly-cloudy .air-traffic{opacity:.8}
+.theme-overcast .air-traffic,.theme-rain .air-traffic,.theme-heavy-rain .air-traffic,.theme-thunderstorm .air-traffic,.theme-fog .air-traffic,.theme-snow .air-traffic{display:none}
+@keyframes highAltitudeFlyby{0%{transform:translate3d(-8vw,0,0);opacity:0}4%{opacity:0}7%{transform:translate3d(0,0,0);opacity:.72}39%{transform:translate3d(145vw,0,0);opacity:.72}43%,100%{transform:translate3d(151vw,0,0);opacity:0}}
+@keyframes wingtipDoubleFlash{0%,1.8%{opacity:0}2%{opacity:1}3.5%{opacity:0}6%{opacity:1}7.7%,100%{opacity:0}}
+@keyframes antiCollisionPulse{0%,58%,100%{opacity:.04}72%{opacity:.9}84%{opacity:.12}}
+@media(prefers-reduced-motion:reduce){.air-traffic{display:none}}
