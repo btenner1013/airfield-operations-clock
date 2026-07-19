@@ -133,3 +133,32 @@
 
 @media(prefers-reduced-motion:reduce){.glass-droplets span,.theme-thunderstorm .lightning-layer,.theme-thunderstorm .sky,.bird-risk.risk-severe{animation:none!important}.glass-droplets span{opacity:.28;transform:translateY(42vh)}.theme-thunderstorm .lightning-layer{opacity:.12}}
 @media(max-width:1100px){.bird-risk{grid-template-columns:auto auto;padding:3px 5px;gap:2px 6px}.bird-risk>time{grid-column:1/3;justify-self:start}.bird-risk>strong{font-size:11px}}
+
+/* V5: layered precipitation with discrete drops rather than a full-screen TV texture. */
+.rain-field,.snow-field{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;opacity:0}
+.rain-field span{position:absolute;top:-18vh;width:1px;min-height:46px;background:linear-gradient(180deg,transparent 0,rgba(216,242,250,.15) 22%,rgba(205,237,248,.7) 100%);box-shadow:0 0 2px rgba(159,219,239,.28);transform:rotate(3deg);animation:rainDepthFall linear infinite;will-change:transform}
+.theme-rain .rain-field{opacity:.29}.theme-rain .rain-field span:nth-child(n+25){display:none}
+.theme-heavy-rain .rain-field{opacity:.48}.theme-heavy-rain .rain-field span{width:1.35px;filter:blur(.15px)}
+.theme-thunderstorm .rain-field{opacity:.38}.theme-thunderstorm .rain-field span:nth-child(n+35){display:none}
+.theme-thunderstorm .rain-field span{background:linear-gradient(180deg,transparent,rgba(197,229,242,.72))}
+.snow-field span{position:absolute;top:-12vh;color:rgba(240,251,255,.9);font-family:"Segoe UI Symbol",sans-serif;font-style:normal;line-height:1;text-shadow:0 0 5px rgba(192,231,248,.85),0 1px 2px rgba(0,14,24,.65);animation:snowflakeDepthFall linear infinite;will-change:transform,opacity}
+.theme-snow .snow-field{opacity:.88}
+.theme-snow .weather-fx{opacity:.22}
+@keyframes rainDepthFall{0%{transform:translate3d(1.5vw,-20vh,0) rotate(3deg);opacity:0}8%{opacity:.82}100%{transform:translate3d(-3.2vw,132vh,0) rotate(3deg);opacity:.28}}
+@keyframes snowflakeDepthFall{0%{transform:translate3d(0,-15vh,0) rotate(0);opacity:0}10%{opacity:.88}45%{transform:translate3d(2.4vw,48vh,0) rotate(150deg);opacity:.82}75%{transform:translate3d(-1.2vw,91vh,0) rotate(270deg);opacity:.72}100%{transform:translate3d(1.8vw,128vh,0) rotate(390deg);opacity:0}}
+
+/* Condition-specific operational color system for current and forecast glyphs. */
+.wx-symbol{font-family:"Segoe UI Symbol","Arial Unicode MS",sans-serif!important;background-clip:text!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;filter:drop-shadow(0 0 7px rgba(130,195,218,.2))}
+.wx-clear{background:linear-gradient(145deg,#fff0a0 5%,#ffc04d 46%,#ff7a32 100%)}
+.wx-partly-cloudy{background:linear-gradient(145deg,#7bdcff 0 30%,#f5fbff 38% 64%,#ffc452 72% 100%)}
+.wx-overcast{background:linear-gradient(150deg,#e5eef2,#8297a2 58%,#566c78)}
+.wx-rain{background:linear-gradient(160deg,#c8f3ff 0 34%,#59c9f2 46%,#2184c9 100%)}
+.wx-heavy-rain{background:linear-gradient(160deg,#b9edff,#3199dd 52%,#17509d)}
+.wx-thunderstorm{background:linear-gradient(145deg,#d7eaff 0 28%,#5bb9ec 35% 58%,#ffd15a 64% 78%,#b273ff 86%)}
+.wx-snow{background:linear-gradient(145deg,#fff 0 35%,#bcecff 52%,#67bfe8 100%)}
+.wx-fog{background:linear-gradient(180deg,#eef5f6,#a9bdc4 48%,#697f89)}
+.wx-night{background:linear-gradient(145deg,#fffbd9,#9fd7ff 52%,#667ec8)}
+.wx-sunrise{background:linear-gradient(145deg,#fff29b,#ff9a45 50%,#f05c69)}
+.wx-sunset{background:linear-gradient(145deg,#ffd184,#f36a4b 48%,#9f5bd1)}
+.wx-neutral{background:linear-gradient(145deg,#d9e4e8,#80949c)}
+.forecast-grid .wx-symbol{filter:drop-shadow(0 0 5px rgba(120,190,220,.18))}
