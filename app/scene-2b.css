@@ -1,0 +1,94 @@
+/* ============================================================================
+   Phase 2B — procedural cloud motion supplementing the photographic wallpapers.
+
+   Three soft, gradient-only cloud layers (no PNGs, no canvas) sit at z-index:1
+   inside the isolated .sky context — above the wallpaper, below precipitation
+   and the UI. Motion is a GPU-composited `transform: translate` looping by
+   exactly one background tile, so the pattern realigns seamlessly and the main
+   thread (and therefore the clock) is never touched by the animation. Direction
+   and speed come from the normalized scene object via --nx/--ny/--cloud-dur set
+   on .display; coverage/tier/phase drive opacity and tint through CSS variables.
+   ============================================================================ */
+
+/* Retire the old ad-hoc blobs; the coverage system below replaces them. */
+.display .cloud{display:none}
+
+.cloud-field{
+  position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; opacity:1;
+  /* Keep clouds in the sky: full at top, dimmed across the clock band, faded out toward the ground. */
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 15%,rgba(0,0,0,.28) 42%,rgba(0,0,0,.28) 60%,rgba(0,0,0,.1) 74%,transparent 86%);
+          mask-image:linear-gradient(180deg,#000 0,#000 15%,rgba(0,0,0,.28) 42%,rgba(0,0,0,.28) 60%,rgba(0,0,0,.1) 74%,transparent 86%);
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:100% 100%; mask-size:100% 100%;
+  /* Tint + master dimming (day/night/sunrise/sunset) and per-coverage opacities. */
+  --cloud-ink:rgba(226,232,236,1); --cloud-dim:1; --dur-mult:1;
+  --op-low:0; --op-mid:0; --op-high:0;
+}
+.display[data-coverage="CLR"] .cloud-field{opacity:0}
+
+/* Oversized so a one-tile translate never exposes an edge; .sky clips the overflow. */
+.cloud-layer{
+  position:absolute; inset:-520px; background-repeat:repeat; background-position:0 0;
+  transform:translate3d(0,0,0); will-change:transform; transition:opacity 3s ease;
+  animation:cloudPan 200s linear infinite;
+}
+@keyframes cloudPan{ to{ transform:translate3d(calc(var(--nx,1)*480px),calc(var(--ny,0)*300px),0); } }
+
+/* Low deck — larger, softer masses; nearer, faster. */
+.cl-low{
+  background-image:
+    radial-gradient(52% 56% at 30% 46%, var(--cloud-ink) 0, transparent 58%),
+    radial-gradient(44% 50% at 72% 40%, var(--cloud-ink) 0, transparent 60%),
+    radial-gradient(40% 46% at 55% 74%, var(--cloud-ink) 0, transparent 62%);
+  background-size:480px 300px; background-position:40px 30px;
+  opacity:calc(var(--op-low)*var(--cloud-dim));
+  animation-duration:calc(var(--cloud-dur,220)*0.9*var(--dur-mult)*1s);
+}
+/* Mid deck — the primary layer. */
+.cl-mid{
+  background-image:
+    radial-gradient(40% 44% at 20% 42%, var(--cloud-ink) 0, transparent 60%),
+    radial-gradient(32% 38% at 56% 26%, var(--cloud-ink) 0, transparent 62%),
+    radial-gradient(46% 50% at 82% 62%, var(--cloud-ink) 0, transparent 58%),
+    radial-gradient(26% 32% at 40% 76%, var(--cloud-ink) 0, transparent 64%);
+  background-size:480px 300px; background-position:0 0;
+  opacity:calc(var(--op-mid)*var(--cloud-dim));
+  animation-duration:calc(var(--cloud-dur,220)*1.25*var(--dur-mult)*1s);
+}
+/* High deck — fine, faint cirrus streaks; slowest. */
+.cl-high{
+  background-image:
+    radial-gradient(60% 10% at 30% 30%, var(--cloud-ink) 0, transparent 72%),
+    radial-gradient(52% 8% at 68% 52%, var(--cloud-ink) 0, transparent 74%),
+    radial-gradient(44% 9% at 20% 70%, var(--cloud-ink) 0, transparent 74%);
+  background-size:480px 300px; background-position:200px 120px;
+  opacity:calc(var(--op-high)*var(--cloud-dim));
+  animation-duration:calc(var(--cloud-dur,220)*1.9*var(--dur-mult)*1s);
+}
+/* Day gives a mild blur for softness; skipped on low-power hardware. */
+.display[data-perf="full"] .cloud-layer{filter:blur(3px)}
+
+/* --- Coverage → perceived density ---------------------------------------- */
+.display[data-coverage="FEW"] .cloud-field{--op-high:.14; --op-mid:.07}
+.display[data-coverage="SCT"] .cloud-field{--op-high:.20; --op-mid:.24}
+.display[data-coverage="BKN"] .cloud-field{--op-low:.30; --op-mid:.46; --op-high:.18}
+.display[data-coverage="OVC"] .cloud-field{--op-low:.48; --op-mid:.44; --op-high:.10}
+.display[data-coverage="VV"]  .cloud-field{--op-low:.52; --op-mid:.28; --op-high:0}
+
+/* Low BKN ceiling: heavier, darker, faster, more oppressive — kept distinct from OVC. */
+.display[data-coverage="BKN"][data-tier="low"] .cloud-field{--op-low:.46; --op-mid:.42; --dur-mult:.8; --cloud-ink:rgba(150,158,168,1)}
+
+/* Ceiling tier tweaks apparent speed (low faster, high slower). */
+.display[data-tier="low"] .cloud-field{--dur-mult:.85}
+.display[data-tier="high"] .cloud-field{--dur-mult:1.25}
+
+/* --- Day / night / golden-hour tint + dimming ---------------------------- */
+.phase-night .cloud-field{--cloud-dim:.6; --cloud-ink:rgba(150,166,188,1)}
+.phase-sunrise .cloud-field{--cloud-dim:.82; --cloud-ink:rgba(240,214,196,1)}
+.phase-sunset .cloud-field{--cloud-dim:.82; --cloud-ink:rgba(240,206,186,1)}
+
+/* --- Performance: Low / Getac → one simple layer, no blur ----------------- */
+.display[data-perf="low"] .cl-low,.display[data-perf="low"] .cl-high{display:none}
+.display[data-perf="low"] .cloud-layer{filter:none}
+
+/* --- Reduced motion: static clouds, coverage identity preserved ----------- */
+@media(prefers-reduced-motion:reduce){ .cloud-layer{animation:none} }

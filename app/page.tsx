@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
 
 type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
@@ -134,6 +134,24 @@ function buildScene(weather:Weather, condition:Theme, phase:Phase, debug:boolean
   const phenomena=debug||!live.length?phenomenaFromCondition(condition):live;
   return { baseScene:sceneFor(condition,phase), cloudCoverage:debug?coverageFromCondition(condition):(weather.cloudCoverage||"CLR"), cloudBaseFt:debug?null:(weather.cloudBaseFt??null), phenomena, intensity:deriveIntensity(phenomena), vicinityOnly:phenomena.length>0&&phenomena.every(p=>p.startsWith("VC")), windDirectionDeg:weather.windDegrees, windSpeedKt:weather.windSpeedKt, gustKt:weather.windGustKt, visibilitySm:debug?null:(weather.visibilitySm??null), timePhase:phase };
 }
+// --- Phase 2B cloud-motion helpers -----------------------------------------
+// Depth tier from the reported ceiling: low clouds sit lower/darker/faster, high ones finer/slower.
+function cloudTier(baseFt:number|null):"low"|"mid"|"high" { return baseFt==null?"mid":baseFt<=3000?"low":baseFt<=10000?"mid":"high"; }
+// Turn METAR wind into a slowed drift vector for the cloud layers. Meteorological direction is where
+// the wind comes FROM, so clouds travel toward the opposite bearing. nx is a horizontal sign (±1 tile
+// per loop) so motion is always mostly lateral; ny (-1..1) adds a subtle vertical bias. Speed maps to
+// a capped loop duration (seconds) — larger wind → shorter loop.
+function cloudVector(dirDeg:number|null, speedKt:number, gustKt:number|null):{nx:number;ny:number;dur:number} {
+  let nx:number, ny:number;
+  if(dirDeg==null){ nx=1; ny=0; } // variable / unknown → gentle default drift, never randomized
+  else { const to=(dirDeg+180)*Math.PI/180, dx=Math.sin(to), dy=-Math.cos(to);
+    nx=dx<-1e-6?-1:1; ny=Math.max(-1,Math.min(1,Math.round(dy))); } // near-zero E/W (due N/S wind) → default east
+  const s=Math.max(0,speedKt||0);
+  let dur=s<=5?320:s<=15?220:s<=25?150:s<=40?100:78; // higher speed → shorter loop, capped at 40kt+
+  if(gustKt&&gustKt>s) dur=Math.round(dur*(1-Math.min(0.12,(gustKt-s)/200))); // gusts nudge slightly faster
+  return {nx,ny,dur};
+}
+function detectPerf():"full"|"low" { if(typeof navigator==="undefined") return "full"; const c=navigator.hardwareConcurrency||8, m=(navigator as {deviceMemory?:number}).deviceMemory||8; return (c<=4||m<=4)?"low":"full"; }
 function signedCelsius(token:string) { return token.startsWith("M")?-Number(token.slice(1)):Number(token); }
 function cToF(c:number) { return Math.round((c*9/5)+32); }
 function parseMetar(raw:string) {
@@ -224,6 +242,7 @@ function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset") {
 
 export default function Home() {
   const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
+  const [debugCloud,setDebugCloud]=useState<CloudCoverage|null>(null); const [debugCloudBase,setDebugCloudBase]=useState<number|null>(null); const [debugWind,setDebugWind]=useState<number|null>(null); const [debugWindSpeed,setDebugWindSpeed]=useState<number|null>(null); const [perf,setPerf]=useState<"full"|"low">("full");
   const [aScene,setAScene]=useState("clear-night"); const [bScene,setBScene]=useState("clear-night"); const [active,setActive]=useState<"a"|"b">("a");
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
@@ -231,6 +250,11 @@ export default function Home() {
   useEffect(()=>{ setFlybys(Array.from({length:3},(_,i)=>({top:11+Math.random()*25,cycle:96+i*23+Math.random()*19,delay:7+i*39+Math.random()*16,scale:.78+Math.random()*.25,tilt:-2+Math.random()*4,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird);
+    const cc=q.get("debugCloud")?.toUpperCase(); if(cc&&["CLR","FEW","SCT","BKN","OVC","VV"].includes(cc)) setDebugCloud(cc as CloudCoverage);
+    const cb=q.get("debugCloudBase"); if(cb!==null&&cb!=="") setDebugCloudBase(Number(cb));
+    const wd=q.get("debugWind"); if(wd!==null&&wd!=="") setDebugWind(Number(wd));
+    const ws=q.get("debugWindSpeed"); if(ws!==null&&ws!=="") setDebugWindSpeed(Number(ws));
+    const pf=q.get("debugPerformance"); setPerf(pf==="low"?"low":pf==="full"?"full":detectPerf());
     const load=async()=>{try{const w=await getWeather();setWeather(w);localStorage.setItem("kmem-weather",JSON.stringify(w));setOnline(true)}catch{const old=localStorage.getItem("kmem-weather");if(old)setWeather({...JSON.parse(old),stale:true});setOnline(false)}};
     load(); const id=setInterval(load,CONFIG.weatherRefreshMinutes*60000); navigator.serviceWorker?.register("./service-worker.js").catch(()=>{}); return()=>clearInterval(id);
   },[]);
@@ -242,6 +266,14 @@ export default function Home() {
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const scene=sceneFor(condition,phase);
   const sceneModel=buildScene(weather,condition,phase,!!debug);
+  // Phase 2B — effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
+  const effCoverage=debugCloud||sceneModel.cloudCoverage;
+  const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
+  const effWindDir=debugWind!=null?debugWind:sceneModel.windDirectionDeg;
+  const effWindSpd=debugWindSpeed!=null?debugWindSpeed:sceneModel.windSpeedKt;
+  const cloudVec=cloudVector(effWindDir,effWindSpd,sceneModel.gustKt);
+  const cloudTierV=cloudTier(effBase);
+  const cloudStyle={ "--nx":cloudVec.nx, "--ny":cloudVec.ny, "--cloud-dur":cloudVec.dur } as unknown as CSSProperties;
   // Crossfade the wallpaper between two ping-pong layers: preload the incoming image, then flip the
   // active slot so CSS transitions opacity. Exactly two layers ever exist, so rapid scene changes
   // (live METAR or debug) can never accumulate stale layers or timers.
@@ -260,11 +292,11 @@ export default function Home() {
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const clockZ=clock.lastCheckedUtc?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(clock.lastCheckedUtc)).replace(":","")+"Z":"—";
   const clockOffset=clock.estimatedOffsetMs!=null?`${clock.estimatedOffsetMs>=0?"+":"-"}${(Math.abs(clock.estimatedOffsetMs)/1000).toFixed(1)} SEC`:"—";
-  const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"CLOCK: SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"CLOCK: SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?`CLOCK CHECK STALE · SRC SYSTEM · CK ${clockZ}`:`CLOCK: ${clock.state} · SRC SYSTEM/NET · OFFSET ${clockOffset} · CK ${clockZ}`;
-  const clockClass=clock.state==="VERIFIED"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
+  const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
+  const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  return <main className={`display theme-${condition} phase-${phase}`} data-coverage={sceneModel.cloudCoverage} data-base={sceneModel.cloudBaseFt??""} data-intensity={sceneModel.intensity} data-vicinity={sceneModel.vicinityOnly?"1":"0"} data-wind={sceneModel.windSpeedKt} data-winddir={sceneModel.windDirectionDeg??""} data-vis={sceneModel.visibilitySm??""}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud c1"/><i className="cloud c2"/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
+  return <main className={`display theme-${condition} phase-${phase}`} style={cloudStyle} data-coverage={effCoverage} data-tier={cloudTierV} data-perf={perf} data-base={sceneModel.cloudBaseFt??""} data-intensity={sceneModel.intensity} data-vicinity={sceneModel.vicinityOnly?"1":"0"} data-wind={sceneModel.windSpeedKt} data-winddir={sceneModel.windDirectionDeg??""} data-vis={sceneModel.visibilitySm??""}>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><i className="cloud c1"/><i className="cloud c2"/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">

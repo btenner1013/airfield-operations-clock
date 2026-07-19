@@ -6,7 +6,9 @@
 // the Windows system clock or blocking the clocks if it fails.
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export type ClockState = "VERIFIED" | "CHECK" | "WARNING" | "STALE" | "OFFLINE";
+// OK is deliberately not "VERIFIED": the GitHub Edge HTTP Date header is a coarse independent sanity
+// check (whole-second precision), never authoritative NTP-level time verification.
+export type ClockState = "OK" | "CHECK" | "WARNING" | "STALE" | "OFFLINE";
 export type ClockStatus = {
   source: "WINDOWS SYSTEM";
   networkSource: string;
@@ -37,7 +39,7 @@ export function classifyState(offsetMs: number | null, usable: number, online: b
   if (!online || usable === 0 || offsetMs === null) return "OFFLINE";
   const a = Math.abs(offsetMs);
   if (usable === 1) return a > 2000 ? "WARNING" : "CHECK";
-  if (a <= 1000) return "VERIFIED";
+  if (a <= 1000) return "OK";
   if (a <= 2000) return "CHECK";
   return "WARNING";
 }
