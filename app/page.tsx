@@ -7,7 +7,7 @@ type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme;
 type Weather = { temperatureF:number; feelsLikeF:number; condition:Theme; description:string; windSpeedKt:number; windDirection:string; windDegrees:number|null; windGustKt:number|null; humidity:number; sunriseLocal:string; sunsetLocal:string; observationTime:string; forecast:Forecast[]; birdRisk:string; birdBasis:string; birdUpdated:string; source:"METAR"|"MODEL"; stale:boolean };
 type OpsBoardWeather = { metar?:string; taf?:string; metarFetchStatus?:string; tafFetchStatus?:string; metarObservedZ?:string; bwc?:string; bwcAhasRisk?:string; bwcBasedOn?:string; bwcUpdatedZ?:string; bwcFetchStatus?:string };
 
-const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:5, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json" };
+const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:2, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json" };
 const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", windSpeedKt:0, windDirection:"—", windDegrees:null, windGustKt:null, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", observationTime:"", forecast:[], birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", stale:true };
 const DEBUG_THEMES: Theme[] = ["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset"];
 
@@ -38,8 +38,10 @@ function aviationCondition(text:string):Pick<Weather,"condition"|"description"> 
   if(/(?:^|\s)(?:\+|-|VC)?(?:SH)?RA(?:\s|$)|(?:^|\s)(?:\+|-)?DZ(?:\s|$)/.test(core)) return {condition:"rain",description:"Rain"};
   if(/(?:^|\s)(?:\+|-)?(?:SH)?SN(?:\s|$)|(?:^|\s)(?:SG|PL)(?:\s|$)/.test(core)) return {condition:"snow",description:"Snow"};
   if(/(?:^|\s)(?:FG|BR|HZ)(?:\s|$)/.test(core)) return {condition:"fog",description:/\bFG\b/.test(core)?"Fog":"Mist / haze"};
-  if(/\b(?:OVC|BKN)\d{3}\b/.test(core)) return {condition:"overcast",description:"Overcast"};
-  if(/\b(?:SCT|FEW)\d{3}\b/.test(core)) return {condition:"partly-cloudy",description:"Partly cloudy"};
+  if(/\bOVC\d{3}\b/.test(core)) return {condition:"overcast",description:"Overcast"};
+  if(/\bBKN\d{3}\b/.test(core)) return {condition:"overcast",description:"Broken clouds"};
+  if(/\bSCT\d{3}\b/.test(core)) return {condition:"partly-cloudy",description:"Scattered clouds"};
+  if(/\bFEW\d{3}\b/.test(core)) return {condition:"partly-cloudy",description:"Few clouds"};
   if(/\b(?:CLR|SKC|NSC|CAVOK)\b/.test(core)) return {condition:"clear",description:"Clear"};
   return {condition:"overcast",description:"Cloudy"};
 }
@@ -94,29 +96,44 @@ function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:strin
   return clock<rise-30||clock>set+20?"night":"day";
 }
 function solarProgress(nowParts:Record<string,string>, sunrise:string, sunset:string) { const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}, current=Number(nowParts.hour)*60+Number(nowParts.minute), rise=parse(sunrise), set=parse(sunset); return Number.isFinite(rise)&&Number.isFinite(set)?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0; }
+function zStamp(value:string) { const match=(value||"").match(/\d{4}-\d{2}-(\d{2})[ T](\d{2}):(\d{2})/); return match?`${match[1]}/${match[2]}${match[3]}Z`:"—"; }
+function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset") {
+  const light=phase==="night"?"night":"day";
+  if(condition==="clear") return `clear-${light}`;
+  if(condition==="partly-cloudy") return `partly-${light}`;
+  if(condition==="overcast") return `overcast-${light}`;
+  if(condition==="rain") return `rain-${light}`;
+  if(condition==="heavy-rain") return `heavy-rain-${light}`;
+  if(condition==="thunderstorm") return `storm-${light}`;
+  if(condition==="fog") return `fog-${light}`;
+  if(condition==="snow") return `snow-${light}`;
+  return phase==="night"?"clear-night":phase==="sunrise"?"sunrise":phase==="sunset"?"sunset":"blue-hour";
+}
 
 export default function Home() {
-  const [now,setNow]=useState(()=>new Date(0)); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null);
+  const [now,setNow]=useState(()=>new Date(0)); const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null);
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),250); return()=>clearInterval(id); },[]);
   useEffect(()=>{
-    const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null; if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim);
+    const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird);
     const load=async()=>{try{const w=await getWeather();setWeather(w);localStorage.setItem("kmem-weather",JSON.stringify(w));setOnline(true)}catch{const old=localStorage.getItem("kmem-weather");if(old)setWeather({...JSON.parse(old),stale:true});setOnline(false)}};
     load(); const id=setInterval(load,CONFIG.weatherRefreshMinutes*60000); navigator.serviceWorker?.register("./service-worker.js").catch(()=>{}); return()=>clearInterval(id);
   },[]);
   const local=parts(now,CONFIG.timeZone), utc=parts(now,"UTC");
   const localTime=`${local.hour}:${local.minute}:${local.second}`, utcTime=`${utc.hour}:${utc.minute}:${utc.second}`;
   const displayTheme=debug||weather.condition;
-  const phase=debug?(["night","sunrise","sunset"].includes(debug)?debug:"day"):solarPhase(local,weather.sunriseLocal,weather.sunsetLocal);
+  const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solarPhase(local,weather.sunriseLocal,weather.sunsetLocal));
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
-  const scene=condition==="thunderstorm"?"storm":condition==="rain"||condition==="heavy-rain"?"rain":condition==="snow"?"snow":condition==="fog"?"fog":phase==="sunrise"?"sunrise":phase==="sunset"?"sunset":phase==="night"?"night":condition==="clear"||condition==="partly-cloudy"?"clear":"blue-hour";
+  const scene=sceneFor(condition,phase);
   const solarPct=solarProgress(local,weather.sunriseLocal,weather.sunsetLocal);
   const updated=weather.observationTime?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(weather.observationTime))+"Z":"—";
   const zone=local.timeZoneName||"LOCAL";
-  const windLabel=weather.windDegrees===null?"VRB":`${String(weather.windDegrees).padStart(3,"0")}° ${weather.windDirection}`, birdClass=weather.birdRisk.toLowerCase().replace(/[^a-z]+/g,"-");
+  const windLabel=weather.windDegrees===null?"VRB":`${String(weather.windDegrees).padStart(3,"0")}° ${weather.windDirection}`;
+  const birdRisk=debugBird||weather.birdRisk;
+  const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
   return <main className={`display theme-${condition} phase-${phase}`}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/airfield-${scene}.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="fog-layer"/><i className="weather-fx"/><i className="glass-droplets"/><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/airfield-${scene}.png)`}}/><i className="cloud c1"/><i className="cloud c2"/><i className="fog-layer"/><i className="weather-fx"/><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
@@ -125,11 +142,11 @@ export default function Home() {
       </section>
       <section className="info">
         <article className="sun-card panel"><div className="panel-title"><span>SOLAR WINDOW</span><b>{Math.round(solarPct)}% ELAPSED</b></div><div className="sun-grid"><div><i className="sunrise-icon">◒</i><span>SUNRISE</span><strong>{weather.sunriseLocal}</strong><small>LOCAL</small></div><div><i className="sunset-icon">◓</i><span>SUNSET</span><strong>{weather.sunsetLocal}</strong><small>LOCAL</small></div></div><div className="solar-line"><span className="solar-fill" style={{width:`${solarPct}%`}}/><i/><span className="solar-now" style={{left:`${solarPct}%`}}><small>NOW</small></span><b/></div></article>
-        <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph">{weatherGlyph(displayTheme)}</span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}</b><small className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></small><small className="weather-stats"><span className="wind-data"><i className={weather.windDegrees===null?"variable":""} style={weather.windDegrees===null?undefined:{transform:`rotate(${weather.windDegrees+180}deg)`}} aria-hidden="true">{weather.windDegrees===null?"↻":"↑"}</i> WIND {windLabel} {weather.windSpeedKt}{weather.windGustKt?`G${weather.windGustKt}`:""} KT</span><span>HUMIDITY {weather.humidity}%</span></small><small className={`bird-risk risk-${birdClass}`}>USAHAS BIRD {weather.birdRisk} · {weather.birdBasis}</small></div></div>{weather.stale&&<span className="stale">METAR DATA STALE</span>}</article>
+        <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph">{weatherGlyph(displayTheme)}</span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}</b><small className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></small><small className="weather-stats"><span className="wind-data"><i className={weather.windDegrees===null?"variable":""} style={weather.windDegrees===null?undefined:{transform:`rotate(${weather.windDegrees+180}deg)`}} aria-hidden="true">{weather.windDegrees===null?"↻":"↑"}</i> WIND {windLabel} {weather.windSpeedKt}{weather.windGustKt?`G${weather.windGustKt}`:""} KT</span><span>HUMIDITY {weather.humidity}%</span></small><small className={`bird-risk risk-${birdClass}`}><span>USAHAS BWC</span><strong>{birdRisk}</strong><time>{weather.birdBasis} · {birdStamp}</time></small></div></div>{weather.stale&&<span className="stale">METAR DATA STALE</span>}</article>
         <article className="forecast-card panel"><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div><div className="forecast-grid">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`}><time>{f.time}</time><span>{weatherGlyph(f.condition)}</span><small className="forecast-condition">{f.description}</small><strong>{f.temperatureF}°</strong><small>{f.precipitation}% PRECIP</small></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer><span><i/> DISPLAY ACTIVE · CLOCK: SYSTEM · BURN SHIFT ON</span><span>WX {online?"CURRENT":"CACHED"} · UPDATED {updated} · METAR / TAF + MODEL</span><span>PRESS F11 FOR FULL SCREEN</span></footer>
     </div>
-    {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a href="?">LIVE</a></nav>}
+    {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a className={debugPhase==="day"?"active":""} href={`?debugWeather=${condition}&debugTime=day`}>DAY</a><a className={debugPhase==="night"?"active":""} href={`?debugWeather=${condition}&debugTime=night`}>NIGHT</a>{(["LOW","MODERATE","SEVERE"] as const).map(level=><a className={debugBird===level?"active":""} href={`?debugWeather=${condition}&debugTime=${phase==="night"?"night":"day"}&debugBwc=${level.toLowerCase()}`} key={level}>BWC {level}</a>)}<a href="?">LIVE</a></nav>}
   </main>;
 }

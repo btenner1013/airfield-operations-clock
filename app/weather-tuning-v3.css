@@ -63,3 +63,73 @@
 
 @media(prefers-reduced-motion:reduce){.theme-rain .weather-fx,.theme-heavy-rain .weather-fx,.theme-thunderstorm .weather-fx,.theme-rain .glass-droplets,.theme-heavy-rain .glass-droplets,.theme-thunderstorm .glass-droplets,.theme-snow .weather-fx,.theme-fog .fog-layer,.theme-thunderstorm .sky,.theme-thunderstorm .sky::before{animation:none!important}.theme-thunderstorm .sky::before{opacity:.18}}
 @media(max-width:1100px){.weather-copy{gap:2px!important}.bird-risk{font-size:6px!important;padding:2px 4px}.feels-like{padding:2px 5px}.weather-stats{gap:2px 7px}.wind-data i{width:14px;height:14px;font-size:14px}}
+
+/* V4: METAR cloud-cover scenes and photographic precipitation. */
+.theme-clear .cloud{opacity:0}
+.theme-partly-cloudy .cloud{opacity:.24}
+.theme-overcast .cloud{opacity:.08}
+.phase-day .sky-base{filter:brightness(1.02) saturate(1.06) contrast(1.02)}
+.phase-night .sky-base{filter:brightness(.94) saturate(1.03) contrast(1.06)}
+.phase-sunrise .sky-base{filter:brightness(.92) saturate(1.16) contrast(1.03) sepia(.11) hue-rotate(-6deg)}
+.phase-sunset .sky-base{filter:brightness(.9) saturate(1.18) contrast(1.04) sepia(.1)}
+.theme-rain .sky-base,.theme-heavy-rain .sky-base{filter:brightness(.96) saturate(.94) contrast(1.04)}
+.theme-rain.phase-night .sky-base,.theme-heavy-rain.phase-night .sky-base{filter:brightness(.91) saturate(.94) contrast(1.07)}
+.theme-thunderstorm .sky-base{filter:brightness(.9) saturate(.92) contrast(1.08)}
+.theme-thunderstorm.phase-night .sky-base{filter:brightness(.86) saturate(.9) contrast(1.1)}
+.theme-fog .sky-base{filter:brightness(.96) saturate(.84) contrast(.98)}
+.theme-fog.phase-night .sky-base{filter:brightness(.9) saturate(.8) contrast(1.02)}
+.theme-snow .sky-base{filter:brightness(.96) saturate(.88) contrast(1.01)}
+.theme-snow.phase-night .sky-base{filter:brightness(.9) saturate(.88) contrast(1.04)}
+
+/* No full-screen diagonal rain texture: motion lives only on the virtual glass. */
+.theme-rain .weather-fx,.theme-heavy-rain .weather-fx,.theme-thunderstorm .weather-fx{opacity:0;background:none;animation:none;mask-image:none}
+.glass-droplets{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0;background:none;filter:none;transform:none;overflow:hidden}
+.theme-rain .glass-droplets,.theme-heavy-rain .glass-droplets,.theme-thunderstorm .glass-droplets{opacity:1;animation:none}
+.glass-droplets span{--drop-x:50%;--drop-size:1;--drop-duration:12s;--drop-delay:0s;position:absolute;left:var(--drop-x);top:-22vh;width:calc(12px * var(--drop-size));height:calc(18px * var(--drop-size));border-radius:55% 55% 48% 48%;background:radial-gradient(circle at 34% 24%,rgba(255,255,255,.7) 0 5%,rgba(213,239,248,.16) 22%,rgba(111,164,184,.1) 45%,rgba(3,12,18,.3) 58%,rgba(230,249,255,.34) 68%,transparent 74%);box-shadow:inset 1px 1px 2px rgba(255,255,255,.36),0 2px 4px rgba(0,6,10,.42);opacity:0;animation:windowDropRoll var(--drop-duration) cubic-bezier(.42,.05,.68,.94) var(--drop-delay) infinite;will-change:transform,opacity}
+.glass-droplets span::before{content:"";position:absolute;left:48%;bottom:70%;width:max(1px,calc(1.2px * var(--drop-size)));height:calc(42px * var(--drop-size));background:linear-gradient(180deg,transparent,rgba(202,234,244,.2) 45%,rgba(230,249,255,.1));border-radius:50%;transform:translateX(-50%);filter:blur(.3px);opacity:.62}
+.glass-droplets span::after{content:"";position:absolute;left:38%;top:18%;width:24%;height:18%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(.4px)}
+.theme-rain .glass-droplets span:nth-child(n+13){display:none}
+.theme-thunderstorm .glass-droplets span:nth-child(n+16){display:none}
+.theme-heavy-rain .glass-droplets span{animation-duration:8.5s}
+.theme-heavy-rain .glass-droplets span::before{height:calc(64px * var(--drop-size));opacity:.75}
+.glass-droplets span:nth-child(1){--drop-x:6%;--drop-size:.62;--drop-duration:11.5s;--drop-delay:-6.2s}
+.glass-droplets span:nth-child(2){--drop-x:13%;--drop-size:1.08;--drop-duration:16s;--drop-delay:-1.8s}
+.glass-droplets span:nth-child(3){--drop-x:21%;--drop-size:.78;--drop-duration:9.8s;--drop-delay:-7.7s}
+.glass-droplets span:nth-child(4){--drop-x:28%;--drop-size:1.34;--drop-duration:18.5s;--drop-delay:-12.4s}
+.glass-droplets span:nth-child(5){--drop-x:36%;--drop-size:.56;--drop-duration:10.2s;--drop-delay:-3.1s}
+.glass-droplets span:nth-child(6){--drop-x:43%;--drop-size:.92;--drop-duration:14.7s;--drop-delay:-10.8s}
+.glass-droplets span:nth-child(7){--drop-x:51%;--drop-size:1.28;--drop-duration:20s;--drop-delay:-4.8s}
+.glass-droplets span:nth-child(8){--drop-x:59%;--drop-size:.7;--drop-duration:12.4s;--drop-delay:-8.6s}
+.glass-droplets span:nth-child(9){--drop-x:66%;--drop-size:1.02;--drop-duration:15.4s;--drop-delay:-13.2s}
+.glass-droplets span:nth-child(10){--drop-x:74%;--drop-size:.54;--drop-duration:9.4s;--drop-delay:-2.5s}
+.glass-droplets span:nth-child(11){--drop-x:82%;--drop-size:1.2;--drop-duration:17.2s;--drop-delay:-9.1s}
+.glass-droplets span:nth-child(12){--drop-x:92%;--drop-size:.8;--drop-duration:13.3s;--drop-delay:-5.6s}
+.glass-droplets span:nth-child(13){--drop-x:10%;--drop-size:1.42;--drop-duration:12.8s;--drop-delay:-11.3s}
+.glass-droplets span:nth-child(14){--drop-x:31%;--drop-size:.88;--drop-duration:8.9s;--drop-delay:-4.2s}
+.glass-droplets span:nth-child(15){--drop-x:47%;--drop-size:1.12;--drop-duration:11.1s;--drop-delay:-7.2s}
+.glass-droplets span:nth-child(16){--drop-x:63%;--drop-size:1.48;--drop-duration:13.7s;--drop-delay:-2.1s}
+.glass-droplets span:nth-child(17){--drop-x:79%;--drop-size:.74;--drop-duration:8.2s;--drop-delay:-6.4s}
+.glass-droplets span:nth-child(18){--drop-x:88%;--drop-size:1.3;--drop-duration:10.8s;--drop-delay:-9.8s}
+
+/* Screen-blended photographic lightning, with short double-strike cloud illumination. */
+.lightning-layer{position:absolute;inset:0;z-index:7;pointer-events:none;background-position:center;background-size:cover;mix-blend-mode:screen;opacity:0}
+.theme-thunderstorm .lightning-layer{animation:lightningStrikeV4 13s steps(1,end) infinite}
+.theme-thunderstorm .sky{animation:stormIlluminationV4 13s steps(1,end) infinite}
+.theme-thunderstorm .sky::before{content:none;display:none;animation:none}
+
+/* USAHAS BWC is an operational status, not footer metadata. */
+.bird-risk{display:grid!important;grid-template-columns:auto auto 1fr;align-items:center;gap:4px 8px;width:100%;max-width:310px;padding:5px 8px;border:1px solid currentColor;background:rgba(123,142,149,.08);color:#9aabb0!important;font-size:clamp(8px,.63vw,12px)!important;font-weight:700;letter-spacing:.1em!important;white-space:nowrap}
+.bird-risk>span{font-size:.85em;opacity:.84}
+.bird-risk>strong{font:800 clamp(12px,1vw,18px)/1 Consolas,monospace;letter-spacing:.08em}
+.bird-risk>time{justify-self:end;font:600 .8em/1 Consolas,monospace;color:inherit;opacity:.82}
+.bird-risk.risk-low{color:#70e0b8!important;background:rgba(56,212,158,.1);box-shadow:inset 3px 0 #58d7a8}
+.bird-risk.risk-moderate{color:#ffd46b!important;background:rgba(255,196,61,.1);box-shadow:inset 3px 0 #ffc642}
+.bird-risk.risk-severe{color:#ff7564!important;background:rgba(255,62,42,.14);box-shadow:inset 3px 0 #ff4937;animation:bwcSevereV4 1.05s steps(1,end) infinite}
+
+@keyframes windowDropRoll{0%{transform:translate3d(0,-16vh,0) scaleX(.82);opacity:0}5%{opacity:.72}18%{transform:translate3d(-2px,18vh,0) scaleX(.92);opacity:.74}31%{transform:translate3d(1px,29vh,0) scaleX(.96);opacity:.68}34%{transform:translate3d(1px,30vh,0) scaleX(1.02);opacity:.72}58%{transform:translate3d(-3px,66vh,0) scaleX(.88);opacity:.66}76%{transform:translate3d(2px,91vh,0) scaleX(.84);opacity:.54}100%{transform:translate3d(0,132vh,0) scaleX(.72);opacity:0}}
+@keyframes lightningStrikeV4{0%,46%,47.2%,48.4%,76%,77.1%,100%{opacity:0}46.35%{opacity:.94}46.55%{opacity:.14}46.78%{opacity:.7}47%{opacity:.08}76.25%{opacity:.62}76.48%{opacity:.1}76.7%{opacity:.42}}
+@keyframes stormIlluminationV4{0%,46%,47.2%,48.4%,76%,77.1%,100%{filter:none}46.35%{filter:brightness(1.55) saturate(.9)}46.78%{filter:brightness(1.28)}76.25%{filter:brightness(1.35)}}
+@keyframes bwcSevereV4{0%,49%{background:rgba(255,62,42,.12);box-shadow:inset 3px 0 #ff4937,0 0 0 rgba(255,54,38,0)}50%,100%{background:rgba(255,62,42,.3);box-shadow:inset 3px 0 #fff,0 0 16px rgba(255,54,38,.72)}}
+
+@media(prefers-reduced-motion:reduce){.glass-droplets span,.theme-thunderstorm .lightning-layer,.theme-thunderstorm .sky,.bird-risk.risk-severe{animation:none!important}.glass-droplets span{opacity:.28;transform:translateY(42vh)}.theme-thunderstorm .lightning-layer{opacity:.12}}
+@media(max-width:1100px){.bird-risk{grid-template-columns:auto auto;padding:3px 5px;gap:2px 6px}.bird-risk>time{grid-column:1/3;justify-self:start}.bird-risk>strong{font-size:11px}}
