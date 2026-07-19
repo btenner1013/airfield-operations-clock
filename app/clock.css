@@ -1,0 +1,7 @@
+/* Clock verification badge in the footer — small, secondary, never competing with the clocks. */
+.clock-status i{transition:background .6s ease,box-shadow .6s ease}
+.clock-status.clock-ok i{background:#68dbba;box-shadow:0 0 10px #68dbba}
+.clock-status.clock-chk i{background:#e6c15a;box-shadow:0 0 9px rgba(230,193,90,.75)}
+.clock-status.clock-warn i{background:#e8804d;box-shadow:0 0 9px rgba(232,128,77,.8)}
+.clock-status.clock-off i{background:#7e8e94;box-shadow:none}
+.clock-status.clock-warn{color:#d9a06a}
