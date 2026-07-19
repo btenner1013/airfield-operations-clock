@@ -1,3 +1,24 @@
 /* Higher-energy scene treatment while preserving clock contrast */
 .shade{background:linear-gradient(90deg,rgba(1,6,9,.55),rgba(1,6,9,.16) 50%,rgba(1,6,9,.5)),linear-gradient(180deg,rgba(1,6,9,.28),transparent 34%,rgba(1,6,9,.62))}.phase-day .sky-base{filter:brightness(1.02) saturate(1.12) contrast(1.04)}.phase-sunrise .sky-base{filter:brightness(.9) saturate(1.42) contrast(1.08) sepia(.2) hue-rotate(-8deg)}.phase-sunset .sky-base{filter:brightness(.88) saturate(1.5) contrast(1.08) sepia(.2)}.phase-night .sky-base{filter:brightness(.5) saturate(1.12) contrast(1.16)}.theme-clear.phase-day .sky-base{filter:brightness(1.08) saturate(1.2) contrast(1.03)}.theme-rain .sky-base,.theme-heavy-rain .sky-base,.theme-thunderstorm .sky-base{filter:brightness(.52) saturate(.58) contrast(1.22) hue-rotate(5deg)}.panel{background:linear-gradient(135deg,rgba(8,20,25,.8),rgba(3,9,12,.67));backdrop-filter:blur(5px)}
 .solar-line{height:2px}.solar-now{position:absolute;top:-5px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,183,81,.2),0 0 15px #ffb751;transform:translateX(-50%);z-index:2}.forecast-grid{display:grid;grid-template-columns:repeat(3,1fr);height:calc(100% - 30px);align-items:center}.forecast-grid>div{display:grid;place-items:center;gap:4px;min-width:0}.forecast-grid>div+div{border-left:1px solid var(--line)}.forecast-grid time{font:600 clamp(10px,.76vw,14px) Consolas,monospace;color:#aab9be;letter-spacing:.08em}.forecast-grid span{font:clamp(25px,2.2vw,43px) Georgia,serif;color:#f4b45b}.forecast-grid strong{font:600 clamp(17px,1.5vw,29px) Consolas,monospace}.forecast-grid small{color:#7f9096;font-size:clamp(6px,.48vw,9px);letter-spacing:.1em}.forecast-empty{grid-column:1/4;color:#7f9096;font-size:10px;letter-spacing:.13em}.weather-main>strong{display:flex;align-items:baseline;letter-spacing:-.05em}.temp-unit{font:600 .36em/1 Consolas,monospace;letter-spacing:.02em;margin-left:.16em;vertical-align:baseline}.weather-main div small+small{margin-top:-3px}.weather-card .panel-title b{color:#f0b35a;font:700 clamp(9px,.68vw,13px) Consolas,monospace;letter-spacing:.12em}@media(max-width:1100px){.forecast-grid small{letter-spacing:.03em}.weather-main div small{white-space:normal}}@media(prefers-reduced-motion:reduce){.solar-now{box-shadow:0 0 0 3px rgba(255,183,81,.2)}}
+
+/* Apple Watch-inspired solar arc with automatic next-day rollover. */
+.solar-layout{height:calc(100% - 30px);display:grid;grid-template-columns:minmax(70px,.72fr) minmax(128px,1.35fr) minmax(70px,.72fr);align-items:center;gap:clamp(5px,.6vw,11px)}
+.solar-time{display:grid;gap:3px;min-width:0}
+.solar-time span{color:#9eacb1;font-size:clamp(6px,.5vw,9px);letter-spacing:.16em}
+.solar-time strong{font:600 clamp(18px,1.55vw,30px)/1 Consolas,monospace;letter-spacing:-.04em}
+.solar-time small{color:#708087;font-size:clamp(5px,.38vw,7px);letter-spacing:.1em;white-space:nowrap}
+.solar-set{text-align:right}
+.solar-arc-wrap{position:relative;height:clamp(68px,9.4vh,108px);min-width:0;overflow:visible}
+.solar-horizon{position:absolute;left:0;right:0;top:76%;height:1px;background:linear-gradient(90deg,transparent,rgba(143,178,189,.38) 12%,rgba(143,178,189,.38) 88%,transparent)}
+.solar-arc{position:absolute;left:8%;right:8%;top:17%;height:59%;border-top:2px solid rgba(255,184,84,.76);border-radius:50% 50% 0 0/100% 100% 0 0;filter:drop-shadow(0 0 4px rgba(255,159,54,.32))}
+.solar-arc::before,.solar-arc::after{content:"";position:absolute;top:58%;width:18%;height:42%;border-bottom:1px solid rgba(118,143,151,.36)}
+.solar-arc::before{left:-7%;border-left:1px solid rgba(118,143,151,.36);border-radius:0 0 0 100%}
+.solar-arc::after{right:-7%;border-right:1px solid rgba(118,143,151,.36);border-radius:0 0 100% 0}
+.solar-rise-dot,.solar-set-dot{position:absolute;top:calc(76% - 3px);width:7px;height:7px;border-radius:50%;background:#eea54d;box-shadow:0 0 7px rgba(245,165,71,.55)}
+.solar-rise-dot{left:8%}.solar-set-dot{right:8%;background:#ea7448}
+.solar-sun{position:absolute;width:13px;height:13px;border-radius:50%;background:#fff8db;box-shadow:0 0 0 4px rgba(255,189,87,.18),0 0 18px 5px rgba(255,169,65,.75);transform:translate(-50%,-50%);transition:left 1.2s ease,top 1.2s ease;z-index:2}
+.solar-sun small{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 6px #000}
+.solar-arc-wrap.is-waiting .solar-arc{border-top-color:rgba(126,151,160,.35);filter:none}
+.solar-arc-wrap.is-waiting .solar-sun{width:10px;height:10px;background:#ffc767;box-shadow:0 0 0 3px rgba(255,179,72,.12),0 0 11px rgba(255,162,55,.48)}
+@media(max-width:1100px){.solar-layout{grid-template-columns:minmax(58px,.7fr) minmax(105px,1.25fr) minmax(58px,.7fr);gap:3px}.solar-time small{letter-spacing:.04em}.solar-arc-wrap{height:68px}}
