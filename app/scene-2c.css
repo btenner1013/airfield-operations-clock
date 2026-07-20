@@ -17,6 +17,19 @@
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:100% 100%; mask-size:100% 100%;
 }
 
+/* --- Wet / icy pavement sheen (lightweight; reuses .pavement-reflection) ---- */
+.pavement-reflection{opacity:0;transition:opacity 2.5s ease}
+.display[data-precip-type="rain"] .pavement-reflection,
+.display[data-precip-type="drizzle"] .pavement-reflection,
+.display[data-precip-type="freezing-rain"] .pavement-reflection,
+.display[data-precip-type="freezing-drizzle"] .pavement-reflection{opacity:.5;animation:reflectionShimmer 6s ease-in-out infinite alternate}
+.display[data-precip-intensity="heavy"][data-precip-type="rain"] .pavement-reflection{opacity:.7}
+.display[data-precip-type="freezing-rain"] .pavement-reflection,
+.display[data-precip-type="freezing-drizzle"] .pavement-reflection{filter:hue-rotate(160deg) saturate(.65) brightness(1.12)}
+/* No pavement shimmer in low/Getac or reduced-motion. */
+.display[data-perf="low"] .pavement-reflection{animation:none!important;opacity:.32}
+@media(prefers-reduced-motion:reduce){.pavement-reflection{animation:none!important}}
+
 /* --- Weather FX Preview Lab (hidden unless ?previewWeatherFx=1) ------------- */
 .fxlab{
   position:fixed; z-index:20; left:12px; bottom:12px; width:min(300px,44vw);
@@ -33,3 +46,7 @@
 .fxlab dt{color:#7e8e94;font-size:9px;letter-spacing:.1em}
 .fxlab dd{margin:0;text-align:right;color:#dfe8ea}
 .fxlab nav{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.fxlab header span{display:flex;gap:5px}
+.fxlab-toggle{margin-bottom:8px}
+.fxlab-toggle button{width:100%;letter-spacing:.1em}
+.fxlab-toggle button.off{background:#3a1616;color:#efb0b0;border-color:rgba(239,176,176,.3)}

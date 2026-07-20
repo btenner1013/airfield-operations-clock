@@ -65,39 +65,58 @@ export function classifyEffect(phenomena: string[]): EffectState {
 
 // --- particle spec for the single precipitation canvas -----------------------
 export type FxShape = "streak" | "flake" | "pellet";
+export type PaneSpec = { count: number; freezing: boolean; roll: number; trails: boolean };
 export type FxSpec = {
   shape: FxShape; count: number; speed: number; len: number; size: number; thick: number;
   vx: number; sway: number; bounce: boolean; alpha: number; color: string; near: boolean; burst: boolean;
+  veil: number; pane: PaneSpec | null;
 };
 
 const SNOW: PrecipType[] = ["snow", "snow-shower", "blowing-snow", "drifting-snow", "snow-grains"];
+const LIQUID: PrecipType[] = ["drizzle", "rain", "freezing-drizzle", "freezing-rain"];
 const isFreezing = (p: PrecipType) => p === "freezing-rain" || p === "freezing-drizzle";
 
 // Build the canvas particle spec from the classified effect + wind + performance. Returns null when
-// there is no falling precipitation (canvas stays idle). Phase 2C-A uses a shared engine; later
-// subphases refine the per-type constants.
-export function buildFxSpec(fx: EffectState, windNx: number, windSpeedKt: number, perf: "full" | "low", night: boolean): FxSpec | null {
+// there is no falling precipitation and no forced pane droplets. paneOverride: null=auto, else forces
+// the window-pane droplet layer on/off (preview / debug only).
+export function buildFxSpec(fx: EffectState, windNx: number, windSpeedKt: number, perf: "full" | "low", night: boolean, reduced: boolean, paneOverride: boolean | null): FxSpec | null {
   const p = fx.precip;
-  if (p === "none") return null;
-  const scale = perf === "low" ? 0.5 : 1;
-  const iMul = fx.intensity === "heavy" ? 1.55 : fx.intensity === "light" ? 0.55 : 1;
+  const low = perf === "low";
+  const light = fx.intensity === "light", heavy = fx.intensity === "heavy";
+  const paneOn = paneOverride != null ? paneOverride : LIQUID.includes(p);
+  if (p === "none" && !paneOn) return null;
+  const scale = low ? 0.5 : 1;
+  const iMul = heavy ? 1.55 : light ? 0.55 : 1;
   const drift = Math.min(windSpeedKt, 45) * 12 * (windNx >= 0 ? 1 : -1); // px/s lateral, capped
 
-  let shape: FxShape = "streak", count = 240, speed = 1050, len = 26, size = 1, thick = 1.4;
+  let shape: FxShape = "streak", count = 0, speed = 1050, len = 26, size = 1, thick = 1.4;
   let sway = 0, bounce = false, near = false, burst = false, alpha = 0.5;
-
-  if (p === "drizzle" || p === "freezing-drizzle") { shape = "streak"; count = 300; speed = 560; len = 10; thick = 0.9; alpha = 0.4; }
-  else if (p === "rain" || p === "freezing-rain") { shape = "streak"; count = 260; speed = 1150; len = 30; thick = 1.5; alpha = 0.5; }
+  if (p === "drizzle" || p === "freezing-drizzle") { shape = "streak"; count = 300; speed = 520; len = 9; thick = 0.8; alpha = 0.34; }
+  else if (p === "rain" || p === "freezing-rain") { shape = "streak"; count = 240; speed = 1150; len = 30; thick = 1.4; alpha = 0.46; }
   else if (SNOW.includes(p)) { shape = "flake"; count = 260; speed = 130; size = 1.9; sway = 26; alpha = 0.85; near = true; if (p === "snow-grains") { size = 1.1; speed = 180; sway = 8; } }
-  else if (p === "ice-pellets") { shape = "pellet"; count = 220; speed = 1100; size = 1.4; bounce = true; alpha = 0.7; }
+  else if (p === "ice-pellets") { shape = "pellet"; count = 220; speed = 1080; size = 1.4; bounce = true; alpha = 0.66; }
   else if (p === "hail" || p === "small-hail") { shape = "pellet"; count = p === "hail" ? 150 : 120; speed = 1500; size = p === "hail" ? 2.4 : 1.6; bounce = true; burst = true; alpha = 0.8; }
 
-  if (fx.vicinity) { count = Math.round(count * 0.4); alpha *= 0.7; }
+  if (fx.vicinity) { count = Math.round(count * 0.35); alpha *= 0.7; }
   count = Math.round(count * iMul * scale);
+  if (reduced) { speed *= 0.16; sway *= 0.3; count = Math.round(count * 0.5); }
 
-  // Colour grade: cool blue-white; freezing precip is colder; night is dimmer.
-  const base = isFreezing(p) ? [188, 208, 224] : shape === "flake" ? [236, 244, 250] : [200, 220, 235];
+  // Atmospheric veil: only rain-family, only full/normal motion.
+  let veil = (p === "rain" || p === "freezing-rain") ? (heavy ? 0.16 : fx.intensity === "moderate" ? 0.06 : 0) : 0;
+  if (low || reduced) veil = 0;
+
+  // Window-pane droplets.
+  let pane: PaneSpec | null = null;
+  if (paneOn) {
+    let dcount = light ? 6 : heavy ? 24 : 14;
+    if (fx.vicinity) dcount = 3;
+    if (isFreezing(p)) dcount = Math.round(dcount * 0.6);
+    if (low) dcount = Math.min(dcount, 8);
+    if (reduced) dcount = Math.min(dcount, 5);
+    pane = { count: dcount, freezing: isFreezing(p), roll: reduced ? 0.14 : low ? 0.7 : 1, trails: !low && !reduced };
+  }
+
+  const baseCol = isFreezing(p) ? [188, 208, 224] : shape === "flake" ? [236, 244, 250] : [200, 220, 235];
   const dim = night ? 0.72 : 1;
-  const color = `rgba(${base[0]},${base[1]},${base[2]},1)`;
-  return { shape, count, speed, len, size, thick, vx: drift, sway, bounce, alpha: alpha * dim, color, near, burst };
+  return { shape, count, speed, len, size, thick, vx: drift, sway, bounce, alpha: alpha * dim, color: `rgba(${baseCol[0]},${baseCol[1]},${baseCol[2]},1)`, near, burst, veil, pane };
 }
