@@ -76,7 +76,37 @@ export function resolveOperationalWeather(input:{text?:string;codes?:string[];vi
 
 function score(weather:OperationalWeather):number { const intensity=weather.intensity==="heavy"?30:weather.intensity==="moderate"?20:weather.intensity==="light"?10:0;return CATEGORY_RANK[weather.category]+intensity+(weather.probability||0)/100; }
 export function choosePrimaryOperationalWeather(values:OperationalWeather[]):OperationalWeather|null { return [...values].sort((a,b)=>score(b)-score(a))[0]||null; }
-export function isOperationalHazard(weather:OperationalWeather):boolean { return !["cloud","clear","unknown"].includes(weather.category); }
+
+// Hazard-band eligibility is deliberately narrower than primary-condition selection. A valid
+// phenomenon such as VCSH still outranks clouds in its forecast card without becoming an alert.
+export function qualifiesForTafHazardBand(weather:OperationalWeather):boolean {
+  const codes=weather.codes.length?weather.codes:weather.code?[weather.code]:[];
+  const joined=codes.join(" ").toUpperCase();
+  const visibility=weather.visibilitySm;
+  const restrictiveVisibility=visibility!==null&&visibility<3;
+  const restrictiveCeiling=weather.cloudBaseFt!==null&&weather.cloudBaseFt<1000&&["BKN","OVC","VV"].includes(weather.cloudCoverage||"");
+  if(/(?:^|\s)(?:[+-]|VC)?(?:TS(?:RA|SN|GR|GS)?|FC|SQ|GR|GS|FZRA|FZDZ|(?:SH|BL|DR)?SN|PL|DS|SS|VA)(?:\s|$)/.test(joined)) return true;
+  if(/(?:^|\s)\+(?:SH)?RA(?:\s|$)/.test(joined)) return true;
+  if(/(?:^|\s)(?:-)?(?:SH)?RA(?:\s|$)/.test(joined)&&visibility!==null&&visibility<=5) return true;
+  if(/(?:^|\s)(?:FZ)?(?:MI|BC|PR)?FG(?:\s|$)/.test(joined)) return true;
+  if(/(?:^|\s)(?:BR|HZ|FU|(?:BL|DR)?DU|(?:BL|DR)?SA)(?:\s|$)/.test(joined)&&visibility!==null&&visibility<=3) return true;
+  return restrictiveVisibility||restrictiveCeiling;
+}
+
+export type TafWindowLabels={full:string;compact:string};
+export function formatTafWindow(fromIso:string,toIso:string,displayDate:Date):TafWindowLabels {
+  const from=new Date(fromIso),to=new Date(toIso);
+  if(!Number.isFinite(from.getTime())||!Number.isFinite(to.getTime())||!Number.isFinite(displayDate.getTime())) return {full:"—",compact:"—"};
+  const dateKey=(d:Date)=>`${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+  const hour=(d:Date)=>`${String(d.getUTCHours()).padStart(2,"0")}${d.getUTCMinutes()?`:${String(d.getUTCMinutes()).padStart(2,"0")}`:""}`;
+  const day=(d:Date)=>String(d.getUTCDate()).padStart(2,"0");
+  const month=(d:Date)=>["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getUTCMonth()];
+  if(dateKey(from)===dateKey(to)) {
+    const range=`${hour(from)}–${hour(to)}Z`;
+    return dateKey(from)===dateKey(displayDate)?{full:range,compact:range}:{full:`${day(from)} ${month(from)} · ${range}`,compact:`${day(from)}/${range}`};
+  }
+  return {full:`${day(from)} ${month(from)} ${hour(from)}Z – ${day(to)} ${month(to)} ${hour(to)}Z`,compact:`${day(from)}/${hour(from)}Z–${day(to)}/${hour(to)}Z`};
+}
 
 function dateCandidates(day:number,hour:number,minute:number,reference:Date):Date[] { const out:Date[]=[];if(day<1||day>31||hour<0||hour>24||minute<0||minute>59||hour===24&&minute!==0)return out;for(const offset of [-1,0,1,2]){const start=new Date(Date.UTC(reference.getUTCFullYear(),reference.getUTCMonth()+offset,1)),base=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth(),day));if(base.getUTCMonth()===start.getUTCMonth()&&base.getUTCDate()===day)out.push(new Date(base.getTime()+hour*3600000+minute*60000));}return out; }
 function nearestDate(day:number,hour:number,minute:number,reference:Date):Date|null { return dateCandidates(day,hour,minute,reference).sort((a,b)=>Math.abs(a.getTime()-reference.getTime())-Math.abs(b.getTime()-reference.getTime()))[0]||null; }
@@ -96,9 +126,9 @@ export function parseStructuredTaf(raw:string,reference:Date):TafTimeline|null {
   return {issueIso:issueDate.toISOString(),validStartIso:validStart.toISOString(),validEndIso:validEnd.toISOString(),prevailing,overlays};
 }
 
-function active(period:TafTimelinePeriod,time:number):boolean { return Date.parse(period.fromIso)<=time&&time<Date.parse(period.toIso); }
+export function isTafPeriodActive(period:Pick<TafTimelinePeriod,"fromIso"|"toIso">,time:number):boolean { return Date.parse(period.fromIso)<=time&&time<Date.parse(period.toIso); }
 export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowStart:Date):{forecast:Forecast[];hazards:TafHazard[]} {
-  const forecast=model.map(slot=>{const time=Date.parse(slot.iso),prevailing=timeline.prevailing.filter(p=>active(p,time)).map(p=>p.weather),overlays=timeline.overlays.filter(p=>active(p,time)).map(p=>p.weather),primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);return primary?{...slot,condition:primary.condition,description:primary.label,source:"TAF" as const,operationalWeather:primary}:slot;});
-  const windowEnd=windowStart.getTime()+9*3600000,hazards=[...timeline.prevailing,...timeline.overlays].filter(p=>Date.parse(p.fromIso)<windowEnd&&Date.parse(p.toIso)>windowStart.getTime()&&isOperationalHazard(p.weather)).map(p=>({id:p.id,fromIso:p.fromIso,toIso:p.toIso,weather:p.weather})).sort((a,b)=>Date.parse(a.fromIso)-Date.parse(b.fromIso)||score(b.weather)-score(a.weather));
+  const windowStartMs=windowStart.getTime(),forecast=model.map(slot=>{const time=Date.parse(slot.iso),prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather),overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather),primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);return primary?{...slot,condition:primary.condition,description:primary.label,source:"TAF" as const,operationalWeather:primary}:slot;});
+  const windowEnd=windowStartMs+9*3600000,hazards=[...timeline.prevailing,...timeline.overlays].filter(p=>Date.parse(p.fromIso)<windowEnd&&Date.parse(p.toIso)>windowStartMs&&qualifiesForTafHazardBand(p.weather)).map(p=>({id:p.id,fromIso:p.fromIso,toIso:p.toIso,weather:p.weather})).sort((a,b)=>score(b.weather)-score(a.weather)||Number(isTafPeriodActive(b,windowStartMs))-Number(isTafPeriodActive(a,windowStartMs))||Date.parse(a.fromIso)-Date.parse(b.fromIso));
   return {forecast,hazards};
 }

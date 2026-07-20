@@ -1,14 +1,13 @@
 .forecast-grid>div{gap:3px}.forecast-grid .forecast-condition{color:#c8d2d5;font-weight:700;text-transform:uppercase;white-space:nowrap;font-size:clamp(6px,.48vw,9px)}
 
 /* Checkpoint 2: compact aviation hazard context above the three TAF-resolved slots. */
-.forecast-card .forecast-grid{height:calc(100% - 56px)}
+.forecast-card.has-taf-hazard .forecast-grid{height:calc(100% - 56px)}
 .taf-hazard-band{height:26px;display:flex;align-items:center;gap:6px;min-width:0;border-bottom:1px solid rgba(180,211,221,.1);font:700 clamp(6px,.43vw,8px)/1 Consolas,monospace;letter-spacing:.08em;color:#788a90;white-space:nowrap}
 .taf-hazard-band>span{flex:0 0 auto;color:#91a1a6;letter-spacing:.13em}
 .taf-hazard-band>b{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;color:#b7c4c8;font-weight:700;text-transform:uppercase}
-.taf-hazard-band>b time{color:#dbe4e6;font:inherit;letter-spacing:.04em}
+.taf-hazard-band>b time{color:#dbe4e6;font:inherit;letter-spacing:.04em}.taf-hazard-band>b time small{display:none;font:inherit;color:inherit}
 .taf-hazard-band>b em{padding:2px 4px;border:1px solid rgba(119,160,173,.24);color:#8fb8c5;font:inherit;font-style:normal}
 .taf-hazard-band>i{flex:0 0 auto;color:#d3a65b;font-style:normal}
-.taf-hazard-band.is-clear>b{color:#70bda9}
 .taf-hazard-band b[data-category="severe-convection"],.taf-hazard-band b[data-category="thunderstorm"]{color:#ff8a70}
 .taf-hazard-band b[data-category="freezing-precipitation"],.taf-hazard-band b[data-category="winter-precipitation"]{color:#9edcff}
 .taf-hazard-band b[data-category="liquid-precipitation"]{color:#70c9ee}
@@ -16,5 +15,5 @@
 .forecast-grid>div[data-category="severe-convection"] .forecast-condition,.forecast-grid>div[data-category="thunderstorm"] .forecast-condition{color:#ff9a7f}
 .forecast-grid>div[data-category="freezing-precipitation"] .forecast-condition,.forecast-grid>div[data-category="winter-precipitation"] .forecast-condition{color:#a8dfff}
 .forecast-grid>div[data-category="liquid-precipitation"] .forecast-condition{color:#7ad0ef}
-@media(max-width:1100px){.taf-hazard-band{gap:4px;letter-spacing:.03em}.taf-hazard-band>b{gap:3px}.taf-hazard-band>b em{padding:2px}}
-@media(max-height:760px){.forecast-card .forecast-grid{height:calc(100% - 52px)}.taf-hazard-band{height:22px}}
+@media(max-width:1100px){.taf-hazard-band{gap:4px;letter-spacing:.03em}.taf-hazard-band>b{gap:3px}.taf-hazard-band>b em{padding:2px}.taf-hazard-band>b time>span{display:none}.taf-hazard-band>b time small{display:inline}}
+@media(max-height:760px){.forecast-card.has-taf-hazard .forecast-grid{height:calc(100% - 52px)}.taf-hazard-band{height:22px}}
