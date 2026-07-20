@@ -1,4 +1,4 @@
-const CACHE="airfield-clock-v9";
+const CACHE="airfield-clock-v10";
 // Shell cached immediately on install so the display boots offline without waiting on wallpapers.
 const SHELL=["./","./manifest.json","./airfield-lightning-overlay.png","./assets/backgrounds/clear-day.png","./assets/backgrounds/clear-night.png"];
 // Full wallpaper set; populated in the background (or on demand) rather than blocking the page.
@@ -20,5 +20,13 @@ self.addEventListener("activate",e=>e.waitUntil((async()=>{
 })()));
 self.addEventListener("fetch",e=>{
   if(e.request.method!=="GET") return;
+  const url=new URL(e.request.url);
+  // Aviation weather is operational data, never a static asset. A failed network request must reach
+  // the page as a failure so it can label feed health degraded while preserving its validated local
+  // snapshot; the service worker must not silently substitute an old weather.json response.
+  if(url.hostname==="btenner1013.github.io"&&url.pathname==="/kmem-ops-board/weather.json"){
+    e.respondWith(fetch(new Request(e.request,{cache:"no-store"})));
+    return;
+  }
   e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("./"))));
 });

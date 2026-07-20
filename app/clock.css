@@ -5,3 +5,10 @@
 .clock-status.clock-warn i{background:#e8804d;box-shadow:0 0 9px rgba(232,128,77,.8)}
 .clock-status.clock-off i{background:#7e8e94;box-shadow:none}
 .clock-status.clock-warn{color:#d9a06a}
+.weather-card{position:relative}
+.metar-health{position:absolute;left:clamp(14px,1.4vw,25px);right:clamp(14px,1.4vw,25px);bottom:7px;display:flex;gap:10px;color:#72dbbd;font:700 clamp(7px,.48vw,9px)/1 Consolas,monospace;letter-spacing:.12em}
+.metar-health.health-stale,.metar-health.health-unavailable{color:#f0a354}
+.metar-health .feed-degraded{color:#e6c15a}.metar-health .feed-offline{color:#9aa5a9}
+.wx-diagnostics{display:flex;align-items:center;justify-content:center;gap:clamp(5px,.7vw,12px);font-size:clamp(6px,.43vw,9px);letter-spacing:.08em;white-space:nowrap}
+.wx-diagnostics>span+span{padding-left:clamp(5px,.7vw,12px);border-left:1px solid rgba(180,211,221,.14)}
+@media(max-width:1100px){.wx-diagnostics{max-width:48%;white-space:normal;line-height:1.35}.wx-diagnostics>span+span{padding-left:0;border-left:0}.metar-health{left:12px;right:12px}}
