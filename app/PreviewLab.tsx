@@ -15,6 +15,17 @@ const PRESETS: [string, string][] = [
   ["Ice pellets", "?debugPhenomena=PL&debugTime=day"],
   ["Hail", "?debugPhenomena=GR&debugTime=day"],
 ];
+const SOLAR: [string, string][] = [
+  ["Clear day", "?debugWeather=clear&debugTime=day"],
+  ["Clear night", "?debugWeather=clear&debugTime=night"],
+  ["Sunrise", "?debugWeather=clear&debugTime=sunrise"],
+  ["Sunset", "?debugWeather=clear&debugTime=sunset"],
+  ["FEW sunrise", "?debugWeather=partly-cloudy&debugCloud=FEW&debugTime=sunrise"],
+  ["SCT sunrise", "?debugWeather=partly-cloudy&debugCloud=SCT&debugTime=sunrise"],
+  ["FEW sunset", "?debugWeather=partly-cloudy&debugCloud=FEW&debugTime=sunset"],
+  ["SCT sunset", "?debugWeather=partly-cloudy&debugCloud=SCT&debugTime=sunset"],
+  ["OVC sunset", "?debugWeather=overcast&debugCloud=OVC&debugTime=sunset"],
+];
 
 export default function PreviewLab({ active, paneDrops, onPaneToggle }: { active: boolean; paneDrops: boolean | null; onPaneToggle: (v: boolean | null) => void }) {
   const [d, setD] = useState<Record<string, string>>({});
@@ -60,6 +71,7 @@ export default function PreviewLab({ active, paneDrops, onPaneToggle }: { active
         </dl>}
         <nav>{PRESETS.map(([label, href]) => <a key={label} href={`${href}&previewWeatherFx=1`}>{label}</a>)}
           <a href="?">LIVE</a></nav>
+        <nav>{SOLAR.map(([label, href]) => <a key={label} href={`${href}&previewWeatherFx=1`}>{label}</a>)}</nav>
       </div>}
     </aside>
   );

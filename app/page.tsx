@@ -135,7 +135,8 @@ function deriveIntensity(phenomena:string[]):"light"|"moderate"|"heavy" {
 function buildScene(weather:Weather, condition:Theme, phase:Phase, debug:boolean):SceneModel {
   const live=weather.phenomena||[];
   const phenomena=debug||!live.length?phenomenaFromCondition(condition):live;
-  return { baseScene:sceneFor(condition,phase), cloudCoverage:debug?coverageFromCondition(condition):(weather.cloudCoverage||"CLR"), cloudBaseFt:debug?null:(weather.cloudBaseFt??null), phenomena, intensity:deriveIntensity(phenomena), vicinityOnly:phenomena.length>0&&phenomena.every(p=>p.startsWith("VC")), windDirectionDeg:weather.windDegrees, windSpeedKt:weather.windSpeedKt, gustKt:weather.windGustKt, visibilitySm:debug?null:(weather.visibilitySm??null), timePhase:phase };
+  const coverage=debug?coverageFromCondition(condition):(weather.cloudCoverage||"CLR");
+  return { baseScene:sceneFor(condition,phase,coverage), cloudCoverage:coverage, cloudBaseFt:debug?null:(weather.cloudBaseFt??null), phenomena, intensity:deriveIntensity(phenomena), vicinityOnly:phenomena.length>0&&phenomena.every(p=>p.startsWith("VC")), windDirectionDeg:weather.windDegrees, windSpeedKt:weather.windSpeedKt, gustKt:weather.windGustKt, visibilitySm:debug?null:(weather.visibilitySm??null), timePhase:phase };
 }
 // --- Phase 2B cloud-motion helpers -----------------------------------------
 // Depth tier from the reported ceiling: low clouds sit lower/darker/faster, high ones finer/slower.
@@ -229,15 +230,18 @@ function zStamp(value:string) { const match=(value||"").match(/\d{4}-\d{2}-(\d{2
 // wallpaper (day/night) and never fall back to a clear sunrise/sunset frame; only clear skies
 // use the dedicated sunrise/sunset art. heavy-rain shares the rain wallpaper (intensity is an
 // animation concern, not a separate scene).
-function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset") {
+function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset",coverage:CloudCoverage="CLR") {
   const light=phase==="night"?"night":"day";
   if(condition==="rain"||condition==="heavy-rain") return `rain-${light}`;
   if(condition==="thunderstorm") return `thunderstorm-${light}`;
   if(condition==="snow") return `snow-${light}`;
   if(condition==="fog") return `fog-${light}`;
+  // Clear/partly/overcast with no significant weather: at sunrise/sunset use the dedicated solar
+  // wallpaper only when coverage is light enough (CLR/FEW/SCT) so the horizon stays dominant. BKN/OVC/
+  // VV keep their cloudy/overcast wallpaper and receive solar grading via the phase-* class instead.
+  if((phase==="sunrise"||phase==="sunset")&&(coverage==="CLR"||coverage==="FEW"||coverage==="SCT")) return phase;
   if(condition==="overcast") return `overcast-${light}`;
   if(condition==="partly-cloudy") return `partly-cloudy-${light}`;
-  // Clear (and neutral / weather-unavailable) — favor the dedicated sunrise/sunset wallpapers.
   if(phase==="sunrise") return "sunrise";
   if(phase==="sunset") return "sunset";
   return `clear-${light}`;
@@ -276,8 +280,8 @@ export default function Home() {
   const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solarPhase(local,weather.sunriseLocal,weather.sunsetLocal));
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
-  const scene=sceneFor(condition,phase);
   const sceneModel=buildScene(weather,condition,phase,!!debug);
+  const scene=sceneModel.baseScene;
   // Phase 2B — effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
   const effCoverage=debugCloud||sceneModel.cloudCoverage;
   const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
