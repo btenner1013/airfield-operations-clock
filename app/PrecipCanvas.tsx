@@ -2,12 +2,14 @@
 // The one and only precipitation canvas: a single element driving at most one requestAnimationFrame
 // loop. It never calls React setState per frame (diagnostics go to the canvas dataset), reuses one
 // particle array, cancels the loop when there is no active spec or on unmount, caps the
-// device-pixel-ratio, resizes safely, and is fully isolated from the clock — a canvas failure is
-// silent and cannot affect any other UI.
+// device-pixel-ratio, and is fully isolated from the clock — a canvas failure is silent and cannot
+// affect any other UI. Sizing is measured from the full .sky host (not the canvas's intrinsic
+// 300x150), so particles fill the whole scene; particle bounds are always CSS pixels.
 import { useEffect, useRef } from "react";
 import type { FxSpec } from "./weatherFx";
 
 type Particle = { x: number; y: number; v: number; vx: number; len: number; size: number; ph: number };
+const DPR_CAP = 2;
 
 export default function PrecipCanvas({ spec, paused }: { spec: FxSpec | null; paused?: boolean }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -15,22 +17,36 @@ export default function PrecipCanvas({ spec, paused }: { spec: FxSpec | null; pa
   const pausedRef = useRef<boolean>(!!paused); pausedRef.current = !!paused;
   const parts = useRef<Particle[]>([]);
   const raf = useRef<number>(0);
-  const dims = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  const dims = useRef<{ w: number; h: number }>({ w: 0, h: 0 }); // CSS-pixel scene size
   const api = useRef<{ sync: () => void; start: () => void }>({ sync: () => {}, start: () => {} });
 
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) { canvas.dataset.active = "0"; return; }
+    const host = (canvas.parentElement as HTMLElement | null) || canvas;
     const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
-      dims.current = { w, h };
-      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    // Measure the full scene container and size the drawing buffer to CSS × capped DPR, applying the
+    // scale exactly once via setTransform. Redistributes particles only on a real size change.
+    const measure = () => {
+      const rect = host.getBoundingClientRect();
+      const cssW = Math.max(1, Math.round(rect.width)), cssH = Math.max(1, Math.round(rect.height));
+      const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+      const prev = dims.current, changed = Math.abs(cssW - prev.w) > 2 || Math.abs(cssH - prev.h) > 2;
+      dims.current = { w: cssW, h: cssH };
+      canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
+      canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      canvas.dataset.canvasCssWidth = String(cssW); canvas.dataset.canvasCssHeight = String(cssH);
+      canvas.dataset.canvasBufferWidth = String(canvas.width); canvas.dataset.canvasBufferHeight = String(canvas.height);
+      canvas.dataset.canvasDpr = String(dpr);
+      if (changed) for (const p of parts.current) { p.x = rnd(0, cssW); p.y = rnd(-cssH, cssH); }
     };
-    resize(); window.addEventListener("resize", resize);
+    measure();
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => measure()) : null;
+    if (ro) ro.observe(host);
+    window.addEventListener("resize", measure);
 
     const sync = () => {
       const s = specRef.current, { w, h } = dims.current, arr = parts.current, target = s ? s.count : 0;
@@ -83,11 +99,9 @@ export default function PrecipCanvas({ spec, paused }: { spec: FxSpec | null; pa
     api.current = { sync, start };
     sync(); start();
 
-    return () => { window.removeEventListener("resize", resize); if (raf.current) cancelAnimationFrame(raf.current); raf.current = 0; };
+    return () => { window.removeEventListener("resize", measure); if (ro) ro.disconnect(); if (raf.current) cancelAnimationFrame(raf.current); raf.current = 0; };
   }, []); // one-time setup; spec/paused flow through refs
 
-  // Resync particles and (re)start the loop when the spec or paused state changes. The loop
-  // self-cancels whenever the spec is null, so switching to Clear leaves no running animation.
   useEffect(() => { api.current.sync(); api.current.start(); }, [spec, paused]);
 
   return <canvas ref={ref} className="precip-canvas" aria-hidden="true" data-active="0" />;

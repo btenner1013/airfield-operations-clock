@@ -10,7 +10,7 @@
 .rain-field,.snow-field,.glass-droplets,.weather-fx,.fog-layer{display:none!important}
 
 .precip-canvas{
-  position:absolute; inset:0; z-index:2; pointer-events:none;
+  position:absolute; inset:0; width:100%; height:100%; display:block; z-index:2; pointer-events:none;
   /* Clock-safe: particles are subdued (not holed out) across the clock band, faded near the ground. */
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);
           mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);

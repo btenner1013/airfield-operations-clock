@@ -29,6 +29,8 @@ export default function PreviewLab({ active }: { active: boolean }) {
         coverage: m.dataset.coverage || "—", tier: m.dataset.tier || "—", perf: m.dataset.performance || m.dataset.perf || "—",
         wind: `${m.dataset.winddir || "VRB"}° ${m.dataset.wind || 0}kt`, vec: `${m.dataset.nx ?? ""},${m.dataset.ny ?? ""}`,
         count: c?.dataset.count || "0", canvas: c?.dataset.active === "1" ? "ACTIVE" : "idle", fps: c?.dataset.fps || "—",
+        cssW: c?.dataset.canvasCssWidth || "—", cssH: c?.dataset.canvasCssHeight || "—",
+        bufW: c?.dataset.canvasBufferWidth || "—", bufH: c?.dataset.canvasBufferHeight || "—", dpr: c?.dataset.canvasDpr || "—",
       });
     };
     read(); const id = window.setInterval(read, 500);
@@ -42,6 +44,9 @@ export default function PreviewLab({ active }: { active: boolean }) {
         <dl>
           <div><dt>PRECIP</dt><dd>{d.precip} · {d.intensity}</dd></div>
           <div><dt>CANVAS</dt><dd>{d.canvas} · {d.count} p · {d.fps} fps</dd></div>
+          <div><dt>CANVAS CSS</dt><dd>{d.cssW}×{d.cssH}</dd></div>
+          <div><dt>CANVAS BUFFER</dt><dd>{d.bufW}×{d.bufH} · DPR {d.dpr}</dd></div>
+          <div><dt>PARTICLE BOUNDS</dt><dd>{d.cssW}×{d.cssH}</dd></div>
           <div><dt>OBSCURATION</dt><dd>{d.obscuration}</dd></div>
           <div><dt>VISIBILITY</dt><dd>{d.vis} SM</dd></div>
           <div><dt>CLOUD</dt><dd>{d.coverage} · tier {d.tier}</dd></div>
