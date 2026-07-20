@@ -106,22 +106,22 @@ const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,value));
 
 function particleClass(type:PrecipType,intensity:Intensity,drift:number,perf:"full"|"low",night:boolean,reduced:boolean,vicinity:boolean,secondary=false):ParticleClassSpec {
   let shape:FxShape="streak",count=0,speed=1000,len=26,size=1,sizeMin=.7,sizeMax=1.5,thick=1.3,sway=0,bounce=false,near=false,burst=false,alpha=.5,band:ParticleBand="full",vx=drift;
-  if(type==="drizzle"||type==="freezing-drizzle"){count=250;speed=500;len=9;thick=.8;alpha=.34;}
-  else if(type==="rain"||type==="freezing-rain"){count=225;speed=1120;len=29;thick=1.35;alpha=.48;}
+  if(type==="drizzle"||type==="freezing-drizzle"){count=300;speed=520;len=10;thick=1.05;alpha=.56;}
+  else if(type==="rain"||type==="freezing-rain"){count=225;speed=1120;len=29;thick=1.35;alpha=.6;}
   else if(type==="snow"){shape="flake";count=190;speed=112;size=3.25;sizeMin=1.5;sizeMax=intensity==="light"?5.1:7;sway=25;alpha=.9;near=true;}
   else if(type==="snow-shower"){shape="flake";count=230;speed=138;size=3.4;sizeMin=1.6;sizeMax=7;sway=30;alpha=.92;near=true;burst=true;}
-  else if(type==="blowing-snow"){shape="grain";count=220;speed=34;size=2;sizeMin=1.5;sizeMax=2.5;sway=5;alpha=.72;band="lower";vx=(drift<0?-1:1)*Math.max(175,Math.abs(drift)*1.35);}
-  else if(type==="drifting-snow"){shape="grain";count=130;speed=14;size=1.9;sizeMin=1.5;sizeMax=2.5;sway=3;alpha=.64;band="surface";vx=(drift<0?-1:1)*Math.max(105,Math.abs(drift));}
-  else if(type==="snow-grains"){shape="grain";count=165;speed=190;size=2;sizeMin=1.5;sizeMax=2.5;sway=5;alpha=.8;}
-  else if(type==="ice-crystals"){shape="crystal";count=58;speed=24;size=3;sizeMin=2;sizeMax=4;sway=4;alpha=.9;}
-  else if(type==="ice-pellets"){shape="pellet";count=145;speed=980;size=3;sizeMin=2;sizeMax=4;bounce=true;alpha=.82;}
-  else if(type==="hail"){shape="hail";count=72;speed=1420;size=5.5;sizeMin=4;sizeMax=7;bounce=true;alpha=.9;}
-  else if(type==="small-hail"){shape="pellet";count=105;speed=1220;size=4;sizeMin=3;sizeMax=5;bounce=true;alpha=.86;}
+  else if(type==="blowing-snow"){shape="grain";count=260;speed=42;size=3;sizeMin=1.8;sizeMax=4.6;sway=5;alpha=.92;near=true;band="lower";vx=(drift<0?-1:1)*Math.max(205,Math.abs(drift)*1.45);}
+  else if(type==="drifting-snow"){shape="grain";count=120;speed=16;size=3;sizeMin=2.1;sizeMax=4.3;sway=2;alpha=.9;near=true;band="surface";vx=(drift<0?-1:1)*Math.max(125,Math.abs(drift)*1.08);}
+  else if(type==="snow-grains"){shape="grain";count=185;speed=230;size=3.1;sizeMin=2.3;sizeMax=4.1;sway=3;alpha=.96;near=true;}
+  else if(type==="ice-crystals"){shape="crystal";count=68;speed=28;size=4.2;sizeMin=3.1;sizeMax=5.6;sway=4;alpha=.98;near=true;}
+  else if(type==="ice-pellets"){shape="pellet";count=150;speed=980;size=3.5;sizeMin=2.4;sizeMax=4.6;bounce=true;alpha=.9;}
+  else if(type==="hail"){shape="hail";count=68;speed=1420;size=6.4;sizeMin=5;sizeMax=8;bounce=true;alpha=.96;}
+  else if(type==="small-hail"){shape="pellet";count=102;speed=1220;size=4.7;sizeMin=3.5;sizeMax=5.9;bounce=true;alpha=.93;}
   const intensityScale=intensity==="heavy" ? 1.62 : intensity==="light" ? .5 : 1;
   count=Math.round(count*intensityScale*(perf==="low" ? .46 : 1)*(secondary ? .42 : 1)*(vicinity ? .22 : 1));
-  alpha*=night ? .76 : 1;
+  alpha*=night ? .88 : 1;
   if(vicinity) alpha*=.58;
-  if(perf==="low"){near=false;sizeMax=Math.min(sizeMax,4);}
+  if(perf==="low"){near=false;sizeMax=Math.min(sizeMax,Math.max(sizeMin,4.6));}
   if(reduced){count=Math.round(count*.42);speed*=.16;vx*=.18;sway*=.22;near=false;burst=false;sizeMax=Math.min(sizeMax,3.6);}
   const color=isFreezing(type)?"rgba(188,214,232,1)":shape==="flake"?"rgba(238,247,252,1)":type==="hail"||type==="small-hail"?"rgba(218,237,246,1)":"rgba(202,225,239,1)";
   return {type,shape,count,speed,len,size,sizeMin,sizeMax,thick,vx,sway,bounce,alpha,color,near,burst,band};
@@ -161,14 +161,19 @@ export function buildObscurationSpec(fx:EffectState,visibilitySm:number|null,win
     mist:.12,fog:.3,"freezing-fog":.34,"shallow-fog":.23,"patchy-fog":.25,"partial-fog":.28,haze:.1,smoke:.2,dust:.16,"blowing-dust":.27,"drifting-dust":.19,sand:.18,"blowing-sand":.3,"drifting-sand":.2,"dust-storm":.48,sandstorm:.5,"dust-whirl":.16,"volcanic-ash":.32,
   };
   const restriction=visibilityRestriction(visibilitySm);
-  let density=base[fx.obscuration]+restriction*.72;
+  let density=base[fx.obscuration]+restriction*.78;
   const fogFamily=["fog","freezing-fog","shallow-fog","patchy-fog","partial-fog"].includes(fx.obscuration);
   const groundFamily=["shallow-fog","patchy-fog","partial-fog"].includes(fx.obscuration);
   let horizon=fogFamily?clamp((groundFamily ? .32 : .2)+restriction*(groundFamily ? .78 : .95),0,.98):density*.55;
   let veil=fogFamily?clamp(restriction*(groundFamily ? .18 : .65),0,.66):density*.12;
-  if(fx.obscuration==="mist"){horizon=.12+restriction*.28;veil=restriction*.08;}
+  if(fx.obscuration==="mist"){density=.055+restriction*.35;horizon=.045+restriction*.2;veil=restriction*.04;}
+  if(fx.obscuration==="shallow-fog"){density=.52+restriction*.65;horizon=.55+restriction*.65;veil=restriction*.025;}
+  if(fx.obscuration==="patchy-fog"){density=.62+restriction*.68;horizon=.6+restriction*.7;veil=restriction*.035;}
+  if(fx.obscuration==="partial-fog"){density=.5+restriction*.7;horizon=.54+restriction*.72;veil=restriction*.07;}
   if(fx.vicinity){density*=.3;horizon*=.35;veil*=.3;}if(perf==="low"){density*=.82;veil*=.8;}density=clamp(density,0,.92);
-  const layers=perf==="low"?Math.min(2,density>.45?2:1):density>.55?3:density>.2?2:1;
+  let layers=perf==="low"?Math.min(2,density>.45?2:1):density>.55?3:density>.2?2:1;
+  if(fx.obscuration==="mist"||fx.obscuration==="shallow-fog"||fx.obscuration==="partial-fog") layers=1;
+  if(fx.obscuration==="patchy-fog") layers=Math.min(2,layers);
   const duration=reduced?0:Math.round(clamp(58-Math.min(Math.max(windSpeedKt,0),40),18,58));
   return {type:fx.obscuration,density,horizon:clamp(horizon),veil:clamp(veil),layers,duration,direction:windNx<0?-1:1,reduced};
 }

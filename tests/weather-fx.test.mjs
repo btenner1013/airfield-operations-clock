@@ -44,13 +44,14 @@ test("pane profiles distinguish drizzle, rain, freezing and vicinity liquid",()=
   const drizzle=fx(["-DZ"]),rain=fx(["RA"]),heavy=fx(["+RA"]),freezing=fx(["FZRA"]),vicinity=fx(["VCSH"]),mixed=fx(["RASN"]);
   assert.equal(drizzle.pane.profile,"drizzle");assert.equal(rain.pane.profile,"rain");assert.equal(freezing.pane.profile,"freezing");assert.equal(vicinity.pane.profile,"vicinity");
   assert.ok(heavy.pane.count>rain.pane.count&&rain.pane.count>vicinity.pane.count);assert.ok(freezing.pane.roll<rain.pane.roll);assert.ok(mixed.pane);
+  for(const token of ["-DZ","DZ","+DZ","-RA","RA","+RA","SHRA","VCSH","FZDZ","FZRA","TSRA","-TSRA","+TSRA","RASN","SNRA"]){assert.ok(fx([token]).pane,`${token} should activate pane drops`);}
 });
 
 test("winter particle families use operationally distinct CSS-pixel scales and shapes",()=>{
   const snow=fx(["SN"]),lightSnow=fx(["-SN"]),blowing=fx(["BLSN"]),grains=fx(["SG"]),crystals=fx(["IC"]),pellets=fx(["PL"]),hail=fx(["GR"]),smallHail=fx(["GS"]);
   assert.deepEqual([snow.sizeMin,snow.sizeMax],[1.5,7]);assert.ok(lightSnow.sizeMax<snow.sizeMax);
-  assert.equal(blowing.shape,"grain");assert.deepEqual([grains.sizeMin,grains.sizeMax],[1.5,2.5]);assert.equal(crystals.shape,"crystal");assert.deepEqual([crystals.sizeMin,crystals.sizeMax],[2,4]);
-  assert.equal(pellets.shape,"pellet");assert.deepEqual([pellets.sizeMin,pellets.sizeMax],[2,4]);assert.equal(hail.shape,"hail");assert.deepEqual([hail.sizeMin,hail.sizeMax],[4,7]);assert.deepEqual([smallHail.sizeMin,smallHail.sizeMax],[3,5]);
+  assert.equal(blowing.shape,"grain");assert.ok(blowing.sizeMax>=4.5&&blowing.near);assert.deepEqual([grains.sizeMin,grains.sizeMax],[2.3,4.1]);assert.equal(crystals.shape,"crystal");assert.deepEqual([crystals.sizeMin,crystals.sizeMax],[3.1,5.6]);
+  assert.equal(pellets.shape,"pellet");assert.deepEqual([pellets.sizeMin,pellets.sizeMax],[2.4,4.6]);assert.equal(hail.shape,"hail");assert.deepEqual([hail.sizeMin,hail.sizeMax],[5,8]);assert.deepEqual([smallHail.sizeMin,smallHail.sizeMax],[3.5,5.9]);
 });
 
 test("visibility smoothly strengthens veil without using snow intensity as a whiteout switch",()=>{
@@ -72,6 +73,9 @@ test("obscuration density follows visibility, variant and performance mode",()=>
   assert.ok(mist.horizon<half.horizon);assert.ok(half.horizon>.85&&half.veil>.45);
   const low=buildObscurationSpec(state,.5,1,5,"low",false),reduced=buildObscurationSpec(state,.5,1,5,"full",true);
   assert.ok(low.density<half.density&&low.layers<=2);assert.equal(reduced.duration,0);
+  assert.ok(half.density-five.density>.6,"BR/FG visibility anchors must not be visually adjacent");
+  const shallow=buildObscurationSpec(classifyEffect(["MIFG"]),2,1,5,"full",false),patchy=buildObscurationSpec(classifyEffect(["BCFG"]),2,1,5,"full",false),partial=buildObscurationSpec(classifyEffect(["PRFG"]),1,1,5,"full",false);
+  assert.ok(shallow.veil<.03&&patchy.veil<.03&&partial.horizon>patchy.horizon);
 });
 
 test("low-performance and reduced-motion paths reduce particle work and motion",()=>{
@@ -85,4 +89,6 @@ test("weather effects keep one canvas, one animation loop and no legacy particle
   assert.doesNotMatch(page,/className="(?:rain-field|snow-field|glass-droplets|weather-fx|fog-layer)"/);
   assert.equal((page.match(/className="obscuration-field"/g)||[]).length,1);assert.equal((page.match(/className="sky-base"/g)||[]).length,2);assert.equal((page.match(/className="cloud-field"/g)||[]).length,1);
   assert.doesNotMatch(canvas,/setInterval|setTimeout|useState/);assert.doesNotMatch(weather,/setInterval|setTimeout|requestAnimationFrame|document\./);
+  assert.match(canvas,/const specSignature=spec\?JSON\.stringify\(spec\):"none"/);assert.doesNotMatch(canvas,/\[spec,paused\]/);assert.match(canvas,/\.62\+\.38\*showerLevel/);
+  assert.match(page,/data-wallpaper-scene=/);assert.match(page,/sceneForEffects/);
 });

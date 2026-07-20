@@ -173,6 +173,23 @@ function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset",coverag
   if(phase==="sunset") return "sunset";
   return `clear-${light}`;
 }
+function cloudSceneForCoverage(coverage:CloudCoverage,phase:Phase) {
+  const condition:Theme=coverage==="OVC"||coverage==="VV"||coverage==="BKN"?"overcast":coverage==="FEW"||coverage==="SCT"?"partly-cloudy":"clear";
+  return sceneFor(condition,phase,coverage);
+}
+// Obscurations need a recognizable world behind their procedural layers. Mild/spatial variants use
+// a readable runway scene, while only genuinely dense full fog uses the photographic fog family.
+function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObscurationSpec>["type"],visibilitySm:number|null,phase:Phase,coverage:CloudCoverage) {
+  const light=phase==="night"?"night":"day",visibility=visibilitySm??10;
+  if(obscuration==="mist") return sceneFor("partly-cloudy",phase,"SCT");
+  if(obscuration==="shallow-fog"||obscuration==="patchy-fog"||obscuration==="partial-fog") return sceneFor("partly-cloudy",phase,"SCT");
+  if(obscuration==="fog") return visibility>=1.5?`overcast-${light}`:`fog-${light}`;
+  if(obscuration==="freezing-fog") return `fog-${light}`;
+  if(obscuration==="haze") return cloudSceneForCoverage(coverage,phase);
+  if(obscuration==="smoke"||obscuration==="volcanic-ash") return `overcast-${light}`;
+  if(["dust","blowing-dust","drifting-dust","sand","blowing-sand","drifting-sand","dust-storm","sandstorm","dust-whirl"].includes(obscuration)) return sceneFor("partly-cloudy",phase,"SCT");
+  return baseScene;
+}
 
 export default function Home() {
   const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
@@ -229,7 +246,6 @@ export default function Home() {
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const sceneModel=buildScene(weather,condition,phase,!!debug);
-  const scene=sceneModel.baseScene;
   // Phase 2B — effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
   const effCoverage=debugCloud||sceneModel.cloudCoverage;
   const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
@@ -247,6 +263,7 @@ export default function Home() {
   const fx={...fxBase,intensity:(debugIntensity||fxBase.intensity)};
   const fxSpec=buildFxSpec(fx,cloudVec.nx,effWindSpd,perf,phase==="night",reduced,paneDrops,effVisibility);
   const obscuration=buildObscurationSpec(fx,effVisibility,cloudVec.nx,effWindSpd,perf,reduced);
+  const scene=sceneForEffects(sceneModel.baseScene,obscuration.type,effVisibility,phase,effCoverage);
   const sceneStyle={...cloudStyle,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction} as unknown as CSSProperties;
   // Crossfade the wallpaper between two ping-pong layers: preload the incoming image, then flip the
   // active slot so CSS transitions opacity. Exactly two layers ever exist, so rapid scene changes
@@ -277,7 +294,7 @@ export default function Home() {
   const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  return <main className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-coverage={effCoverage} data-tier={cloudTierV} data-perf={perf} data-performance={perf} data-base={sceneModel.cloudBaseFt??""} data-intensity={fx.intensity} data-vicinity={fx.vicinity?"1":"0"} data-wind={effWindSpd} data-winddir={effWindDir??""} data-vis={effVisibility??""} data-nx={cloudVec.nx} data-ny={cloudVec.ny} data-precip-type={fx.precip} data-secondary-precip-type={fx.secondaryPrecip} data-precip-intensity={fx.intensity} data-precip-active={fxSpec?"1":"0"} data-particle-count={fxSpec?.totalCount??0} data-primary-particle-count={fxSpec?.count??0} data-secondary-particle-count={fxSpec?.secondary?.count??0} data-obscuration={obscuration.type} data-obscuration-density={obscuration.density.toFixed(2)} data-obscuration-horizon={obscuration.horizon.toFixed(2)} data-obscuration-veil={obscuration.veil.toFixed(2)} data-obscuration-direction={obscuration.direction} data-active-obscuration-layers={obscuration.layers} data-visibility={effVisibility??""} data-reduced-motion={reduced?"1":"0"}>
+  return <main className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene} data-coverage={effCoverage} data-tier={cloudTierV} data-perf={perf} data-performance={perf} data-base={sceneModel.cloudBaseFt??""} data-intensity={fx.intensity} data-vicinity={fx.vicinity?"1":"0"} data-wind={effWindSpd} data-winddir={effWindDir??""} data-vis={effVisibility??""} data-nx={cloudVec.nx} data-ny={cloudVec.ny} data-precip-type={fx.precip} data-secondary-precip-type={fx.secondaryPrecip} data-precip-intensity={fx.intensity} data-precip-active={fxSpec?"1":"0"} data-particle-count={fxSpec?.totalCount??0} data-primary-particle-count={fxSpec?.count??0} data-secondary-particle-count={fxSpec?.secondary?.count??0} data-obscuration={obscuration.type} data-obscuration-density={obscuration.density.toFixed(2)} data-obscuration-horizon={obscuration.horizon.toFixed(2)} data-obscuration-veil={obscuration.veil.toFixed(2)} data-obscuration-direction={obscuration.direction} data-active-obscuration-layers={obscuration.layers} data-visibility={effVisibility??""} data-reduced-motion={reduced?"1":"0"}>
     <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>

@@ -9,19 +9,19 @@ const SNOW:Preset[]=[
   ["+SN","debugWeather=snow&debugPhenomena=%2BSN&debugIntensity=heavy&debugVisibility=.75&debugTime=night"],
   ["SHSN","debugWeather=snow&debugPhenomena=SHSN&debugIntensity=moderate&debugTime=day"],
   ["BLSN","debugWeather=snow&debugPhenomena=BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day"],
-  ["SN BLSN","debugWeather=snow&debugPhenomena=SN,BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day"],
+  ["SN BLSN","debugWeather=snow&debugPhenomena=SN%20BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day"],
   ["DRSN","debugWeather=snow&debugPhenomena=DRSN&debugWind=280&debugWindSpeed=15&debugVisibility=4&debugTime=day"],
-];
-const FROZEN:Preset[]=[
   ["SG","debugWeather=snow&debugPhenomena=SG&debugTime=day"],
   ["IC","debugWeather=snow&debugPhenomena=IC&debugTime=night"],
+];
+const FROZEN:Preset[]=[
   ["PL","debugWeather=snow&debugPhenomena=PL&debugTime=day"],
-  ["GR","debugWeather=thunderstorm&debugPhenomena=GR&debugTime=day"],
   ["GS","debugWeather=thunderstorm&debugPhenomena=GS&debugTime=day"],
-  ["RASN","debugWeather=snow&debugPhenomena=RASN&debugTime=day"],
+  ["GR","debugWeather=thunderstorm&debugPhenomena=GR&debugTime=day"],
 ];
 const RAIN:Preset[]=[
   ["-DZ","debugWeather=rain&debugPhenomena=-DZ&debugIntensity=light&debugTime=day"],
+  ["DZ","debugWeather=rain&debugPhenomena=DZ&debugIntensity=moderate&debugTime=day"],
   ["-RA","debugWeather=rain&debugPhenomena=-RA&debugIntensity=light&debugTime=day"],
   ["RA","debugWeather=rain&debugPhenomena=RA&debugIntensity=moderate&debugTime=day"],
   ["+RA","debugWeather=heavy-rain&debugPhenomena=%2BRA&debugIntensity=heavy&debugVisibility=1.5&debugTime=night"],
@@ -29,6 +29,7 @@ const RAIN:Preset[]=[
   ["TSRA","debugWeather=thunderstorm&debugPhenomena=TSRA&debugTime=night"],
   ["VCSH","debugWeather=rain&debugPhenomena=VCSH&debugTime=day"],
   ["FZRA","debugWeather=rain&debugPhenomena=FZRA&debugTime=night"],
+  ["RASN","debugWeather=snow&debugPhenomena=RASN&debugTime=day"],
 ];
 const VISIBILITY:Preset[]=[
   ["BR 5SM","debugWeather=fog&debugPhenomena=BR&debugVisibility=5&debugTime=day"],
@@ -44,6 +45,7 @@ const VISIBILITY:Preset[]=[
   ["BLDU","debugWeather=fog&debugPhenomena=BLDU&debugVisibility=1&debugWind=260&debugWindSpeed=30&debugTime=day"],
   ["BLSA","debugWeather=fog&debugPhenomena=BLSA&debugVisibility=1&debugWind=250&debugWindSpeed=30&debugTime=day"],
   ["DS","debugWeather=fog&debugPhenomena=DS&debugVisibility=.5&debugWind=250&debugWindSpeed=35&debugTime=day"],
+  ["SS","debugWeather=fog&debugPhenomena=SS&debugVisibility=.5&debugWind=250&debugWindSpeed=35&debugTime=day"],
   ["VA","debugWeather=fog&debugPhenomena=VA&debugVisibility=2&debugTime=day"],
 ];
 const SCENE:Preset[]=[
@@ -57,10 +59,10 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
   const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(true);
   useEffect(()=>{if(!active)return;const read=()=>{const m=document.querySelector("main.display") as HTMLElement|null,c=document.querySelector(".precip-canvas") as HTMLElement|null;if(!m)return;setD({
     precip:m.dataset.precipType||"none",secondary:m.dataset.secondaryPrecipType||"none",intensity:m.dataset.precipIntensity||"--",
-    vis:m.dataset.visibility||"--",coverage:m.dataset.coverage||"--",tier:m.dataset.tier||"--",perf:m.dataset.performance||"--",reduced:m.dataset.reducedMotion==="1"?"yes":"no",
+    vis:m.dataset.visibility||"--",coverage:m.dataset.coverage||"--",tier:m.dataset.tier||"--",scene:m.dataset.wallpaperScene||"--",perf:m.dataset.performance||"--",reduced:m.dataset.reducedMotion==="1"?"yes":"no",
     obsc:m.dataset.obscuration||"none",density:m.dataset.obscurationDensity||"0",horizon:m.dataset.obscurationHorizon||"0",veil:m.dataset.obscurationVeil||"0",layers:m.dataset.activeObscurationLayers||"0",
     wind:`${m.dataset.winddir||"VRB"}deg ${m.dataset.wind||0}kt / vec ${m.dataset.nx??""},${m.dataset.ny??""}`,
-    count:c?.dataset.count||"0",primary:c?.dataset.primaryCount||"0",secondaryCount:c?.dataset.secondaryCount||"0",average:c?.dataset.averageSize||"0",near:c?.dataset.nearCount||"0",canvas:c?.dataset.active==="1"?"ACTIVE":"idle",fps:c?.dataset.fps||"--",
+    count:c?.dataset.count||"0",primary:c?.dataset.primaryCount||"0",secondaryCount:c?.dataset.secondaryCount||"0",average:c?.dataset.averageSize||"0",near:c?.dataset.nearCount||"0",band:c?.dataset.verticalBand||"none",modulation:c?.dataset.modulation||"steady",canvas:c?.dataset.active==="1"?"ACTIVE":"idle",fps:c?.dataset.fps||"--",
     drops:c?.dataset.dropCount||"0",rolling:c?.dataset.dropRolling||"0",profile:c?.dataset.paneProfile||"none",trails:c?.dataset.trails==="1"?"on":"off",pane:c?.dataset.pane==="1"?"on":"off",
     cssW:c?.dataset.canvasCssWidth||"--",cssH:c?.dataset.canvasCssHeight||"--",bufW:c?.dataset.canvasBufferWidth||"--",bufH:c?.dataset.canvasBufferHeight||"--",dpr:c?.dataset.canvasDpr||"--",
   });};read();const id=window.setInterval(read,500);return()=>clearInterval(id);},[active]);
@@ -73,9 +75,11 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
       <div><dt>PRECIP</dt><dd>{d.precip} + {d.secondary} / {d.intensity}</dd></div>
       <div><dt>PARTICLES</dt><dd>{d.count} total / {d.primary}+{d.secondaryCount}</dd></div>
       <div><dt>SIZE</dt><dd>{d.average}px avg / {d.near} near</dd></div>
+      <div><dt>BAND / MODULATION</dt><dd>{d.band} / {d.modulation}</dd></div>
       <div><dt>CANVAS</dt><dd>{d.canvas} / {d.fps} fps</dd></div>
       <div><dt>OBSCURATION</dt><dd>{d.obsc} / {d.density} / {d.layers}L</dd></div>
       <div><dt>FOG DEPTH</dt><dd>horizon {d.horizon} / veil {d.veil}</dd></div>
+      <div><dt>WALLPAPER</dt><dd>{d.scene}</dd></div>
       <div><dt>VIS / CLOUD</dt><dd>{d.vis}SM / {d.coverage} / tier {d.tier}</dd></div>
       <div><dt>WINDOW DROPS</dt><dd>{d.drops} / {d.rolling} rolling</dd></div>
       <div><dt>PANE / TRAILS</dt><dd>{d.pane} {d.profile} / {d.trails}</dd></div>

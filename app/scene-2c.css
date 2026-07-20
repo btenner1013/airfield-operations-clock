@@ -11,9 +11,10 @@
 
 .precip-canvas{
   position:absolute; inset:0; width:100%; height:100%; display:block; z-index:2; pointer-events:none;
-  /* Clock-safe: particles are subdued (not holed out) across the clock band, faded near the ground. */
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);
-          mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);
+  /* Clock-safe middle attenuation only. The lower scene remains fully visible so flakes complete
+     their top-to-below-bottom lifecycle instead of appearing to vanish at the runway. */
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 33%,rgba(0,0,0,.52) 45%,rgba(0,0,0,.52) 61%,#000 74%,#000 100%);
+          mask-image:linear-gradient(180deg,#000 0,#000 33%,rgba(0,0,0,.52) 45%,rgba(0,0,0,.52) 61%,#000 74%,#000 100%);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:100% 100%; mask-size:100% 100%;
 }
 
@@ -36,20 +37,34 @@
 .display[data-active-obscuration-layers="1"] .obscuration-field b:nth-child(n+2),
 .display[data-active-obscuration-layers="2"] .obscuration-field b:nth-child(3){display:none}
 
+/* The legacy .theme-fog filter compressed every obscuration into the same gray frame. Only full
+   fog/freezing fog retain that low-contrast treatment; spatial and colored obscurations keep the
+   selected runway wallpaper's contrast so their own geometry remains legible. */
+.display.theme-fog:not([data-obscuration="fog"]):not([data-obscuration="freezing-fog"]) .sky{filter:none}
+.display.theme-fog:not([data-obscuration="fog"]):not([data-obscuration="freezing-fog"]) .sky-base{filter:brightness(.98) saturate(1.02) contrast(1.04)}
+.display.theme-fog:not([data-obscuration="fog"]):not([data-obscuration="freezing-fog"]) .sky::after{background:linear-gradient(180deg,rgba(4,10,14,.08),transparent 46%,rgba(1,6,9,.36)),linear-gradient(90deg,rgba(1,7,10,.28),transparent 51%,rgba(1,7,10,.25))}
+.display[data-obscuration="shallow-fog"] .obscuration-field,
+.display[data-obscuration="partial-fog"] .obscuration-field{mix-blend-mode:screen}
+
 .display[data-obscuration="mist"] .obscuration-field b{
-  background:radial-gradient(ellipse at 22% 78%,rgba(218,230,232,.24),transparent 34%),radial-gradient(ellipse at 76% 64%,rgba(199,216,220,.18),transparent 42%);filter:blur(31px)
+  inset:34% -12% -10%;background:radial-gradient(ellipse at 22% 82%,rgba(218,230,232,.32),transparent 29%),radial-gradient(ellipse at 76% 72%,rgba(199,216,220,.22),transparent 36%);filter:blur(26px)
 }
 .display[data-obscuration="fog"] .obscuration-field b,
 .display[data-obscuration="freezing-fog"] .obscuration-field b{
-  opacity:var(--obsc-horizon,.3);background:linear-gradient(176deg,rgba(218,226,227,.08) 8%,rgba(215,224,225,.38) 33%,rgba(235,240,240,.78) 54%,rgba(193,207,210,.58) 76%,rgba(176,192,198,.18) 96%),radial-gradient(ellipse at 65% 52%,rgba(239,243,243,.72),transparent 55%);filter:blur(18px)
+  opacity:var(--obsc-horizon,.3);background:linear-gradient(176deg,transparent 4%,rgba(205,217,220,.14) 25%,rgba(233,239,240,.75) 51%,rgba(189,205,210,.62) 77%,rgba(151,172,180,.24) 99%),radial-gradient(ellipse at 65% 55%,rgba(242,246,246,.72),transparent 53%);filter:blur(17px)
 }
 .display[data-obscuration="fog"] .obscuration-field::before,
-.display[data-obscuration="freezing-fog"] .obscuration-field::before{opacity:var(--obsc-veil,0);background:linear-gradient(180deg,rgba(218,226,229,.58),rgba(225,232,233,.82) 54%,rgba(195,207,211,.74));filter:blur(12px)}
+.display[data-obscuration="freezing-fog"] .obscuration-field::before{opacity:var(--obsc-veil,0);background:linear-gradient(180deg,rgba(204,218,222,.22),rgba(227,234,235,.72) 52%,rgba(181,198,204,.7));filter:blur(12px)}
 .display[data-obscuration="freezing-fog"] .obscuration-field{filter:hue-rotate(165deg) saturate(.58) brightness(1.08)}
 .display[data-obscuration="freezing-fog"] .obscuration-field::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(214,238,247,.2),transparent 7% 91%,rgba(214,238,247,.18));box-shadow:inset 0 0 45px rgba(194,225,239,.25)}
-.display[data-obscuration="shallow-fog"] .obscuration-field b{inset:63% -12% -10%;opacity:var(--obsc-horizon,.4);background:radial-gradient(ellipse at 25% 72%,rgba(236,241,241,.72),transparent 44%),radial-gradient(ellipse at 76% 65%,rgba(213,224,226,.62),transparent 50%);filter:blur(16px)}
-.display[data-obscuration="patchy-fog"] .obscuration-field b{opacity:var(--obsc-horizon,.4);background:radial-gradient(ellipse at 12% 68%,rgba(232,238,238,.66) 0 12%,transparent 31%),radial-gradient(ellipse at 58% 52%,rgba(217,226,228,.58) 0 14%,transparent 34%),radial-gradient(ellipse at 91% 76%,rgba(235,240,239,.54) 0 10%,transparent 29%);filter:blur(18px)}
-.display[data-obscuration="partial-fog"] .obscuration-field b{opacity:var(--obsc-horizon,.4);background:linear-gradient(90deg,rgba(235,240,240,.78),rgba(215,225,227,.56) 38%,transparent 72%);filter:blur(20px)}
+.display[data-obscuration="shallow-fog"] .obscuration-field b{inset:43% -12% 23%;opacity:var(--obsc-horizon,.4);background:linear-gradient(180deg,transparent 0 7%,rgba(222,232,234,.52) 26%,rgba(239,243,243,.94) 56%,rgba(190,208,214,.66) 100%),radial-gradient(ellipse at 25% 68%,rgba(247,249,249,1) 0 13%,transparent 47%),radial-gradient(ellipse at 76% 64%,rgba(218,230,232,.92) 0 11%,transparent 49%);filter:blur(9px)}
+.display[data-obscuration="shallow-fog"] .obscuration-field::after{content:"";position:absolute;inset:45% -5% 27%;background:linear-gradient(180deg,transparent,rgba(222,232,234,.78) 34%,rgba(173,192,199,.7));filter:blur(8px);opacity:var(--obsc-horizon,.4)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b{inset:2% -10% 8%;opacity:var(--obsc-horizon,.4);filter:blur(11px)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(1){background:radial-gradient(ellipse at 14% 38%,rgba(245,248,248,1) 0 13%,rgba(228,237,239,.92) 18%,transparent 29%)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(2){background:radial-gradient(ellipse at 78% 61%,rgba(247,249,249,.98) 0 14%,rgba(226,236,238,.88) 19%,transparent 30%)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(3){background:none}
+.display[data-obscuration="patchy-fog"] .obscuration-field::after{content:"";position:absolute;inset:4% -4% 8%;background:radial-gradient(ellipse at 16% 37%,rgba(232,239,240,.96) 0 12%,rgba(135,157,165,.56) 20%,transparent 30%),radial-gradient(ellipse at 72% 59%,rgba(238,243,243,.94) 0 13%,rgba(145,164,171,.5) 21%,transparent 31%);filter:blur(8px);opacity:var(--obsc-horizon,.4);animation:obscurationDrift calc(var(--obsc-duration,42s) * 1.2) ease-in-out infinite alternate-reverse}
+.display[data-obscuration="partial-fog"] .obscuration-field b{inset:8% -12% -8%;opacity:var(--obsc-horizon,.4);background:linear-gradient(90deg,rgba(235,240,240,.88),rgba(208,220,224,.66) 34%,rgba(197,212,217,.18) 57%,transparent 73%);filter:blur(18px)}
 .display[data-obscuration="haze"] .obscuration-field b{background:linear-gradient(180deg,rgba(203,178,128,.14),rgba(185,157,112,.25) 63%,rgba(133,111,79,.18));filter:blur(17px)}
 .display[data-obscuration="smoke"] .obscuration-field b{background:radial-gradient(ellipse at 26% 46%,rgba(113,115,112,.36),transparent 38%),radial-gradient(ellipse at 75% 62%,rgba(112,94,78,.3),transparent 44%);filter:blur(30px)}
 .display[data-obscuration="dust"] .obscuration-field b,
@@ -66,12 +81,15 @@
 .display[data-obscuration="sandstorm"] .obscuration-field b{background:linear-gradient(172deg,rgba(94,63,40,.12),rgba(184,123,58,.54) 55%,rgba(72,45,31,.48));filter:blur(12px);animation-duration:calc(var(--obsc-duration,42s) * .42)}
 .display[data-obscuration="dust-whirl"] .obscuration-field b{inset:25% 2% 3% 58%;background:repeating-radial-gradient(ellipse at 52% 72%,rgba(190,142,75,.3) 0 7%,transparent 10% 19%);filter:blur(10px)}
 .display[data-obscuration="volcanic-ash"] .obscuration-field b{background:radial-gradient(ellipse at 32% 42%,rgba(72,70,68,.45),transparent 42%),linear-gradient(180deg,rgba(75,69,64,.22),rgba(48,43,41,.48));filter:blur(20px)}
+.display[data-precip-type="blowing-snow"] .sky::after{background:linear-gradient(180deg,rgba(4,11,16,.08) 0 38%,rgba(23,40,49,.18) 56%,rgba(0,5,8,.56) 100%),linear-gradient(90deg,rgba(0,6,9,.38),transparent 43%,rgba(1,8,11,.34))}
+.display[data-precip-type="drifting-snow"] .sky::after{background:linear-gradient(180deg,transparent 0 71%,rgba(4,12,16,.26) 79%,rgba(0,5,8,.62) 100%),linear-gradient(90deg,rgba(1,7,10,.26),transparent 50%,rgba(1,7,10,.23))}
 .display[data-vicinity="1"] .obscuration-field{opacity:calc(var(--obsc-opacity,0) * .55)}
 .display[data-perf="low"] .obscuration-field b:nth-child(3){display:none}.display[data-perf="low"] .obscuration-field b{filter:blur(14px)}
 
 @keyframes obscurationDrift{from{transform:translate3d(-5%,0,0) scale(1.02)}to{transform:translate3d(7%,-1.5%,0) scale(1.1)}}
 .display[data-reduced-motion="1"] .obscuration-field b{animation:none!important;transform:none!important}
-@media(prefers-reduced-motion:reduce){.obscuration-field b{animation:none!important;transform:none!important}}
+.display[data-reduced-motion="1"] .obscuration-field::after{animation:none!important;transform:none!important}
+@media(prefers-reduced-motion:reduce){.obscuration-field b,.obscuration-field::after{animation:none!important;transform:none!important}}
 
 /* --- Wet / icy pavement sheen (lightweight; reuses .pavement-reflection) ---- */
 .pavement-reflection{opacity:0;transition:opacity 2.5s ease}
