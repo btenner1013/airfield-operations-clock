@@ -6,7 +6,7 @@ export type TafTimes = { issueIso:string|null; validStartIso:string|null; validE
 export type RefreshReason = "initial"|"interval"|"focus"|"visible"|"pageshow"|"online"|"superseded";
 
 const METAR_CURRENT_MS = 75 * 60 * 1000;
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const THEMES = new Set(["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset","neutral"]);
 const COVERAGE = new Set(["CLR","FEW","SCT","BKN","OVC","VV"]);
 
@@ -75,8 +75,8 @@ export function classifyTafFreshness(times:TafTimes, nowMs:number):TafFreshness 
   return "CURRENT";
 }
 
-const METAR_KEYS:(keyof Weather)[]=["temperatureF","condition","description","windSpeedKt","windDirection","windDegrees","windGustKt","observationTime","source","cloudCoverage","cloudBaseFt","visibilitySm","phenomena","metarObsIso"];
-const TAF_KEYS:(keyof Weather)[]=["forecast","tafIssueIso","tafValidStartIso","tafValidEndIso"];
+const METAR_KEYS:(keyof Weather)[]=["temperatureF","condition","description","operationalWeather","windSpeedKt","windDirection","windDegrees","windGustKt","observationTime","source","cloudCoverage","cloudBaseFt","visibilitySm","phenomena","metarObsIso"];
+const TAF_KEYS:(keyof Weather)[]=["forecast","tafHazards","tafIssueIso","tafValidStartIso","tafValidEndIso"];
 const MODEL_KEYS:(keyof Weather)[]=["feelsLikeF","humidity","sunriseLocal","sunsetLocal","solarDays"];
 
 function preserve(target:Weather, previous:Weather, keys:(keyof Weather)[]) {
@@ -104,8 +104,10 @@ function isWeather(value:unknown):value is Weather {
   const finite=[w.temperatureF,w.feelsLikeF,w.windSpeedKt,w.humidity].every(v=>typeof v==="number"&&Number.isFinite(v));
   const nullableNumber=(v:unknown)=>v===null||typeof v==="number"&&Number.isFinite(v), nullableDate=(v:unknown)=>v===null||validDate(typeof v==="string"?v:null);
   const solar=Array.isArray(w.solarDays)&&w.solarDays.every(d=>!!d&&typeof d.date==="string"&&typeof d.sunriseLocal==="string"&&typeof d.sunsetLocal==="string");
-  const forecast=Array.isArray(w.forecast)&&w.forecast.every(f=>!!f&&typeof f.time==="string"&&validDate(f.iso)&&typeof f.temperatureF==="number"&&Number.isFinite(f.temperatureF)&&typeof f.condition==="string"&&THEMES.has(f.condition)&&typeof f.description==="string"&&typeof f.precipitation==="number"&&Number.isFinite(f.precipitation)&&(f.source==="TAF"||f.source==="MODEL"));
-  return finite&&typeof w.condition==="string"&&THEMES.has(w.condition)&&typeof w.description==="string"&&typeof w.windDirection==="string"&&nullableNumber(w.windDegrees)&&nullableNumber(w.windGustKt)&&typeof w.sunriseLocal==="string"&&typeof w.sunsetLocal==="string"&&solar&&forecast&&Array.isArray(w.phenomena)&&w.phenomena.every(p=>typeof p==="string")&&typeof w.cloudCoverage==="string"&&COVERAGE.has(w.cloudCoverage)&&nullableNumber(w.cloudBaseFt)&&nullableNumber(w.visibilitySm)&&nullableDate(w.metarObsIso)&&nullableDate(w.tafIssueIso)&&nullableDate(w.tafValidStartIso)&&nullableDate(w.tafValidEndIso)&&typeof w.source==="string"&&["METAR","MODEL"].includes(w.source)&&canCacheWeather(w as Weather);
+  const operational=(v:unknown)=>v===null||!!v&&typeof v==="object"&&typeof (v as {category?:unknown}).category==="string"&&typeof (v as {condition?:unknown}).condition==="string";
+  const forecast=Array.isArray(w.forecast)&&w.forecast.every(f=>!!f&&typeof f.time==="string"&&validDate(f.iso)&&typeof f.temperatureF==="number"&&Number.isFinite(f.temperatureF)&&typeof f.condition==="string"&&THEMES.has(f.condition)&&typeof f.description==="string"&&typeof f.precipitation==="number"&&Number.isFinite(f.precipitation)&&(f.source==="TAF"||f.source==="MODEL")&&operational(f.operationalWeather));
+  const hazards=Array.isArray(w.tafHazards)&&w.tafHazards.every(h=>!!h&&typeof h.id==="string"&&validDate(h.fromIso)&&validDate(h.toIso)&&operational(h.weather));
+  return finite&&typeof w.condition==="string"&&THEMES.has(w.condition)&&typeof w.description==="string"&&operational(w.operationalWeather)&&typeof w.windDirection==="string"&&nullableNumber(w.windDegrees)&&nullableNumber(w.windGustKt)&&typeof w.sunriseLocal==="string"&&typeof w.sunsetLocal==="string"&&solar&&forecast&&hazards&&Array.isArray(w.phenomena)&&w.phenomena.every(p=>typeof p==="string")&&typeof w.cloudCoverage==="string"&&COVERAGE.has(w.cloudCoverage)&&nullableNumber(w.cloudBaseFt)&&nullableNumber(w.visibilitySm)&&nullableDate(w.metarObsIso)&&nullableDate(w.tafIssueIso)&&nullableDate(w.tafValidStartIso)&&nullableDate(w.tafValidEndIso)&&typeof w.source==="string"&&["METAR","MODEL"].includes(w.source)&&canCacheWeather(w as Weather);
 }
 
 export function serializeWeatherCache(weather:Weather, savedAtIso:string):string|null {
@@ -117,8 +119,10 @@ export function restoreWeatherCache(raw:string|null):Weather|null {
   if(!raw) return null;
   try {
     const parsed=JSON.parse(raw) as {version?:number;savedAtIso?:string;weather?:unknown};
-    if(parsed.version!==CACHE_VERSION||!validDate(parsed.savedAtIso)||!isWeather(parsed.weather)) return null;
-    return {...parsed.weather,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    if(!validDate(parsed.savedAtIso)||!parsed.weather||typeof parsed.weather!=="object") return null;
+    const candidate=parsed.version===1?{...(parsed.weather as Weather),operationalWeather:null,tafHazards:[],forecast:Array.isArray((parsed.weather as Weather).forecast)?(parsed.weather as Weather).forecast.map(f=>({...f,operationalWeather:null})):[]} : parsed.weather;
+    if(![1,CACHE_VERSION].includes(parsed.version||0)||!isWeather(candidate)) return null;
+    return {...candidate,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 

@@ -5,7 +5,8 @@ import { useSystemClock, type ClockDebug } from "./useClock";
 import { classifyEffect, buildFxSpec, type Intensity } from "./weatherFx";
 import PrecipCanvas from "./PrecipCanvas";
 import PreviewLab from "./PreviewLab";
-import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, resolveAviationDate, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
+import { applyStructuredTaf, extractAviationPhenomena, parseAviationSky, parseStructuredTaf, resolveOperationalWeather, type OperationalWeather, type TafHazard } from "./aviationWeatherPriority";
+import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
@@ -16,7 +17,7 @@ type OpsBoardWeather = { metar?:string; taf?:string; metarFetchStatus?:string; t
 type SceneModel = { baseScene:string; cloudCoverage:CloudCoverage; cloudBaseFt:number|null; phenomena:string[]; intensity:"light"|"moderate"|"heavy"; vicinityOnly:boolean; windDirectionDeg:number|null; windSpeedKt:number; gustKt:number|null; visibilitySm:number|null; timePhase:Phase };
 
 const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:2, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json" };
-const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", windSpeedKt:0, windDirection:"—", windDegrees:null, windGustKt:null, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", solarDays:[], observationTime:"", forecast:[], birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", cloudCoverage:"CLR", cloudBaseFt:null, visibilitySm:null, phenomena:[], metarObsIso:null, tafIssueIso:null, tafValidStartIso:null, tafValidEndIso:null, metarFetchStatus:"UNKNOWN", tafFetchStatus:"UNKNOWN", bwcFetchStatus:"UNKNOWN", feedStatus:"DEGRADED", requestStatus:"IDLE", lastRefreshAttemptIso:null, lastRefreshSuccessIso:null, feedError:"NO DATA" };
+const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", windSpeedKt:0, windDirection:"—", windDegrees:null, windGustKt:null, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", solarDays:[], observationTime:"", forecast:[], operationalWeather:null, tafHazards:[], birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", cloudCoverage:"CLR", cloudBaseFt:null, visibilitySm:null, phenomena:[], metarObsIso:null, tafIssueIso:null, tafValidStartIso:null, tafValidEndIso:null, metarFetchStatus:"UNKNOWN", tafFetchStatus:"UNKNOWN", bwcFetchStatus:"UNKNOWN", feedStatus:"DEGRADED", requestStatus:"IDLE", lastRefreshAttemptIso:null, lastRefreshSuccessIso:null, feedError:"NO DATA" };
 const DEBUG_THEMES: Theme[] = ["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset"];
 
 function parts(date:Date, zone:string) {
@@ -42,82 +43,6 @@ function mapCode(code:number, wind:number): Pick<Weather,"condition"|"descriptio
   if(code>=61&&code<=65) return {condition: (code===65||wind>20)?"heavy-rain":"rain",description:(code===65||wind>20)?"Heavy rain":"Rain"};
   if(code>=80&&code<=82) return {condition: (code===82||wind>20)?"heavy-rain":"rain",description:(code===82||wind>20)?"Heavy rain":"Rain showers"};
   return {condition:"overcast",description:"Cloudy"};
-}
-// Maps the full METAR/TAF present-weather vocabulary onto the eight available scene families so every
-// reported condition drives a matching background + animation. `core` strips remarks before matching.
-function aviationCondition(text:string):Pick<Weather,"condition"|"description"> {
-  const core=(text||"").toUpperCase().split(/\sRMK\s/)[0];
-  const has=(re:RegExp)=>re.test(core);
-  // Convective / severe first — these dominate the whole-screen scene regardless of what else is reported.
-  if(has(/(?:^|\s)\+?FC(?:\s|$)/)) return {condition:"thunderstorm",description:/\+FC/.test(core)?"Tornado":"Funnel cloud"};
-  if(has(/(?:^|\s)(?:\+|-|VC)?TS/)) return {condition:"thunderstorm",description:/\+TS/.test(core)?"Severe thunderstorm":has(/TS(?:GR|GS)/)?"Thunderstorm, hail":has(/TSSN/)?"Thunderstorm, snow":has(/TSRA/)?"Thunderstorm, rain":has(/VCTS/)?"Thunderstorm nearby":"Thunderstorm"};
-  if(has(/(?:^|\s)SQ(?:\s|$)/)) return {condition:"thunderstorm",description:"Squall"};
-  if(has(/(?:^|\s)(?:\+|-|VC|SH)*GR(?:\s|$)/)) return {condition:"thunderstorm",description:"Hail"};
-  if(has(/(?:^|\s)(?:\+|-|VC|SH)*GS(?:\s|$)/)) return {condition:"thunderstorm",description:"Small hail"};
-  // Freezing precipitation.
-  if(has(/FZRA/)) return {condition:/\+FZRA/.test(core)?"heavy-rain":"rain",description:"Freezing rain"};
-  if(has(/FZDZ/)) return {condition:"rain",description:"Freezing drizzle"};
-  // Frozen precipitation (snow, grains, pellets, ice crystals, blowing/drifting snow).
-  const snow=has(/(?:^|\s)(?:\+|-|VC)?(?:MI|PR|BC|DR|BL|SH)?SN(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?SG(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?PL(?:\s|$)/)||has(/(?:^|\s)IC(?:\s|$)/);
-  const rain=has(/(?:^|\s)(?:\+|-|VC)?(?:SH)?RA(?:\s|$)/)||has(/(?:^|\s)(?:\+|-)?DZ(?:\s|$)/);
-  if(snow&&rain) return {condition:"snow",description:"Rain and snow"};
-  if(snow) {
-    if(has(/PL/)) return {condition:"snow",description:"Ice pellets"};
-    if(has(/SG/)) return {condition:"snow",description:"Snow grains"};
-    if(has(/IC/)) return {condition:"snow",description:"Ice crystals"};
-    if(has(/BLSN|DRSN/)) return {condition:"snow",description:"Blowing snow"};
-    return {condition:"snow",description:/\+(?:SH)?SN/.test(core)?"Heavy snow":/-(?:SH)?SN/.test(core)?"Light snow":"Snow"};
-  }
-  // Liquid precipitation.
-  if(rain) {
-    if(/\+(?:SH)?RA/.test(core)) return {condition:"heavy-rain",description:"Heavy rain"};
-    if(has(/(?:\+|-)?DZ/)&&!has(/RA/)) return {condition:"rain",description:/-DZ/.test(core)?"Light drizzle":"Drizzle"};
-    if(has(/SHRA/)) return {condition:"rain",description:"Rain showers"};
-    return {condition:"rain",description:/-RA/.test(core)?"Light rain":"Rain"};
-  }
-  if(has(/(?:^|\s)UP(?:\s|$)/)) return {condition:"rain",description:"Precipitation"};
-  if(has(/(?:^|\s)VCSH(?:\s|$)/)) return {condition:"rain",description:"Showers nearby"};
-  // Obscurations / low visibility — all mapped to the fog scene.
-  if(has(/(?:^|\s)(?:FZ)?FG(?:\s|$)/)) return {condition:"fog",description:/FZFG/.test(core)?"Freezing fog":/\bMIFG\b/.test(core)?"Shallow fog":"Fog"};
-  if(has(/(?:^|\s)(?:\+|-)?(?:DS|SS)(?:\s|$)/)) return {condition:"fog",description:/DS/.test(core)?"Dust storm":"Sandstorm"};
-  if(has(/(?:^|\s)PO(?:\s|$)/)) return {condition:"fog",description:"Dust whirls"};
-  if(has(/(?:^|\s)(?:BL|DR)?DU(?:\s|$)/)) return {condition:"fog",description:"Blowing dust"};
-  if(has(/(?:^|\s)(?:BL|DR)?SA(?:\s|$)/)) return {condition:"fog",description:"Blowing sand"};
-  if(has(/(?:^|\s)FU(?:\s|$)/)) return {condition:"fog",description:"Smoke"};
-  if(has(/(?:^|\s)VA(?:\s|$)/)) return {condition:"fog",description:"Volcanic ash"};
-  if(has(/(?:^|\s)BR(?:\s|$)/)) return {condition:"fog",description:"Mist"};
-  if(has(/(?:^|\s)HZ(?:\s|$)/)) return {condition:"fog",description:"Haze"};
-  if(has(/(?:^|\s)PY(?:\s|$)/)) return {condition:"fog",description:"Spray"};
-  // Cloud amount when no significant weather is present.
-  if(has(/\bOVC\d{3}\b/)) return {condition:"overcast",description:"Overcast"};
-  if(has(/\bBKN\d{3}\b/)) return {condition:"overcast",description:"Broken clouds"};
-  if(has(/\bSCT\d{3}\b/)) return {condition:"partly-cloudy",description:"Scattered clouds"};
-  if(has(/\bFEW\d{3}\b/)) return {condition:"partly-cloudy",description:"Few clouds"};
-  if(has(/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/)) return {condition:"clear",description:"Clear"};
-  return {condition:"overcast",description:"Cloudy"};
-}
-// Parse the most operationally significant cloud layer, ceiling, and visibility from a raw METAR.
-function parseSky(raw:string):{cloudCoverage:CloudCoverage;cloudBaseFt:number|null;visibilitySm:number|null} {
-  const core=(raw||"").toUpperCase().split(/\sRMK\s/)[0];
-  const rank:Record<string,number>={CLR:0,FEW:1,SCT:2,BKN:3,OVC:4,VV:5};
-  let best:{cov:CloudCoverage;base:number|null}={cov:"CLR",base:null};
-  const re=/\b(FEW|SCT|BKN|OVC|VV)(\d{3})\b/g; let m:RegExpExecArray|null;
-  while((m=re.exec(core))){ const cov=m[1] as CloudCoverage, base=Number(m[2])*100;
-    if(rank[cov]>rank[best.cov] || (rank[cov]===rank[best.cov] && best.base!==null && base<best.base)) best={cov,base};
-  }
-  let vis:number|null=null;
-  const vm=core.match(/(?:^|\s)(?:(\d{1,2})|(\d)\s+(\d)\/(\d)|(\d)\/(\d)|M(\d)\/(\d))SM(?:\s|$)/);
-  if(vm){ if(vm[1]) vis=Number(vm[1]); else if(vm[2]) vis=Number(vm[2])+Number(vm[3])/Number(vm[4]); else if(vm[5]) vis=Number(vm[5])/Number(vm[6]); else if(vm[7]) vis=Number(vm[7])/Number(vm[8]); }
-  else if(/\bCAVOK\b/.test(core)) vis=10;
-  return {cloudCoverage:best.cov, cloudBaseFt:best.base, visibilitySm:vis};
-}
-// Extract present-weather tokens (intensity+descriptor+phenomena groups) from a raw METAR/TAF.
-function extractPhenomena(raw:string):string[] {
-  const core=(raw||"").toUpperCase().split(/\sRMK\s/)[0];
-  const re=/(?:^|\s)((?:[+-]|VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|DS|SS|TS|SH)+)(?=\s|$)/g;
-  const out:string[]=[]; let m:RegExpExecArray|null;
-  while((m=re.exec(core))) out.push(m[1]);
-  return out;
 }
 function coverageFromCondition(c:Theme):CloudCoverage { return c==="overcast"?"OVC":c==="partly-cloudy"?"SCT":c==="clear"?"CLR":c==="fog"?"OVC":"BKN"; }
 function phenomenaFromCondition(c:Theme):string[] { return c==="heavy-rain"?["+RA"]:c==="rain"?["RA"]:c==="snow"?["SN"]:c==="thunderstorm"?["TSRA"]:c==="fog"?["FG"]:[]; }
@@ -156,31 +81,19 @@ function detectPerf():"full"|"low" { if(typeof navigator==="undefined") return "
 function signedCelsius(token:string) { return token.startsWith("M")?-Number(token.slice(1)):Number(token); }
 function cToF(c:number) { return Math.round((c*9/5)+32); }
 function parseMetar(raw:string) {
-  const condition=aviationCondition(raw), temp=raw.match(/\s(M?\d{2})\/(?:M?\d{2}|XX)\s/), wind=raw.match(/(?:^|\s)(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT(?:\s|$)/);
+  const sky=parseAviationSky(raw), operationalWeather=resolveOperationalWeather({text:raw,...sky,sourceKind:"METAR"}), temp=raw.match(/\s(M?\d{2})\/(?:M?\d{2}|XX)\s/), wind=raw.match(/(?:^|\s)(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT(?:\s|$)/);
   const degrees=wind&&wind[1]!=="VRB"?Number(wind[1]):null;
-  return { ...condition, temperatureF:temp?cToF(signedCelsius(temp[1])):null, windSpeedKt:wind?Number(wind[2]):null, windGustKt:wind?.[3]?Number(wind[3]):null, windDegrees:degrees, windDirection:degrees===null?"VRB":windDirection(degrees) };
-}
-function tafForecast(model:Forecast[],raw:string,reference:Date):Forecast[] {
-  const taf=(raw||"").replace(/\s+/g," ").trim(), validity=taf.match(/\b(\d{2})(\d{2})\/(\d{2})(\d{2})\b/); if(!validity) return model;
-  const periods:{from:Date;condition:Theme;description:string}[]=[];
-  const validityEnd=(validity.index||0)+validity[0].length, firstFm=taf.slice(validityEnd).search(/\sFM\d{6}\b/), baseEnd=firstFm<0?taf.length:validityEnd+firstFm;
-  const baseCondition=aviationCondition(taf.slice(validityEnd,baseEnd));
-  const baseFrom=resolveAviationDate(Number(validity[1]),Number(validity[2]),0,reference); if(baseFrom) periods.push({from:baseFrom,...baseCondition});
-  const fm=/\bFM(\d{2})(\d{2})(\d{2})\s+([\s\S]*?)(?=\sFM\d{6}\b|$)/g; let match:RegExpExecArray|null;
-  while((match=fm.exec(taf))!==null){const parsed=aviationCondition(match[4]),from=resolveAviationDate(Number(match[1]),Number(match[2]),Number(match[3]),reference);if(from) periods.push({from,...parsed});}
-  if(!periods.length) return model;
-  periods.sort((a,b)=>a.from.getTime()-b.from.getTime());
-  return model.map(slot=>{const target=new Date(slot.iso);let active=periods[0];for(const period of periods){if(period.from<=target) active=period;else break;}return {...slot,condition:active.condition,description:active.description,source:"TAF"};});
+  return { condition:operationalWeather.condition, description:operationalWeather.label, operationalWeather, temperatureF:temp?cToF(signedCelsius(temp[1])):null, windSpeedKt:wind?Number(wind[2]):null, windGustKt:wind?.[3]?Number(wind[3]):null, windDegrees:degrees, windDirection:degrees===null?"VRB":windDirection(degrees) };
 }
 async function getModelWeather(signal?:AbortSignal):Promise<Weather> {
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.latitude}&longitude=${CONFIG.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=${encodeURIComponent(CONFIG.timeZone)}&forecast_days=2`;
   const r=await fetch(url,{signal}); if(!r.ok) throw new Error("weather"); const j=await r.json(); const mapped=mapCode(j.current.weather_code,j.current.wind_speed_10m);
   const tm=(iso:string)=>iso?.slice(11,16)||"--:--", utcOffset=Number(j.utc_offset_seconds||0), utcIso=(iso:string)=>new Date(new Date(`${iso}:00Z`).getTime()-utcOffset*1000).toISOString();
   const start=Math.max(0,j.hourly.time.findIndex((t:string)=>t>=j.current.time));
-  const forecast:Forecast[]=[2,5,8].map(offset=>{const i=Math.min(start+offset,j.hourly.time.length-1),condition=mapCode(j.hourly.weather_code[i],0);return {time:tm(j.hourly.time[i]),iso:utcIso(j.hourly.time[i]),temperatureF:Math.round(j.hourly.temperature_2m[i]),...condition,precipitation:Math.round(j.hourly.precipitation_probability[i]||0),source:"MODEL"}});
+  const forecast:Forecast[]=[2,5,8].map(offset=>{const i=Math.min(start+offset,j.hourly.time.length-1),condition=mapCode(j.hourly.weather_code[i],0);return {time:tm(j.hourly.time[i]),iso:utcIso(j.hourly.time[i]),temperatureF:Math.round(j.hourly.temperature_2m[i]),...condition,precipitation:Math.round(j.hourly.precipitation_probability[i]||0),source:"MODEL",operationalWeather:null}});
   const windDegrees=Math.round(j.current.wind_direction_10m);
   const solarDays:SolarDay[]=j.daily.time.map((date:string,i:number)=>({date,sunriseLocal:tm(j.daily.sunrise[i]),sunsetLocal:tm(j.daily.sunset[i])}));
-  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,windSpeedKt:Math.round(j.current.wind_speed_10m),windDirection:windDirection(windDegrees),windDegrees,windGustKt:null,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:j.current.time,forecast,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:phenomenaFromCondition(mapped.condition),metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,metarFetchStatus:"UNKNOWN",tafFetchStatus:"UNKNOWN",bwcFetchStatus:"UNKNOWN",feedStatus:"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:null};
+  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,windSpeedKt:Math.round(j.current.wind_speed_10m),windDirection:windDirection(windDegrees),windDegrees,windGustKt:null,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:j.current.time,forecast,operationalWeather:null,tafHazards:[],birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:phenomenaFromCondition(mapped.condition),metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,metarFetchStatus:"UNKNOWN",tafFetchStatus:"UNKNOWN",bwcFetchStatus:"UNKNOWN",feedStatus:"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:null};
 }
 function isOpsBoardWeather(value:unknown):value is OpsBoardWeather { return !!value&&typeof value==="object"&&(typeof (value as OpsBoardWeather).metar==="string"||typeof (value as OpsBoardWeather).taf==="string"); }
 function upstreamStatus(value:string|undefined) { return (value||"UNKNOWN").trim().toUpperCase(); }
@@ -194,11 +107,13 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   const metarSyntax=/\b(?:(?:METAR|SPECI)\s+)?KMEM\b/.test(rawMetar.toUpperCase())&&!/UNAVAILABLE|ERROR/.test(rawMetar.toUpperCase());
   const metarObsIso=metarSyntax?parseMetarObservedAt(rawMetar,ops.metarObservedZ,reference):null, metarValid=metarSyntax&&metarObsIso!==null;
   const tafSyntax=/\bTAF(?:\s+(?:AMD|COR))?\s+KMEM\b/.test(rawTaf.toUpperCase())&&!/UNAVAILABLE|ERROR/.test(rawTaf.toUpperCase());
-  const tafTimes=tafSyntax?parseTafTimes(rawTaf,reference):{issueIso:null,validStartIso:null,validEndIso:null}, tafValid=tafSyntax&&tafTimes.issueIso!==null&&tafTimes.validStartIso!==null&&tafTimes.validEndIso!==null;
-  const metar=metarValid?parseMetar(rawMetar):null, sky=metarValid?parseSky(rawMetar):null, phenomena=metarValid?extractPhenomena(rawMetar):null;
+  const tafTimes=tafSyntax?parseTafTimes(rawTaf,reference):{issueIso:null,validStartIso:null,validEndIso:null}, tafEnvelopeValid=tafSyntax&&tafTimes.issueIso!==null&&tafTimes.validStartIso!==null&&tafTimes.validEndIso!==null;
+  const tafTimeline=tafEnvelopeValid?parseStructuredTaf(rawTaf,reference):null, tafValid=tafEnvelopeValid&&tafTimeline!==null;
+  const tafProduct=tafTimeline?applyStructuredTaf(model.forecast,tafTimeline,reference):null;
+  const metar=metarValid?parseMetar(rawMetar):null, sky=metarValid?parseAviationSky(rawMetar):null, phenomena=metarValid?extractAviationPhenomena(rawMetar):null;
   const metarFetchStatus=upstreamStatus(ops.metarFetchStatus), tafFetchStatus=upstreamStatus(ops.tafFetchStatus), bwcFetchStatus=upstreamStatus(ops.bwcFetchStatus);
   const healthy=metarValid&&tafValid&&metarFetchStatus==="OK"&&tafFetchStatus==="OK";
-  const weather:Weather={...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?metarObsIso:model.observationTime,forecast:tafValid?tafForecast(model.forecast,rawTaf,reference):model.forecast,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:phenomena&&phenomena.length?phenomena:model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED"};
+  const weather:Weather={...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?metarObsIso:model.observationTime,forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:phenomena&&phenomena.length?phenomena:model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED"};
   return {weather,metarValid,tafValid,modelValid,feedReached:true};
 }
 function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"🌧", "heavy-rain":"🌧",thunderstorm:"⛈",snow:"❄",fog:"≋",overcast:"☁","partly-cloudy":"⛅",sunrise:"☀",sunset:"☀",neutral:"—"} as Record<Theme,string>)[c]; }
@@ -207,6 +122,14 @@ function WeatherIcon({condition,night=false}:{condition:Theme;night?:boolean}) {
   return <i className={`wx-pictogram wxp-${theme} ${night?"wxp-nighttime":""}`} aria-hidden="true"><span className="wxp-sun"/><span className="wxp-moon"/><span className="wxp-cloud"/><span className="wxp-precip"><b/><b/><b/></span><span className="wxp-flakes"><b>✦</b><b>✦</b><b>✦</b></span><span className="wxp-bolt"/><span className="wxp-fog-lines"><b/><b/><b/></span></i>;
 }
 function isNightAt(time:string,sunrise:string,sunset:string) { const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}; const clock=parse(time),rise=parse(sunrise),set=parse(sunset); return Number.isFinite(clock)&&Number.isFinite(rise)&&Number.isFinite(set)&&(clock<rise||clock>set); }
+function tafQualifier(weather:OperationalWeather|null):string {
+  if(!weather) return "MODEL";
+  return ({TAF_BASE:"PREVAILING",TAF_FM:"FM",TAF_TEMPO:"TEMPO",TAF_PROB30:"PROB30",TAF_PROB40:"PROB40",TAF_PROB30_TEMPO:"PROB30 TEMPO",TAF_PROB40_TEMPO:"PROB40 TEMPO",METAR:"METAR",MODEL:"MODEL"} as const)[weather.sourceKind];
+}
+function tafHazardRange(hazard:TafHazard):string {
+  const stamp=(iso:string)=>{const d=new Date(iso);return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}`};
+  return `${stamp(hazard.fromIso)}–${stamp(hazard.toIso)}Z`;
+}
 function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
   const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
   const rise=parse(sunrise), set=parse(sunset); if(!Number.isFinite(rise)||!Number.isFinite(set)) return clock<360||clock>1200?"night":"day";
@@ -360,7 +283,7 @@ export default function Home() {
       <section className="info">
         <article className="sun-card panel"><div className="panel-title"><span>SOLAR WINDOW</span><b>{solar.daylight?`${Math.round(solar.progress)}% DAYLIGHT`:`${solar.label} · NEXT SUNRISE`}</b></div><div className="solar-layout"><div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div><div className={`solar-arc-wrap ${solar.daylight?"is-daylight":"is-waiting"}`}><span className="solar-horizon"/><span className="solar-arc"/><span className="solar-night-arc"/><i className="solar-rise-dot"/><i className="solar-set-dot"/><span className="solar-sun" style={{left:`${solar.markerX}%`,top:`${solar.markerY}%`}}><small>{solar.daylight?"NOW":"NIGHT"}</small></span></div><div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · {solar.label}</small></div></div></article>
         <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}</b><small className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></small><small className="weather-stats"><span className="wind-data"><i className={weather.windDegrees===null?"variable":""} style={weather.windDegrees===null?undefined:{transform:`rotate(${weather.windDegrees+180}deg)`}} aria-hidden="true">{weather.windDegrees===null?"↻":"↑"}</i> WIND {windLabel} {weather.windSpeedKt}{weather.windGustKt?`G${weather.windGustKt}`:""} KT</span><span>HUMIDITY {weather.humidity}%</span></small><small className={`bird-risk risk-${birdClass}`}><span>USAHAS BWC</span><strong>{birdRisk}</strong><time>{weather.birdBasis} · {birdStamp}</time></small></div></div><div className={`metar-health health-${metarState.toLowerCase()}`}><span>METAR {metarState}</span>{feed!=="OK"&&<span className={`feed-${feed.toLowerCase()}`}>FEED {feed}</span>}</div></article>
-        <article className="forecast-card panel"><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div><div className="forecast-grid">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`}><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span><small className="forecast-condition">{f.description}</small><strong>{f.temperatureF}°</strong><small>{f.precipitation}% PRECIP</small></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
+        <article className="forecast-card panel"><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div><div className={`taf-hazard-band ${weather.tafHazards.length?"has-hazard":"is-clear"}`}><span>TAF HAZARD</span>{weather.tafHazards.length?weather.tafHazards.slice(0,1).map(h=><b key={h.id} data-category={h.weather.category}><time>{tafHazardRange(h)}</time><em>{tafQualifier(h.weather)}</em>{h.weather.label}</b>):<b>NONE NEXT 9H</b>}{weather.tafHazards.length>1&&<i>+{weather.tafHazards.length-1}</i>}</div><div className="forecast-grid">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} data-category={f.operationalWeather?.category||"unknown"}><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span><small className="forecast-condition">{f.description}</small><strong>{f.temperatureF}°</strong><small>{tafQualifier(f.operationalWeather)} · {f.precipitation}% PRECIP</small></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer><span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span><span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span><span>PRESS F11 FOR FULL SCREEN</span></footer>
     </div>

@@ -1,5 +1,7 @@
+import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
+
 export type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
-export type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL" };
+export type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL"; operationalWeather:OperationalWeather|null };
 export type SolarDay = { date:string; sunriseLocal:string; sunsetLocal:string };
 export type CloudCoverage = "CLR"|"FEW"|"SCT"|"BKN"|"OVC"|"VV";
 export type FeedStatus = "OK" | "DEGRADED" | "OFFLINE";
@@ -20,6 +22,8 @@ export type Weather = {
   solarDays:SolarDay[];
   observationTime:string;
   forecast:Forecast[];
+  operationalWeather:OperationalWeather|null;
+  tafHazards:TafHazard[];
   birdRisk:string;
   birdBasis:string;
   birdUpdated:string;
