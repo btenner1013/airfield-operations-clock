@@ -33,11 +33,24 @@ test("snow grains, ice crystals and bouncing pellets have separate signatures",(
   assert.ok(hail.speed>smallHail.speed&&smallHail.speed>pellets.speed);
 });
 
-test("mixed rain and snow shares one spec, while inappropriate pane droplets stay off",()=>{
+test("mixed rain and snow shares one spec, while pane droplets follow every liquid family",()=>{
   const mixed=fx(["RASN"]),snow=fx(["SN"]),hail=fx(["GR"]),fog=fx(["FG"],{visibility:1}),dust=fx(["BLDU"],{visibility:1}),vicinity=fx(["VCSH"]);
   assert.equal(mixed.type,"snow");assert.equal(mixed.secondary?.type,"rain");assert.ok(mixed.totalCount>mixed.count);
-  assert.ok(mixed.pane);assert.equal(snow.pane,null);assert.equal(hail.pane,null);assert.equal(fog,null);assert.equal(dust,null);assert.equal(vicinity.pane,null);
+  assert.ok(mixed.pane);assert.equal(snow.pane,null);assert.equal(hail.pane,null);assert.equal(fog,null);assert.equal(dust,null);assert.ok(vicinity.pane);assert.equal(vicinity.pane.profile,"vicinity");assert.ok(vicinity.pane.count<=4);
   assert.equal(classifyEffect(["VCSH"]).vicinity,true);assert.ok(vicinity.count<fx(["SHRA"]).count);
+});
+
+test("pane profiles distinguish drizzle, rain, freezing and vicinity liquid",()=>{
+  const drizzle=fx(["-DZ"]),rain=fx(["RA"]),heavy=fx(["+RA"]),freezing=fx(["FZRA"]),vicinity=fx(["VCSH"]),mixed=fx(["RASN"]);
+  assert.equal(drizzle.pane.profile,"drizzle");assert.equal(rain.pane.profile,"rain");assert.equal(freezing.pane.profile,"freezing");assert.equal(vicinity.pane.profile,"vicinity");
+  assert.ok(heavy.pane.count>rain.pane.count&&rain.pane.count>vicinity.pane.count);assert.ok(freezing.pane.roll<rain.pane.roll);assert.ok(mixed.pane);
+});
+
+test("winter particle families use operationally distinct CSS-pixel scales and shapes",()=>{
+  const snow=fx(["SN"]),lightSnow=fx(["-SN"]),blowing=fx(["BLSN"]),grains=fx(["SG"]),crystals=fx(["IC"]),pellets=fx(["PL"]),hail=fx(["GR"]),smallHail=fx(["GS"]);
+  assert.deepEqual([snow.sizeMin,snow.sizeMax],[1.5,7]);assert.ok(lightSnow.sizeMax<snow.sizeMax);
+  assert.equal(blowing.shape,"grain");assert.deepEqual([grains.sizeMin,grains.sizeMax],[1.5,2.5]);assert.equal(crystals.shape,"crystal");assert.deepEqual([crystals.sizeMin,crystals.sizeMax],[2,4]);
+  assert.equal(pellets.shape,"pellet");assert.deepEqual([pellets.sizeMin,pellets.sizeMax],[2,4]);assert.equal(hail.shape,"hail");assert.deepEqual([hail.sizeMin,hail.sizeMax],[4,7]);assert.deepEqual([smallHail.sizeMin,smallHail.sizeMax],[3,5]);
 });
 
 test("visibility smoothly strengthens veil without using snow intensity as a whiteout switch",()=>{
@@ -56,6 +69,7 @@ test("obscuration density follows visibility, variant and performance mode",()=>
   assert.ok(five.density<two.density&&two.density<half.density);assert.ok(five.layers<=two.layers&&two.layers<=half.layers);
   const mist=buildObscurationSpec(classifyEffect(["BR"]),5,1,5,"full",false),storm=buildObscurationSpec(classifyEffect(["SS"]),.5,1,30,"full",false);
   assert.ok(mist.density<storm.density);assert.ok(storm.duration<mist.duration);
+  assert.ok(mist.horizon<half.horizon);assert.ok(half.horizon>.85&&half.veil>.45);
   const low=buildObscurationSpec(state,.5,1,5,"low",false),reduced=buildObscurationSpec(state,.5,1,5,"full",true);
   assert.ok(low.density<half.density&&low.layers<=2);assert.equal(reduced.duration,0);
 });
