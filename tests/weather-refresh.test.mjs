@@ -18,7 +18,7 @@ function weather(overrides={}) {
   return {
     temperatureF:80,feelsLikeF:84,condition:"clear",description:"Clear",windSpeedKt:6,windDirection:"S",windDegrees:180,windGustKt:null,humidity:55,
     sunriseLocal:"06:00",sunsetLocal:"20:10",solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:10"}],observationTime:iso,
-    forecast:[{time:"09:00",iso:"2026-07-20T14:00:00.000Z",temperatureF:82,condition:"clear",description:"Clear",precipitation:0,source:"TAF",operationalWeather:null}],operationalWeather:null,tafHazards:[],
+    forecast:[{time:"09:00",iso:"2026-07-20T14:00:00.000Z",temperatureF:82,condition:"clear",description:"Clear",precipitation:0,source:"TAF",operationalWeather:null}],operationalWeather:null,currentLightning:{level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null},tafHazards:[],
     birdRisk:"LOW",birdBasis:"AHAS",birdUpdated:iso,source:"METAR",cloudCoverage:"CLR",cloudBaseFt:null,visibilitySm:10,phenomena:[],
     metarObsIso:iso,tafIssueIso:"2026-07-20T05:00:00.000Z",tafValidStartIso:"2026-07-20T06:00:00.000Z",tafValidEndIso:"2026-07-21T12:00:00.000Z",
     metarFetchStatus:"OK",tafFetchStatus:"OK",bwcFetchStatus:"OK",feedStatus:"OK",requestStatus:"IDLE",lastRefreshAttemptIso:iso,lastRefreshSuccessIso:iso,feedError:null,
@@ -54,12 +54,13 @@ test("TAF issue and validity states cover current, pending, expired, midnight, a
 });
 
 test("failed or partial refresh preserves independent last-valid METAR and TAF data",()=>{
-  const previous=weather({operationalWeather:{category:"clear",condition:"clear"},tafHazards:[{id:"tempo",fromIso:"2026-07-20T07:00:00.000Z",toIso:"2026-07-20T09:00:00.000Z",weather:{category:"thunderstorm",condition:"thunderstorm"}}]});
+  const previous=weather({operationalWeather:{category:"clear",condition:"clear"},currentLightning:{level:"station",source:"metar-body",code:"TS",frequency:null,types:[],directions:[],awareness:"TS OVR FIELD"},tafHazards:[{id:"tempo",fromIso:"2026-07-20T07:00:00.000Z",toIso:"2026-07-20T09:00:00.000Z",weather:{category:"thunderstorm",condition:"thunderstorm"}}]});
   const modelOnly=weather({temperatureF:65,feelsLikeF:68,humidity:88,condition:"rain",description:"Model rain",source:"MODEL",metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,forecast:[],feedStatus:"DEGRADED"});
   const merged=mergeWeather(previous,{weather:modelOnly,metarValid:false,tafValid:false,modelValid:true,feedReached:false});
   assert.equal(merged.temperatureF,80);
   assert.equal(merged.condition,"clear");
   assert.equal(merged.operationalWeather,previous.operationalWeather);
+  assert.equal(merged.currentLightning,previous.currentLightning);
   assert.equal(merged.metarObsIso,previous.metarObsIso);
   assert.deepEqual(merged.forecast,previous.forecast);
   assert.deepEqual(merged.tafHazards,previous.tafHazards);
@@ -77,9 +78,9 @@ test("validated cache restores; malformed or partial cache cannot replace it",()
   assert.equal(restored?.feedStatus,"DEGRADED");
   assert.equal(restoreWeatherCache("{bad"),null);
   assert.equal(restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:{condition:"clear"}})),null);
-  const legacy=JSON.parse(JSON.stringify(snapshot));delete legacy.operationalWeather;delete legacy.tafHazards;for(const f of legacy.forecast) delete f.operationalWeather;
+  const legacy=JSON.parse(JSON.stringify(snapshot));delete legacy.operationalWeather;delete legacy.currentLightning;delete legacy.tafHazards;for(const f of legacy.forecast) delete f.operationalWeather;
   const migrated=restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:legacy}));
-  assert.equal(migrated?.operationalWeather,null);assert.deepEqual(migrated?.tafHazards,[]);assert.equal(migrated?.forecast[0].operationalWeather,null);
+  assert.equal(migrated?.operationalWeather,null);assert.equal(migrated?.currentLightning.level,"none");assert.deepEqual(migrated?.tafHazards,[]);assert.equal(migrated?.forecast[0].operationalWeather,null);
 });
 
 class FakeTarget {

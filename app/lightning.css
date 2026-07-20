@@ -1,0 +1,38 @@
+/* Phase 2D: current-METAR lightning. This last-loaded sheet retires every historical fixed
+   thunderstorm flash loop; the cancellable timeout scheduler is the only pulse authority. */
+.display.theme-thunderstorm .sky,
+.display.theme-thunderstorm .sky::before,
+.display.theme-thunderstorm .lightning-layer{animation:none!important}
+.display.theme-thunderstorm .sky::before{content:none!important;display:none!important}
+
+.lightning-layer{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden;background:none!important;opacity:1!important;mix-blend-mode:screen;animation:none!important}
+.lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{position:absolute;inset:0;display:block;pointer-events:none;opacity:0;animation:none!important;transition:opacity 65ms ease-out}
+.lightning-glow{background:radial-gradient(ellipse 34% 31% at var(--lightning-x,62%) var(--lightning-y,32%),rgba(181,215,242,.88),rgba(103,151,194,.34) 28%,transparent 70%);filter:blur(9px)}
+.lightning-horizon-glow{background:radial-gradient(ellipse 58% 19% at var(--lightning-x,62%) 72%,rgba(145,191,228,.52),rgba(78,119,157,.18) 42%,transparent 74%);filter:blur(13px)}
+.lightning-bolt-overlay{background-position:center;background-size:cover;background-repeat:no-repeat;filter:brightness(.9) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
+
+.display[data-lightning-level="distant"][data-lightning-pulse="1"] .lightning-glow{opacity:.12}
+.display[data-lightning-level="distant"][data-lightning-pulse="2"] .lightning-glow{opacity:.07}
+.display[data-lightning-level="distant"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.16}
+.display[data-lightning-level="vicinity"][data-lightning-pulse="1"] .lightning-glow{opacity:.24}
+.display[data-lightning-level="vicinity"][data-lightning-pulse="2"] .lightning-glow{opacity:.14}
+.display[data-lightning-level="vicinity"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.14}
+.display[data-lightning-level="station"][data-lightning-pulse="1"] .lightning-glow{opacity:.38}
+.display[data-lightning-level="station"][data-lightning-pulse="2"] .lightning-glow{opacity:.23}
+.display[data-lightning-level="station"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.2}
+.display[data-lightning-level="severe"][data-lightning-pulse="1"] .lightning-glow{opacity:.52}
+.display[data-lightning-level="severe"][data-lightning-pulse="2"] .lightning-glow{opacity:.32}
+.display[data-lightning-level="severe"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.29}
+.display[data-lightning-bolt="1"][data-lightning-level="station"] .lightning-bolt-overlay{opacity:.48}
+.display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.7}
+
+/* Reduced motion keeps only a faint, non-animated atmospheric cue. */
+.display[data-lightning-reduced="1"] .lightning-glow,.display[data-lightning-reduced="1"] .lightning-bolt-overlay{opacity:0!important;transition:none!important}
+.display[data-lightning-reduced="1"]:not([data-lightning-level="none"]) .lightning-horizon-glow{opacity:.075!important;transition:none!important}
+.display[data-perf="low"] .lightning-glow{filter:blur(15px)}
+.display[data-perf="low"] .lightning-bolt-overlay{opacity:0!important}
+
+.lightning-awareness{display:inline-flex!important;align-items:center;gap:6px;color:#8ed7ef!important;font-weight:700;letter-spacing:.12em!important}
+.lightning-awareness::before{content:"";width:5px;height:5px;border-radius:50%;background:#8ed7ef;box-shadow:0 0 8px rgba(142,215,239,.8)}
+.display[data-lightning-level="severe"] .lightning-awareness{color:#f2bd68!important}.display[data-lightning-level="severe"] .lightning-awareness::before{background:#f2bd68;box-shadow:0 0 9px rgba(242,189,104,.85)}
+@media(prefers-reduced-motion:reduce){.lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{transition:none!important;animation:none!important}.lightning-glow,.lightning-bolt-overlay{opacity:0!important}}

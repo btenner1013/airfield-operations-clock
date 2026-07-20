@@ -1,4 +1,5 @@
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
+import type { LightningReport } from "./lightning";
 
 export type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
 export type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL"; operationalWeather:OperationalWeather|null };
@@ -23,6 +24,7 @@ export type Weather = {
   observationTime:string;
   forecast:Forecast[];
   operationalWeather:OperationalWeather|null;
+  currentLightning:LightningReport;
   tafHazards:TafHazard[];
   birdRisk:string;
   birdBasis:string;

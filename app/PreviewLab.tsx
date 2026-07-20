@@ -54,6 +54,18 @@ const SCENE:Preset[]=[
   ["Low performance","debugWeather=snow&debugPhenomena=%2BSN&debugIntensity=heavy&debugPerformance=low&debugTime=day"],
   ["Reduced motion","debugWeather=snow&debugPhenomena=SN&debugReducedMotion=1&debugTime=day"],
 ];
+const LIGHTNING:Preset[]=[
+  ["NO LIGHTNING","debugWeather=clear&debugLightning=none&debugTime=day"],
+  ["DISTANT OCNL IC","debugWeather=partly-cloudy&debugLightning=distant-ocnl-ic&debugTime=day"],
+  ["DISTANT FRQ CG","debugWeather=partly-cloudy&debugLightning=distant-frq-cg&debugTime=night"],
+  ["VCTS","debugWeather=thunderstorm&debugPhenomena=VCTS&debugLightning=vcts&debugTime=day"],
+  ["TS","debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=ts&debugTime=night"],
+  ["TSRA","debugWeather=thunderstorm&debugPhenomena=TSRA&debugLightning=tsra&debugTime=night"],
+  ["+TSRA","debugWeather=thunderstorm&debugPhenomena=%2BTSRA&debugLightning=severe&debugIntensity=heavy&debugTime=night"],
+  ["TSGR","debugWeather=thunderstorm&debugPhenomena=TSGR&debugLightning=tsgr&debugTime=day"],
+  ["REDUCED MOTION","debugWeather=thunderstorm&debugPhenomena=TSRA&debugLightning=reduced&debugReducedMotion=1&debugTime=night"],
+  ["FLASH TEST","debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=flash-test&debugTime=night"],
+];
 
 export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boolean;paneDrops:boolean|null;onPaneToggle:(v:boolean|null)=>void}){
   const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(true);
@@ -65,6 +77,8 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
     count:c?.dataset.count||"0",primary:c?.dataset.primaryCount||"0",secondaryCount:c?.dataset.secondaryCount||"0",average:c?.dataset.averageSize||"0",near:c?.dataset.nearCount||"0",band:c?.dataset.verticalBand||"none",modulation:c?.dataset.modulation||"steady",canvas:c?.dataset.active==="1"?"ACTIVE":"idle",fps:c?.dataset.fps||"--",
     drops:c?.dataset.dropCount||"0",rolling:c?.dataset.dropRolling||"0",profile:c?.dataset.paneProfile||"none",trails:c?.dataset.trails==="1"?"on":"off",pane:c?.dataset.pane==="1"?"on":"off",
     cssW:c?.dataset.canvasCssWidth||"--",cssH:c?.dataset.canvasCssHeight||"--",bufW:c?.dataset.canvasBufferWidth||"--",bufH:c?.dataset.canvasBufferHeight||"--",dpr:c?.dataset.canvasDpr||"--",
+    lightning:`${m.dataset.lightningLevel||"none"} / ${m.dataset.lightningSource||"none"}`,lightningDetail:`${m.dataset.lightningFrequency||"none"} / ${m.dataset.lightningTypes||"none"} / ${m.dataset.lightningDirection||"none"}`,
+    lightningVisual:`active ${m.dataset.lightningActive||"0"} / pulse ${m.dataset.lightningPulse||"0"} / bolt ${m.dataset.lightningBolt||"0"} / reduced ${m.dataset.lightningReduced||"0"}`,
   });};read();const id=window.setInterval(read,500);return()=>clearInterval(id);},[active]);
   if(!active)return null;
   const paneLabel=paneDrops===true?"ON":paneDrops===false?"OFF":"AUTO",cyclePane=()=>onPaneToggle(paneDrops===null?true:paneDrops===true?false:null);
@@ -86,7 +100,8 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
       <div><dt>CANVAS CSS</dt><dd>{d.cssW}x{d.cssH}</dd></div>
       <div><dt>BUFFER</dt><dd>{d.bufW}x{d.bufH} / DPR {d.dpr}</dd></div>
       <div><dt>WIND</dt><dd>{d.wind}</dd></div><div><dt>PERF / REDUCED</dt><dd>{d.perf} / {d.reduced}</dd></div>
+      <div><dt>LIGHTNING</dt><dd>{d.lightning}</dd></div><div><dt>LTG DETAIL</dt><dd>{d.lightningDetail}</dd></div><div><dt>LTG VISUAL</dt><dd>{d.lightningVisual}</dd></div>
     </dl>}
-    <h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
+    <h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
   </div>}</aside>;
 }
