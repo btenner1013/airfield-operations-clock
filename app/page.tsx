@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
+import { classifyEffect, buildFxSpec, type Intensity } from "./weatherFx";
+import PrecipCanvas from "./PrecipCanvas";
+import PreviewLab from "./PreviewLab";
 
 type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
 type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL" };
@@ -243,6 +246,9 @@ function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset") {
 export default function Home() {
   const [weather,setWeather]=useState<Weather>(FALLBACK); const [online,setOnline]=useState(true); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
   const [debugCloud,setDebugCloud]=useState<CloudCoverage|null>(null); const [debugCloudBase,setDebugCloudBase]=useState<number|null>(null); const [debugWind,setDebugWind]=useState<number|null>(null); const [debugWindSpeed,setDebugWindSpeed]=useState<number|null>(null); const [perf,setPerf]=useState<"full"|"low">("full");
+  const [debugPhenomena,setDebugPhenomena]=useState<string|null>(null); const [debugIntensity,setDebugIntensity]=useState<Intensity|null>(null); const [debugVisibility,setDebugVisibility]=useState<number|null>(null); const [debugGust,setDebugGust]=useState<number|null>(null); const [reduced,setReduced]=useState(false);
+  const [showPreview,setShowPreview]=useState(false);
+  useEffect(()=>{ if(typeof matchMedia==="undefined") return; const mq=matchMedia("(prefers-reduced-motion: reduce)"); const on=()=>setReduced(mq.matches); on(); mq.addEventListener?.("change",on); return()=>mq.removeEventListener?.("change",on); },[]);
   const [aScene,setAScene]=useState("clear-night"); const [bScene,setBScene]=useState("clear-night"); const [active,setActive]=useState<"a"|"b">("a");
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
@@ -255,6 +261,11 @@ export default function Home() {
     const wd=q.get("debugWind"); if(wd!==null&&wd!=="") setDebugWind(Number(wd));
     const ws=q.get("debugWindSpeed"); if(ws!==null&&ws!=="") setDebugWindSpeed(Number(ws));
     const pf=q.get("debugPerformance"); setPerf(pf==="low"?"low":pf==="full"?"full":detectPerf());
+    const ph=q.get("debugPhenomena"); if(ph!==null&&ph!=="") setDebugPhenomena(ph);
+    const it=q.get("debugIntensity"); if(it==="light"||it==="moderate"||it==="heavy") setDebugIntensity(it);
+    const vv=q.get("debugVisibility"); if(vv!==null&&vv!=="") setDebugVisibility(Number(vv));
+    const gu=q.get("debugGust"); if(gu!==null&&gu!=="") setDebugGust(Number(gu));
+    if(q.get("previewWeatherFx")==="1") setShowPreview(true);
     const load=async()=>{try{const w=await getWeather();setWeather(w);localStorage.setItem("kmem-weather",JSON.stringify(w));setOnline(true)}catch{const old=localStorage.getItem("kmem-weather");if(old)setWeather({...JSON.parse(old),stale:true});setOnline(false)}};
     load(); const id=setInterval(load,CONFIG.weatherRefreshMinutes*60000); navigator.serviceWorker?.register("./service-worker.js").catch(()=>{}); return()=>clearInterval(id);
   },[]);
@@ -271,9 +282,17 @@ export default function Home() {
   const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
   const effWindDir=debugWind!=null?debugWind:sceneModel.windDirectionDeg;
   const effWindSpd=debugWindSpeed!=null?debugWindSpeed:sceneModel.windSpeedKt;
-  const cloudVec=cloudVector(effWindDir,effWindSpd,sceneModel.gustKt);
+  const effGust=debugGust!=null?debugGust:sceneModel.gustKt;
+  const cloudVec=cloudVector(effWindDir,effWindSpd,effGust);
   const cloudTierV=cloudTier(effBase);
   const cloudStyle={ "--nx":cloudVec.nx, "--ny":cloudVec.ny, "--cloud-dur":cloudVec.dur } as unknown as CSSProperties;
+  // Phase 2C — classify precipitation/obscuration from the scene object (or debug tokens) and build
+  // the single-canvas particle spec. Reduced motion suppresses animated precipitation particles.
+  const effPhenomena=debugPhenomena!=null?debugPhenomena.toUpperCase().split(/\s+/).filter(Boolean):sceneModel.phenomena;
+  const effVisibility=debugVisibility!=null?debugVisibility:sceneModel.visibilitySm;
+  const fxBase=classifyEffect(effPhenomena);
+  const fx={...fxBase,intensity:(debugIntensity||fxBase.intensity)};
+  const fxSpec=reduced?null:buildFxSpec(fx,cloudVec.nx,effWindSpd,perf,phase==="night");
   // Crossfade the wallpaper between two ping-pong layers: preload the incoming image, then flip the
   // active slot so CSS transitions opacity. Exactly two layers ever exist, so rapid scene changes
   // (live METAR or debug) can never accumulate stale layers or timers.
@@ -295,8 +314,8 @@ export default function Home() {
   const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  return <main className={`display theme-${condition} phase-${phase}`} style={cloudStyle} data-coverage={effCoverage} data-tier={cloudTierV} data-perf={perf} data-base={sceneModel.cloudBaseFt??""} data-intensity={sceneModel.intensity} data-vicinity={sceneModel.vicinityOnly?"1":"0"} data-wind={sceneModel.windSpeedKt} data-winddir={sceneModel.windDirectionDeg??""} data-vis={sceneModel.visibilitySm??""}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><i className="cloud c1"/><i className="cloud c2"/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
+  return <main className={`display theme-${condition} phase-${phase}`} style={cloudStyle} data-coverage={effCoverage} data-tier={cloudTierV} data-perf={perf} data-performance={perf} data-base={sceneModel.cloudBaseFt??""} data-intensity={sceneModel.intensity} data-vicinity={sceneModel.vicinityOnly?"1":"0"} data-wind={sceneModel.windSpeedKt} data-winddir={sceneModel.windDirectionDeg??""} data-vis={sceneModel.visibilitySm??""} data-nx={cloudVec.nx} data-ny={cloudVec.ny} data-precip-type={fx.precip} data-precip-intensity={fx.intensity} data-precip-active={fxSpec?"1":"0"} data-particle-count={fxSpec?.count??0} data-obscuration={fx.obscuration} data-visibility={effVisibility??""}>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false}/><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="fog-layer"/><i className="weather-fx"/><i className="rain-field">{Array.from({length:56},(_,i)=><span key={i} style={{left:`${(i*37+7)%101}%`,height:`${54+(i*29)%86}px`,animationDelay:`-${((i*31)%29)/10}s`,animationDuration:`${.54+((i*17)%24)/100}s`}}/>)}</i><i className="glass-droplets">{Array.from({length:18},(_,i)=><span key={i}/>)}</i><i className="snow-field">{Array.from({length:44},(_,i)=><span key={i} style={{left:`${(i*43+5)%101}%`,fontSize:`${10+(i*7)%17}px`,animationDelay:`-${((i*19)%71)/10}s`,animationDuration:`${5.8+((i*13)%42)/10}s`}}>❄</span>)}</i><i className="lightning-layer" style={{backgroundImage:`url(${imageBase}/airfield-lightning-overlay.png)`}}/><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><span className="brandmark">⌃</span><div><strong>{CONFIG.title}</strong><small>{CONFIG.airportCode} · MEMPHIS, TENNESSEE</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
@@ -311,5 +330,6 @@ export default function Home() {
       <footer><span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span><span>WX {online?"CURRENT":"CACHED"} · UPDATED {updated} · METAR / TAF + MODEL</span><span>PRESS F11 FOR FULL SCREEN</span></footer>
     </div>
     {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a className={debugPhase==="day"?"active":""} href={`?debugWeather=${condition}&debugTime=day`}>DAY</a><a className={debugPhase==="night"?"active":""} href={`?debugWeather=${condition}&debugTime=night`}>NIGHT</a><a className={debugPhase==="sunrise"?"active":""} href={`?debugWeather=${condition}&debugTime=sunrise`}>SUNRISE</a><a className={debugPhase==="sunset"?"active":""} href={`?debugWeather=${condition}&debugTime=sunset`}>SUNSET</a>{(["LOW","MODERATE","SEVERE"] as const).map(level=><a className={debugBird===level?"active":""} href={`?debugWeather=${condition}&debugTime=${phase==="night"?"night":"day"}&debugBwc=${level.toLowerCase()}`} key={level}>BWC {level}</a>)}<a href="?">LIVE</a></nav>}
+    <PreviewLab active={showPreview}/>
   </main>;
 }

@@ -1,0 +1,35 @@
+/* ============================================================================
+   Phase 2C — precipitation canvas + obscuration + preview lab.
+   The single precip canvas sits at z-index:2 inside .sky (above clouds, below
+   scrims and the UI). The old CSS-driven precip layers are retired so the
+   canvas is the sole source of falling precipitation.
+   ============================================================================ */
+
+/* Retire legacy CSS precipitation (now owned by the canvas). Keep pavement-reflection for
+   surface sheen (Phase 2C-B) and lightning-layer for Phase 2D. */
+.rain-field,.snow-field,.glass-droplets,.weather-fx,.fog-layer{display:none!important}
+
+.precip-canvas{
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  /* Clock-safe: particles are subdued (not holed out) across the clock band, faded near the ground. */
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);
+          mask-image:linear-gradient(180deg,#000 0,#000 30%,rgba(0,0,0,.4) 44%,rgba(0,0,0,.4) 60%,#000 76%,rgba(0,0,0,.85) 92%);
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:100% 100%; mask-size:100% 100%;
+}
+
+/* --- Weather FX Preview Lab (hidden unless ?previewWeatherFx=1) ------------- */
+.fxlab{
+  position:fixed; z-index:20; left:12px; bottom:12px; width:min(300px,44vw);
+  background:rgba(5,10,14,.92); border:1px solid var(--line,rgba(180,211,221,.18));
+  color:#c8d2d6; font:11px/1.35 Consolas,"Roboto Mono",monospace; letter-spacing:.03em;
+  border-radius:6px; box-shadow:0 6px 24px rgba(0,0,0,.5); backdrop-filter:blur(4px);
+}
+.fxlab header{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line,rgba(180,211,221,.18))}
+.fxlab header b{color:#7fd6ef;letter-spacing:.14em;font-size:10px}
+.fxlab button,.fxlab a{background:#12303a;color:#9fdcef;border:1px solid rgba(127,214,239,.3);border-radius:4px;padding:3px 7px;font:inherit;cursor:pointer;text-decoration:none}
+.fxlab-body{padding:8px 10px}
+.fxlab dl{margin:0;display:grid;gap:4px}
+.fxlab dl>div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(180,211,221,.08);padding-bottom:3px}
+.fxlab dt{color:#7e8e94;font-size:9px;letter-spacing:.1em}
+.fxlab dd{margin:0;text-align:right;color:#dfe8ea}
+.fxlab nav{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
