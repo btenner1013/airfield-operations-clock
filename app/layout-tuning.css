@@ -42,7 +42,7 @@
 
 /* ── HEADER / BRANDING ────────────────────────────────────── */
 .brand-logo {
-  height: clamp(44px, 5.5vh, 76px);
+  height: clamp(52px, 6.2vh, 88px);
   width: auto;
   object-fit: contain;
   border-radius: 4px;
@@ -60,6 +60,22 @@
   word-break: break-word;
   line-height: 1.35;
   margin-top: 5px;
+}
+
+/* ── CLOCK & DATE COLORS ──────────────────────────────────── */
+.clock.local time {
+  color: #ffffff;
+}
+.clock.local .clock-foot span {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+.clock.zulu time {
+  color: #58d7f5;
+}
+.clock.zulu .clock-foot span {
+  color: #38bdf8;
+  font-weight: 600;
 }
 
 /* ── PANEL BASE ───────────────────────────────────────────── */
@@ -110,12 +126,12 @@
   overflow: visible;
 }
 .solar-arc-bg {
-  stroke: rgba(255, 184, 84, 0.45);
-  filter: drop-shadow(0 0 4px rgba(255, 184, 84, 0.3));
+  stroke: rgba(253, 224, 71, 0.5);
+  filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.4));
 }
 .lunar-arc-bg {
-  stroke: rgba(96, 165, 250, 0.35);
-  filter: drop-shadow(0 0 3px rgba(96, 165, 250, 0.25));
+  stroke: rgba(96, 165, 250, 0.4);
+  filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.3));
 }
 .solar-times-row {
   display: flex;
@@ -287,21 +303,26 @@
 .wind-flight-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  gap: 8px;
+  margin-top: 4px;
 }
 .flight-cat-pill {
-  padding: 2px 6px;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  font: 700 0.82em Consolas, monospace;
+  padding: 3px 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font: 800 0.9em Consolas, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  box-shadow: 0 0 8px currentColor;
 }
 .wind-vis-tag {
-  font-size: 0.8em;
-  color: #aebbc0;
+  font-size: 0.9em;
+  color: #c0d0d5;
   letter-spacing: 0.06em;
+}
+.wind-vis-tag strong {
+  font-size: 1.12em;
+  color: #ffffff;
 }
 
 /* ── BWC CARD ─────────────────────────────────────────────── */
