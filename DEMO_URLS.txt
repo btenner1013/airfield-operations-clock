@@ -1,0 +1,101 @@
+========================================================================
+AIRFIELD OPERATIONS CLOCK — DEMO & DEBUGGER URL DIRECTORY
+========================================================================
+
+Base Live URL:
+https://btenner1013.github.io/airfield-operations-clock/
+
+
+------------------------------------------------------------------------
+1. LAUNCH DEMO LAB PANEL (Interactive On-Screen Controls)
+------------------------------------------------------------------------
+Appends the interactive Weather FX & Operations Demo Lab to the page:
+
+https://btenner1013.github.io/airfield-operations-clock/?previewWeatherFx=1
+
+
+------------------------------------------------------------------------
+2. TIME OF DAY & SOLAR / LUNAR WINDOW DEMOS
+------------------------------------------------------------------------
+Daytime (Noon Sun):
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=day
+
+Sunrise (Golden Horizon Orb):
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=sunrise
+
+Sunset (Golden Horizon Orb):
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=sunset
+
+Night + Crescent Moon:
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=night&debugMoonPhase=crescent
+
+Night + Quarter Moon:
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=night&debugMoonPhase=quarter
+
+Night + Full Moon:
+https://btenner1013.github.io/airfield-operations-clock/?debugTime=night&debugMoonPhase=full
+
+
+------------------------------------------------------------------------
+3. FLIGHT CATEGORIES (Dynamic Visibility & Ceiling Minimums)
+------------------------------------------------------------------------
+VFR (10 SM Visibility / 8,000 FT Ceiling):
+https://btenner1013.github.io/airfield-operations-clock/?debugVisibility=10&debugCloudBase=8000&debugCloud=FEW
+
+MVFR (4 SM Visibility / 2,000 FT Ceiling):
+https://btenner1013.github.io/airfield-operations-clock/?debugVisibility=4&debugCloudBase=2000&debugCloud=BKN
+
+IFR (2 SM Visibility / 800 FT Ceiling):
+https://btenner1013.github.io/airfield-operations-clock/?debugVisibility=2&debugCloudBase=800&debugCloud=OVC
+
+LIFR (0.5 SM Visibility / 200 FT Ceiling):
+https://btenner1013.github.io/airfield-operations-clock/?debugVisibility=.5&debugCloudBase=200&debugCloud=VV
+
+
+------------------------------------------------------------------------
+4. BIRD WATCH CONDITION (AHAS Risk Severity)
+------------------------------------------------------------------------
+BWC Low:
+https://btenner1013.github.io/airfield-operations-clock/?debugBwc=low
+
+BWC Moderate:
+https://btenner1013.github.io/airfield-operations-clock/?debugBwc=moderate
+
+BWC Severe:
+https://btenner1013.github.io/airfield-operations-clock/?debugBwc=severe
+
+
+------------------------------------------------------------------------
+5. WEATHER & PRECIPITATION EFFECTS
+------------------------------------------------------------------------
+Clear Sky:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=clear
+
+Partly Cloudy:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=partly-cloudy
+
+Overcast:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=overcast
+
+Fog:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=fog&debugPhenomena=FG&debugVisibility=1
+
+Rain:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=rain&debugPhenomena=RA
+
+Heavy Rain:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=heavy-rain&debugPhenomena=%2BRA
+
+Thunderstorm + Lightning:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=thunderstorm&debugLightning=tsra&debugTime=night
+
+Snow:
+https://btenner1013.github.io/airfield-operations-clock/?debugWeather=snow&debugPhenomena=SN
+
+
+------------------------------------------------------------------------
+6. RESET TO LIVE DATA
+------------------------------------------------------------------------
+Returns to real-time live METAR, TAF, and AHAS feeds:
+https://btenner1013.github.io/airfield-operations-clock/
+========================================================================
