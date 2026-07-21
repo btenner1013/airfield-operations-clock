@@ -47,7 +47,7 @@
 .display[data-obscuration="partial-fog"] .obscuration-field{mix-blend-mode:screen}
 
 .display[data-obscuration="mist"] .obscuration-field b{
-  inset:34% -12% -10%;background:radial-gradient(ellipse at 22% 82%,rgba(218,230,232,.32),transparent 29%),radial-gradient(ellipse at 76% 72%,rgba(199,216,220,.22),transparent 36%);filter:blur(26px)
+  inset:-5% -12% -10%;background:linear-gradient(180deg,rgba(220,232,235,0.18),rgba(220,232,235,0.48) 65%,rgba(195,212,216,0.36) 100%),radial-gradient(ellipse at 30% 75%,rgba(215,228,230,0.32) 0 25%,transparent 58%);filter:blur(20px)
 }
 .display[data-obscuration="fog"] .obscuration-field b,
 .display[data-obscuration="freezing-fog"] .obscuration-field b{
@@ -57,16 +57,16 @@
 .display[data-obscuration="freezing-fog"] .obscuration-field::before{opacity:var(--obsc-veil,0);background:linear-gradient(180deg,rgba(204,218,222,.22),rgba(227,234,235,.72) 52%,rgba(181,198,204,.7));filter:blur(12px)}
 .display[data-obscuration="freezing-fog"] .obscuration-field{filter:hue-rotate(165deg) saturate(.58) brightness(1.08)}
 .display[data-obscuration="freezing-fog"] .obscuration-field::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(214,238,247,.2),transparent 7% 91%,rgba(214,238,247,.18));box-shadow:inset 0 0 45px rgba(194,225,239,.25)}
-.display[data-obscuration="shallow-fog"] .obscuration-field b{inset:43% -12% 23%;opacity:var(--obsc-horizon,.4);background:linear-gradient(180deg,transparent 0 7%,rgba(222,232,234,.52) 26%,rgba(239,243,243,.94) 56%,rgba(190,208,214,.66) 100%),radial-gradient(ellipse at 25% 68%,rgba(247,249,249,1) 0 13%,transparent 47%),radial-gradient(ellipse at 76% 64%,rgba(218,230,232,.92) 0 11%,transparent 49%);filter:blur(9px)}
-.display[data-obscuration="shallow-fog"] .obscuration-field::after{content:"";position:absolute;inset:45% -5% 27%;background:linear-gradient(180deg,transparent,rgba(222,232,234,.78) 34%,rgba(173,192,199,.7));filter:blur(8px);opacity:var(--obsc-horizon,.4)}
-.display[data-obscuration="patchy-fog"] .obscuration-field b{inset:2% -10% 8%;opacity:var(--obsc-horizon,.4);filter:blur(11px)}
-.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(1){background:radial-gradient(ellipse at 14% 38%,rgba(245,248,248,1) 0 13%,rgba(228,237,239,.92) 18%,transparent 29%)}
-.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(2){background:radial-gradient(ellipse at 78% 61%,rgba(247,249,249,.98) 0 14%,rgba(226,236,238,.88) 19%,transparent 30%)}
-.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(3){background:none}
-.display[data-obscuration="patchy-fog"] .obscuration-field::after{content:"";position:absolute;inset:4% -4% 8%;background:radial-gradient(ellipse at 16% 37%,rgba(232,239,240,.96) 0 12%,rgba(135,157,165,.56) 20%,transparent 30%),radial-gradient(ellipse at 72% 59%,rgba(238,243,243,.94) 0 13%,rgba(145,164,171,.5) 21%,transparent 31%);filter:blur(8px);opacity:var(--obsc-horizon,.4);animation:obscurationDrift calc(var(--obsc-duration,42s) * 1.2) ease-in-out infinite alternate-reverse}
-.display[data-obscuration="partial-fog"] .obscuration-field b{inset:8% -12% -8%;opacity:var(--obsc-horizon,.4);background:linear-gradient(90deg,rgba(235,240,240,.88),rgba(208,220,224,.66) 34%,rgba(197,212,217,.18) 57%,transparent 73%);filter:blur(18px)}
-.display[data-obscuration="haze"] .obscuration-field b{background:linear-gradient(180deg,rgba(203,178,128,.14),rgba(185,157,112,.25) 63%,rgba(133,111,79,.18));filter:blur(17px)}
-.display[data-obscuration="smoke"] .obscuration-field b{background:radial-gradient(ellipse at 26% 46%,rgba(113,115,112,.36),transparent 38%),radial-gradient(ellipse at 75% 62%,rgba(112,94,78,.3),transparent 44%);filter:blur(30px)}
+.display[data-obscuration="shallow-fog"] .obscuration-field b{inset:54% -15% -8%;opacity:var(--obsc-horizon,.45);background:linear-gradient(180deg,transparent 0,rgba(230,242,245,.34) 22%,rgba(248,252,253,.82) 58%,rgba(200,218,224,.92) 100%),radial-gradient(ellipse at 25% 82%,rgba(250,252,253,1) 0 18%,transparent 54%),radial-gradient(ellipse at 78% 78%,rgba(235,245,248,1) 0 16%,transparent 52%);filter:blur(10px)}
+.display[data-obscuration="shallow-fog"] .obscuration-field::after{content:"";position:absolute;inset:56% -8% -8%;background:linear-gradient(180deg,transparent,rgba(230,242,245,.82) 42%,rgba(180,202,210,.85));filter:blur(9px);opacity:var(--obsc-horizon,.45)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b{inset:38% -15% -8%;opacity:var(--obsc-horizon,.45);filter:blur(11px)}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(1){background:radial-gradient(ellipse at 18% 75%,rgba(240,248,250,0.95) 0 16%,rgba(215,232,237,0.72) 24%,transparent 42%);animation:patchyDrift1 calc(var(--obsc-duration,42s) * 0.95) ease-in-out infinite alternate}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(2){background:radial-gradient(ellipse at 82% 68%,rgba(242,249,250,0.92) 0 15%,rgba(210,228,234,0.68) 22%,transparent 38%);animation:patchyDrift2 calc(var(--obsc-duration,42s) * 1.35) ease-in-out infinite alternate-reverse}
+.display[data-obscuration="patchy-fog"] .obscuration-field b:nth-child(3){background:radial-gradient(ellipse at 48% 80%,rgba(238,247,249,0.9) 0 14%,rgba(205,225,231,0.65) 20%,transparent 35%);animation:patchyDrift3 calc(var(--obsc-duration,42s) * 1.15) ease-in-out infinite alternate}
+.display[data-obscuration="patchy-fog"] .obscuration-field::after{content:"";position:absolute;inset:38% -6% -8%;background:radial-gradient(ellipse at 16% 72%,rgba(232,239,240,.96) 0 12%,rgba(135,157,165,.56) 20%,transparent 30%),radial-gradient(ellipse at 72% 76%,rgba(238,243,243,.94) 0 13%,rgba(145,164,171,.5) 21%,transparent 31%);filter:blur(8px);opacity:var(--obsc-horizon,.45);animation:obscurationDrift calc(var(--obsc-duration,42s) * 1.2) ease-in-out infinite alternate-reverse}
+.display[data-obscuration="partial-fog"] .obscuration-field b{inset:22% -12% -8%;opacity:var(--obsc-horizon,.45);background:linear-gradient(90deg,rgba(235,240,240,.88),rgba(208,220,224,.66) 34%,rgba(197,212,217,.18) 57%,transparent 73%);filter:blur(18px)}
+.display[data-obscuration="haze"] .obscuration-field b{background:linear-gradient(180deg,rgba(185,165,135,0.15) 0,rgba(195,172,140,0.38) 60%,rgba(145,125,98,0.22) 100%);filter:blur(17px)}
+.display[data-obscuration="smoke"] .obscuration-field b{background:radial-gradient(ellipse at 26% 46%,rgba(85,88,85,0.42),transparent 42%),radial-gradient(ellipse at 75% 62%,rgba(92,80,68,0.36),transparent 46%);filter:blur(30px)}
 .display[data-obscuration="dust"] .obscuration-field b,
 .display[data-obscuration="drifting-dust"] .obscuration-field b,
 .display[data-obscuration="blowing-dust"] .obscuration-field b{background:linear-gradient(178deg,rgba(164,126,77,.08),rgba(174,131,75,.34) 67%,rgba(98,70,44,.22));filter:blur(16px)}
@@ -80,13 +80,16 @@
 .display[data-obscuration="dust-storm"] .obscuration-field b,
 .display[data-obscuration="sandstorm"] .obscuration-field b{background:linear-gradient(172deg,rgba(94,63,40,.12),rgba(184,123,58,.54) 55%,rgba(72,45,31,.48));filter:blur(12px);animation-duration:calc(var(--obsc-duration,42s) * .42)}
 .display[data-obscuration="dust-whirl"] .obscuration-field b{inset:25% 2% 3% 58%;background:repeating-radial-gradient(ellipse at 52% 72%,rgba(190,142,75,.3) 0 7%,transparent 10% 19%);filter:blur(10px)}
-.display[data-obscuration="volcanic-ash"] .obscuration-field b{background:radial-gradient(ellipse at 32% 42%,rgba(72,70,68,.45),transparent 42%),linear-gradient(180deg,rgba(75,69,64,.22),rgba(48,43,41,.48));filter:blur(20px)}
+.display[data-obscuration="volcanic-ash"] .obscuration-field b{background:radial-gradient(ellipse at 32% 42%,rgba(62,60,58,0.52),transparent 45%),linear-gradient(180deg,rgba(75,69,64,.28),rgba(40,36,34,0.55));filter:blur(20px)}
 .display[data-precip-type="blowing-snow"] .sky::after{background:linear-gradient(180deg,rgba(4,11,16,.08) 0 38%,rgba(23,40,49,.18) 56%,rgba(0,5,8,.56) 100%),linear-gradient(90deg,rgba(0,6,9,.38),transparent 43%,rgba(1,8,11,.34))}
 .display[data-precip-type="drifting-snow"] .sky::after{background:linear-gradient(180deg,transparent 0 71%,rgba(4,12,16,.26) 79%,rgba(0,5,8,.62) 100%),linear-gradient(90deg,rgba(1,7,10,.26),transparent 50%,rgba(1,7,10,.23))}
 .display[data-vicinity="1"] .obscuration-field{opacity:calc(var(--obsc-opacity,0) * .55)}
 .display[data-perf="low"] .obscuration-field b:nth-child(3){display:none}.display[data-perf="low"] .obscuration-field b{filter:blur(14px)}
 
 @keyframes obscurationDrift{from{transform:translate3d(-5%,0,0) scale(1.02)}to{transform:translate3d(7%,-1.5%,0) scale(1.1)}}
+@keyframes patchyDrift1{from{transform:translate3d(-10%,-1%,0) scale(1.02)}to{transform:translate3d(12%,1.2%,0) scale(1.08)}}
+@keyframes patchyDrift2{from{transform:translate3d(12%,1.5%,0) scale(1.1)}to{transform:translate3d(-8%,-1.5%,0) scale(0.96)}}
+@keyframes patchyDrift3{from{transform:translate3d(-6%,2%,0) scale(0.95)}to{transform:translate3d(8%,-2%,0) scale(1.05)}}
 .display[data-reduced-motion="1"] .obscuration-field b{animation:none!important;transform:none!important}
 .display[data-reduced-motion="1"] .obscuration-field::after{animation:none!important;transform:none!important}
 @media(prefers-reduced-motion:reduce){.obscuration-field b,.obscuration-field::after{animation:none!important;transform:none!important}}

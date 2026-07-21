@@ -51,7 +51,7 @@ test("winter particle families use operationally distinct CSS-pixel scales and s
   const snow=fx(["SN"]),lightSnow=fx(["-SN"]),blowing=fx(["BLSN"]),grains=fx(["SG"]),crystals=fx(["IC"]),pellets=fx(["PL"]),hail=fx(["GR"]),smallHail=fx(["GS"]);
   assert.deepEqual([snow.sizeMin,snow.sizeMax],[1.5,7]);assert.ok(lightSnow.sizeMax<snow.sizeMax);
   assert.equal(blowing.shape,"grain");assert.ok(blowing.sizeMax>=4.5&&blowing.near);assert.deepEqual([grains.sizeMin,grains.sizeMax],[2.3,4.1]);assert.equal(crystals.shape,"crystal");assert.deepEqual([crystals.sizeMin,crystals.sizeMax],[3.1,5.6]);
-  assert.equal(pellets.shape,"pellet");assert.deepEqual([pellets.sizeMin,pellets.sizeMax],[2.4,4.6]);assert.equal(hail.shape,"hail");assert.deepEqual([hail.sizeMin,hail.sizeMax],[5,8]);assert.deepEqual([smallHail.sizeMin,smallHail.sizeMax],[3.5,5.9]);
+  assert.equal(pellets.shape,"pellet");assert.deepEqual([pellets.sizeMin,pellets.sizeMax],[2.6,5.4]);assert.equal(hail.shape,"hail");assert.deepEqual([hail.sizeMin,hail.sizeMax],[5.2,9.8]);assert.deepEqual([smallHail.sizeMin,smallHail.sizeMax],[3.8,7.5]);
 });
 
 test("visibility smoothly strengthens veil without using snow intensity as a whiteout switch",()=>{

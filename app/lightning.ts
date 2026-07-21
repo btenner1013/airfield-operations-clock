@@ -89,8 +89,11 @@ export type LightningSchedulerOptions={
 };
 export type LightningScheduler={start:()=>void;stop:()=>void;pendingCount:()=>number;isStopped:()=>boolean};
 
-export function lightningQuietRange(level:LightningLevel):[number,number] {
-  return level==="distant"?[20000,45000]:level==="vicinity"?[10000,25000]:level==="station"?[7000,18000]:level==="severe"?[4000,12000]:[0,0];
+export function lightningQuietRange(level:LightningLevel, frequency:LightningFrequency=null):[number,number] {
+  let range:[number,number] = level==="distant"?[20000,45000]:level==="vicinity"?[10000,25000]:level==="station"?[7000,18000]:level==="severe"?[4000,12000]:[0,0];
+  if(frequency==="frequent") return [Math.round(range[0]*0.45),Math.round(range[1]*0.45)];
+  if(frequency==="continuous") return [Math.round(range[0]*0.22),Math.round(range[1]*0.22)];
+  return range;
 }
 
 export function createLightningScheduler(report:LightningReport,options:LightningSchedulerOptions):LightningScheduler {
@@ -100,13 +103,14 @@ export function createLightningScheduler(report:LightningReport,options:Lightnin
   const emit=(active:boolean,pulse:0|1|2=0,bolt=false)=>options.onState({active,pulse,bolt,cluster});
   const later=(callback:()=>void,delay:number)=>{let handle:TimerHandle;handle=setTimer(()=>{pending.delete(handle);callback();},delay);pending.add(handle);return handle;};
   const clearAll=()=>{for(const handle of pending)clearTimer(handle);pending.clear();};
-  const scheduleQuiet=()=>{if(stopped||report.level==="none"||options.reduced||!visible())return;const [min,max]=lightningQuietRange(report.level);later(runCluster,min+Math.round(random()*(max-min)));};
+  const scheduleQuiet=()=>{if(stopped||report.level==="none"||options.reduced||!visible())return;const [min,max]=lightningQuietRange(report.level,report.frequency);later(runCluster,min+Math.round(random()*(max-min)));};
   const runCluster=()=>{
     if(stopped||!visible()){emit(false);return;} cluster++;
-    const doublePulse=options.flashTest||random()<(report.level==="distant"?.15:report.level==="vicinity"?.42:report.level==="station"?.55:.72);
-    const boltEligible=report.level==="station"||report.level==="severe", bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.56:.34));
+    const doublePulse=options.flashTest||random()<(report.level==="distant"?.25:report.level==="vicinity"?.52:report.level==="station"?.68:.85);
+    const boltEligible=report.level==="station"||report.level==="severe"||(report.level==="distant"&&report.frequency==="frequent");
+    const bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.62:report.level==="distant"?.22:.38));
     emit(true,1,bolt);later(()=>emit(true,0,false),115);
-    if(doublePulse){later(()=>emit(true,2,bolt&&report.level==="severe"),235);later(()=>emit(true,0,false),345);}
+    if(doublePulse){later(()=>emit(true,2,bolt&&(report.level==="severe"||report.level==="station")),235);later(()=>emit(true,0,false),345);}
     later(()=>{emit(true,0,false);if(!options.flashTest)scheduleQuiet();},doublePulse?455:225);
   };
   const onVisibility=()=>{clearAll();emit(false);if(visible()&&!stopped)scheduleQuiet();};

@@ -46,7 +46,7 @@ export default function PrecipCanvas({spec,paused,night}:{spec:FxSpec|null;pause
     const drawFlake=(p:Particle,color:string)=>{ctx.fillStyle="rgba(37,55,66,.55)";ctx.beginPath();ctx.arc(p.x+.35,p.y+.45,p.size*1.08,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*.72,0,Math.PI*2);ctx.fill();if(p.size>3.8){ctx.lineWidth=Math.max(.65,p.size*.16);ctx.strokeStyle=color;for(let arm=0;arm<3;arm++){const a=arm*Math.PI/3,dx=Math.cos(a)*p.size*1.55,dy=Math.sin(a)*p.size*1.55;ctx.beginPath();ctx.moveTo(p.x-dx,p.y-dy);ctx.lineTo(p.x+dx,p.y+dy);ctx.stroke();}}};
     const drawGrain=(p:Particle,color:string)=>{ctx.fillStyle="rgba(45,61,70,.58)";ctx.beginPath();ctx.ellipse(p.x+.3,p.y+.4,p.size*.7,p.size*1.32,p.phase*.16,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(p.x,p.y,p.size*.46,p.size, p.phase*.16,0,Math.PI*2);ctx.fill();};
     const drawCrystal=(p:Particle,color:string)=>{ctx.strokeStyle="rgba(45,67,79,.7)";ctx.lineWidth=Math.max(1,p.size*.34);for(let arm=0;arm<2;arm++){const a=Math.PI/4+arm*Math.PI/2,dx=Math.cos(a)*p.size*1.25,dy=Math.sin(a)*p.size*1.25;ctx.beginPath();ctx.moveTo(p.x-dx,p.y-dy);ctx.lineTo(p.x+dx,p.y+dy);ctx.stroke();}ctx.strokeStyle=color;ctx.lineWidth=Math.max(.65,p.size*.18);for(let arm=0;arm<2;arm++){const a=Math.PI/4+arm*Math.PI/2,dx=Math.cos(a)*p.size,dy=Math.sin(a)*p.size;ctx.beginPath();ctx.moveTo(p.x-dx,p.y-dy);ctx.lineTo(p.x+dx,p.y+dy);ctx.stroke();}};
-    const drawPellet=(p:Particle,color:string,hail:boolean)=>{ctx.fillStyle="rgba(31,52,65,.72)";ctx.beginPath();if(hail){const points=8;for(let i=0;i<points;i++){const a=i*Math.PI*2/points,r=p.size*(i%2 ? .82 : 1.08),x=p.x+Math.cos(a)*r,y=p.y+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();}else ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x-p.size*.12,p.y-p.size*.15,p.size*.72,0,Math.PI*2);ctx.fill();ctx.fillStyle="rgba(255,255,255,.72)";ctx.beginPath();ctx.arc(p.x-p.size*.34,p.y-p.size*.4,Math.max(.55,p.size*.16),0,Math.PI*2);ctx.fill();};
+    const drawPellet=(p:Particle,color:string,hail:boolean)=>{const r=p.size;ctx.fillStyle="rgba(8,18,24,0.92)";ctx.beginPath();const shadowRadius=r*1.38;if(hail){const points=8;for(let i=0;i<points;i++){const a=i*Math.PI*2/points,rad=shadowRadius*(i%2?.82:1.08),x=p.x+Math.cos(a)*rad,y=p.y+Math.sin(a)*rad;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();}else ctx.arc(p.x,p.y,shadowRadius,0,Math.PI*2);ctx.fill();ctx.fillStyle=hail?"rgba(235,246,255,1)":"rgba(222,241,255,1)";ctx.beginPath();const coreRadius=r*0.95;if(hail){const points=8;for(let i=0;i<points;i++){const a=i*Math.PI*2/points,rad=coreRadius*(i%2?.82:1.08),x=p.x-r*0.05+Math.cos(a)*rad,y=p.y-r*0.05+Math.sin(a)*rad;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();}else ctx.arc(p.x-r*0.05,p.y-r*0.05,coreRadius,0,Math.PI*2);ctx.fill();ctx.fillStyle="rgba(255,255,255,1)";ctx.beginPath();ctx.arc(p.x-r*0.3,p.y-r*0.3,Math.max(0.8,r*0.28),0,Math.PI*2);ctx.fill();};
     const drawClass=(s:FxSpec,cls:ParticleClassSpec,group:0|1,now:number,dt:number)=>{
       const {w,h}=dims.current,arr=particles.current,[bandTop,bandBottom]=bandRange(cls.band,h);
       // Shower-only modulation always retains a 62% baseline and combines two long, non-harmonic
@@ -69,12 +69,28 @@ export default function PrecipCanvas({spec,paused,night}:{spec:FxSpec|null;pause
         const particleAlpha=cls.alpha*(.68+p.depth*.32);ctx.globalAlpha=particleAlpha;
         if(cls.shape==="streak"){
           const dx=p.v?p.vx*(p.len/p.v):0,lineWidth=cls.thick*(.82+p.depth*.35);
-          ctx.globalAlpha=particleAlpha*.72;ctx.strokeStyle="rgba(25,42,52,.72)";ctx.lineWidth=lineWidth+1.4;ctx.beginPath();ctx.moveTo(p.x+.55,p.y+.7);ctx.lineTo(p.x-dx+.55,p.y-p.len+.7);ctx.stroke();
-          ctx.globalAlpha=particleAlpha;ctx.strokeStyle=cls.color;ctx.lineWidth=lineWidth;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-dx,p.y-p.len);ctx.stroke();
+          const isNight=nightRef.current;
+          const shadowColor=isNight?"rgba(20,32,42,0.55)":"rgba(3,9,14,0.92)";
+          const shadowWidth=isNight?lineWidth+1.2:lineWidth+2.0;
+          const coreColor=isNight?cls.color:"rgba(245,253,255,1)";
+          ctx.globalAlpha=particleAlpha*(isNight?0.65:0.95);
+          ctx.strokeStyle=shadowColor;
+          ctx.lineWidth=shadowWidth;
+          ctx.beginPath();
+          ctx.moveTo(p.x,p.y);
+          ctx.lineTo(p.x-dx,p.y-p.len);
+          ctx.stroke();
+          ctx.globalAlpha=particleAlpha;
+          ctx.strokeStyle=coreColor;
+          ctx.lineWidth=lineWidth;
+          ctx.beginPath();
+          ctx.moveTo(p.x,p.y);
+          ctx.lineTo(p.x-dx,p.y-p.len);
+          ctx.stroke();
         }else if(cls.shape==="flake")drawFlake(p,cls.color);
         else if(cls.shape==="grain")drawGrain(p,cls.color);
         else if(cls.shape==="crystal")drawCrystal(p,cls.color);
-        else{if(cls.bounce){p.v=Math.min(p.v+1400*dt,cls.speed*1.2);const ground=h*.87;if(p.y>=ground&&p.v>0&&p.bounces<3){p.y=ground;p.v=-cls.speed*(p.bounces===0?.26:p.bounces===1?.14:.07);p.vx+=(p.seed-.5)*(cls.shape==="hail"?240:150);p.bounces++;}}drawPellet(p,cls.color,cls.shape==="hail");}
+        else{if(cls.bounce){const grav=1100+p.seed*600;p.v=Math.min(p.v+grav*dt,cls.speed*1.3);const ground=h*.87;if(p.y>=ground&&p.v>0&&p.bounces<3){p.y=ground;const coeff=(0.18+p.seed*0.22)*(p.bounces===0?1:p.bounces===1?0.5:0.25);p.v=-cls.speed*coeff;p.vx+=(p.seed-.5)*(cls.shape==="hail"?rnd(220,450):rnd(110,320));p.bounces++;}}drawPellet(p,cls.color,cls.shape==="hail");}
       }
       ctx.globalAlpha=1;
     };

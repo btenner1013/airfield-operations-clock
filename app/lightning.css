@@ -11,20 +11,21 @@
 .lightning-horizon-glow{background:radial-gradient(ellipse 58% 19% at var(--lightning-x,62%) 72%,rgba(145,191,228,.52),rgba(78,119,157,.18) 42%,transparent 74%);filter:blur(13px)}
 .lightning-bolt-overlay{background-position:center;background-size:cover;background-repeat:no-repeat;filter:brightness(.9) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
 
-.display[data-lightning-level="distant"][data-lightning-pulse="1"] .lightning-glow{opacity:.12}
-.display[data-lightning-level="distant"][data-lightning-pulse="2"] .lightning-glow{opacity:.07}
-.display[data-lightning-level="distant"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.16}
-.display[data-lightning-level="vicinity"][data-lightning-pulse="1"] .lightning-glow{opacity:.24}
-.display[data-lightning-level="vicinity"][data-lightning-pulse="2"] .lightning-glow{opacity:.14}
-.display[data-lightning-level="vicinity"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.14}
-.display[data-lightning-level="station"][data-lightning-pulse="1"] .lightning-glow{opacity:.38}
-.display[data-lightning-level="station"][data-lightning-pulse="2"] .lightning-glow{opacity:.23}
-.display[data-lightning-level="station"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.2}
-.display[data-lightning-level="severe"][data-lightning-pulse="1"] .lightning-glow{opacity:.52}
-.display[data-lightning-level="severe"][data-lightning-pulse="2"] .lightning-glow{opacity:.32}
-.display[data-lightning-level="severe"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.29}
-.display[data-lightning-bolt="1"][data-lightning-level="station"] .lightning-bolt-overlay{opacity:.48}
-.display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.7}
+.display[data-lightning-level="distant"][data-lightning-pulse="1"] .lightning-glow{opacity:.38}
+.display[data-lightning-level="distant"][data-lightning-pulse="2"] .lightning-glow{opacity:.24}
+.display[data-lightning-level="distant"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.48}
+.display[data-lightning-level="vicinity"][data-lightning-pulse="1"] .lightning-glow{opacity:.52}
+.display[data-lightning-level="vicinity"][data-lightning-pulse="2"] .lightning-glow{opacity:.32}
+.display[data-lightning-level="vicinity"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.44}
+.display[data-lightning-level="station"][data-lightning-pulse="1"] .lightning-glow{opacity:.82}
+.display[data-lightning-level="station"][data-lightning-pulse="2"] .lightning-glow{opacity:.54}
+.display[data-lightning-level="station"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.52}
+.display[data-lightning-level="severe"][data-lightning-pulse="1"] .lightning-glow{opacity:.96}
+.display[data-lightning-level="severe"][data-lightning-pulse="2"] .lightning-glow{opacity:.64}
+.display[data-lightning-level="severe"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.68}
+.display[data-lightning-bolt="1"][data-lightning-level="distant"] .lightning-bolt-overlay{opacity:.22}
+.display[data-lightning-bolt="1"][data-lightning-level="station"] .lightning-bolt-overlay{opacity:.62}
+.display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.88}
 
 /* Reduced motion keeps only a faint, non-animated atmospheric cue. */
 .display[data-lightning-reduced="1"] .lightning-glow,.display[data-lightning-reduced="1"] .lightning-bolt-overlay{opacity:0!important;transition:none!important}

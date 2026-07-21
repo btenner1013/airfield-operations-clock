@@ -114,9 +114,9 @@ function particleClass(type:PrecipType,intensity:Intensity,drift:number,perf:"fu
   else if(type==="drifting-snow"){shape="grain";count=120;speed=16;size=3;sizeMin=2.1;sizeMax=4.3;sway=2;alpha=.9;near=true;band="surface";vx=(drift<0?-1:1)*Math.max(125,Math.abs(drift)*1.08);}
   else if(type==="snow-grains"){shape="grain";count=185;speed=230;size=3.1;sizeMin=2.3;sizeMax=4.1;sway=3;alpha=.96;near=true;}
   else if(type==="ice-crystals"){shape="crystal";count=68;speed=28;size=4.2;sizeMin=3.1;sizeMax=5.6;sway=4;alpha=.98;near=true;}
-  else if(type==="ice-pellets"){shape="pellet";count=150;speed=980;size=3.5;sizeMin=2.4;sizeMax=4.6;bounce=true;alpha=.9;}
-  else if(type==="hail"){shape="hail";count=68;speed=1420;size=6.4;sizeMin=5;sizeMax=8;bounce=true;alpha=.96;}
-  else if(type==="small-hail"){shape="pellet";count=102;speed=1220;size=4.7;sizeMin=3.5;sizeMax=5.9;bounce=true;alpha=.93;}
+  else if(type==="ice-pellets"){shape="pellet";count=180;speed=980;size=3.5;sizeMin=2.6;sizeMax=5.4;bounce=true;alpha=.96;near=true;}
+  else if(type==="hail"){shape="hail";count=88;speed=1420;size=6.4;sizeMin=5.2;sizeMax=9.8;bounce=true;alpha=.98;near=true;}
+  else if(type==="small-hail"){shape="pellet";count=120;speed=1220;size=4.7;sizeMin=3.8;sizeMax=7.5;bounce=true;alpha=.96;near=true;}
   const intensityScale=intensity==="heavy" ? 1.62 : intensity==="light" ? .5 : 1;
   count=Math.round(count*intensityScale*(perf==="low" ? .46 : 1)*(secondary ? .42 : 1)*(vicinity ? .22 : 1));
   alpha*=night ? .88 : 1;
@@ -130,11 +130,10 @@ function particleClass(type:PrecipType,intensity:Intensity,drift:number,perf:"fu
 function visibilityRestriction(visibilitySm:number|null):number {
   if(visibilitySm===null||visibilitySm>=6) return 0;
   if(visibilitySm>=5) return (6-visibilitySm)*.02;
-  if(visibilitySm>=3) return .02+(5-visibilitySm)/2*.12;
-  if(visibilitySm>=2) return .14+(3-visibilitySm)*.18;
-  if(visibilitySm>=1) return .32+(2-visibilitySm)*.3;
-  if(visibilitySm>=.5) return .62+(1-visibilitySm)*.4;
-  return .82+(.5-Math.max(0,visibilitySm))*.28;
+  if(visibilitySm>=3) return .02+(5-visibilitySm)/2*.18;
+  if(visibilitySm>=2) return .20+(3-visibilitySm)*.25;
+  if(visibilitySm>=1) return .45+(2-visibilitySm)*.35;
+  return .80+(1-Math.max(0,visibilitySm))*.18;
 }
 
 export function buildFxSpec(fx:EffectState,windNx:number,windSpeedKt:number,perf:"full"|"low",night:boolean,reduced:boolean,paneOverride:boolean|null,visibilitySm:number|null=null):FxSpec|null {
@@ -158,18 +157,18 @@ export function buildFxSpec(fx:EffectState,windNx:number,windSpeedKt:number,perf
 export function buildObscurationSpec(fx:EffectState,visibilitySm:number|null,windNx:number,windSpeedKt:number,perf:"full"|"low",reduced:boolean):ObscurationSpec {
   if(fx.obscuration==="none") return {type:"none",density:0,horizon:0,veil:0,layers:0,duration:0,direction:windNx<0?-1:1,reduced};
   const base:Record<Exclude<ObscurationType,"none">,number>={
-    mist:.12,fog:.3,"freezing-fog":.34,"shallow-fog":.23,"patchy-fog":.25,"partial-fog":.28,haze:.1,smoke:.2,dust:.16,"blowing-dust":.27,"drifting-dust":.19,sand:.18,"blowing-sand":.3,"drifting-sand":.2,"dust-storm":.48,sandstorm:.5,"dust-whirl":.16,"volcanic-ash":.32,
+    mist:.12,fog:.3,"freezing-fog":.34,"shallow-fog":.23,"patchy-fog":.25,"partial-fog":.28,haze:.1,smoke:.2,dust:.16,"blowing-dust":.27,"drifting-dust":.19,sand:.18,"blowing-sand":.3,"drifting-sand":.2,"dust-storm":.48,"sandstorm":.5,"dust-whirl":.16,"volcanic-ash":.32,
   };
   const restriction=visibilityRestriction(visibilitySm);
   let density=base[fx.obscuration]+restriction*.78;
   const fogFamily=["fog","freezing-fog","shallow-fog","patchy-fog","partial-fog"].includes(fx.obscuration);
   const groundFamily=["shallow-fog","patchy-fog","partial-fog"].includes(fx.obscuration);
-  let horizon=fogFamily?clamp((groundFamily ? .32 : .2)+restriction*(groundFamily ? .78 : .95),0,.98):density*.55;
-  let veil=fogFamily?clamp(restriction*(groundFamily ? .18 : .65),0,.66):density*.12;
-  if(fx.obscuration==="mist"){density=.055+restriction*.35;horizon=.045+restriction*.2;veil=restriction*.04;}
-  if(fx.obscuration==="shallow-fog"){density=.52+restriction*.65;horizon=.55+restriction*.65;veil=restriction*.025;}
-  if(fx.obscuration==="patchy-fog"){density=.62+restriction*.68;horizon=.6+restriction*.7;veil=restriction*.035;}
-  if(fx.obscuration==="partial-fog"){density=.5+restriction*.7;horizon=.54+restriction*.72;veil=restriction*.07;}
+  let horizon=fogFamily?clamp((groundFamily ? .36 : .28)+restriction*(groundFamily ? .68 : .78),0,.98):density*.55;
+  let veil=fogFamily?clamp(restriction*(groundFamily ? .22 : .55),0,.66):density*.16;
+  if(fx.obscuration==="mist"){density=.14+restriction*.32;horizon=.16+restriction*.24;veil=restriction*.15;}
+  if(fx.obscuration==="shallow-fog"){density=.42+restriction*.45;horizon=.48+restriction*.42;veil=restriction*.05;}
+  if(fx.obscuration==="patchy-fog"){density=.44+restriction*.45;horizon=.46+restriction*.42;veil=restriction*.06;}
+  if(fx.obscuration==="partial-fog"){density=.42+restriction*.45;horizon=.45+restriction*.42;veil=restriction*.12;}
   if(fx.vicinity){density*=.3;horizon*=.35;veil*=.3;}if(perf==="low"){density*=.82;veil*=.8;}density=clamp(density,0,.92);
   let layers=perf==="low"?Math.min(2,density>.45?2:1):density>.55?3:density>.2?2:1;
   if(fx.obscuration==="mist"||fx.obscuration==="shallow-fog"||fx.obscuration==="partial-fog") layers=1;
