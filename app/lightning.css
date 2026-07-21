@@ -9,7 +9,7 @@
 .lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{position:absolute;inset:0;display:block;pointer-events:none;opacity:0;animation:none!important;transition:opacity 65ms ease-out}
 .lightning-glow{background:radial-gradient(ellipse 34% 31% at var(--lightning-x,62%) var(--lightning-y,32%),rgba(181,215,242,.88),rgba(103,151,194,.34) 28%,transparent 70%);filter:blur(9px)}
 .lightning-horizon-glow{background:radial-gradient(ellipse 58% 19% at var(--lightning-x,62%) 72%,rgba(145,191,228,.52),rgba(78,119,157,.18) 42%,transparent 74%);filter:blur(13px)}
-.lightning-bolt-overlay{background-position:center;background-size:cover;background-repeat:no-repeat;filter:brightness(.9) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
+.lightning-bolt-overlay{background-position:var(--lightning-x,62%) var(--lightning-y,32%);background-size:cover;background-repeat:no-repeat;filter:brightness(.9) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
 
 .display[data-lightning-level="distant"][data-lightning-pulse="1"] .lightning-glow{opacity:.54}
 .display[data-lightning-level="distant"][data-lightning-pulse="2"] .lightning-glow{opacity:.36}
