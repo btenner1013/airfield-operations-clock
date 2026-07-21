@@ -31,31 +31,131 @@
   line-height: 1.35;
 }
 
-/* Global Panel Title Size */
-.panel-title {
-  font-size: clamp(11px, 0.6vw, 18px) !important;
-  letter-spacing: .17em;
-  color: #bbc7ca;
+/* Clocks Section Width Sizing Fixes */
+.clocks {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
-.panel-title b {
-  font-size: inherit !important;
-  color: #77878d;
+.clock {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 1vh clamp(12px, 2.2vw, 36px) 2vh !important;
+}
+.clock time {
+  white-space: nowrap !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+.clock-foot {
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
-/* Wind Card Styles & Compass Gauge */
-.wind-main {
-  height: 75%;
-  display: flex;
-  align-items: center;
-  gap: clamp(12px, 1.2vw, 24px);
+/* Page Layout Fluidity & Overflow Constraints */
+.display,
+.burn-shift,
+.info,
+.panel,
+.forecast-card,
+.forecast-grid,
+.forecast-grid > div,
+.compass-wrap,
+.solar-layout,
+.solar-arc-wrap {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
+
+/* Padding scale-down for .burn-shift to prevent scrollbar overflows */
+.burn-shift {
+  padding: clamp(20px, 2.5vh, 48px) clamp(16px, 3vw, 54px) clamp(12px, 2vh, 32px) !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+}
+
+/* Flex Container Sizing Fixes to prevent vertical layout collapse */
+.weather-copy {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+.wind-info {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+.bird-info {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+
+/* Typography Unified Scale */
+/* Level 1: Huge primary metrics */
+.weather-main > strong {
+  font-size: clamp(34px, 3.2vw, 64px) !important;
+  white-space: nowrap !important;
+}
+
+/* Level 2: Large primary metrics */
+.solar-time strong,
+.forecast-grid strong,
+.wind-info strong,
+.bird-severity {
+  font-size: clamp(22px, 2.1vw, 38px) !important;
+  white-space: nowrap !important;
+}
+
+/* Level 3: Intermediate text / Labels */
+.weather-main div b,
+.forecast-grid .forecast-condition {
+  font-size: clamp(12px, 0.8vw, 18px) !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Level 4: Small titles / labels */
+.panel-title,
+.panel-title b,
+.clock-head span,
+.solar-time span,
+.forecast-grid time {
+  font-size: clamp(11px, 0.7vw, 14px) !important;
+}
+
+/* Level 5: Micro / Metadata details */
+.weather-main div small,
+.feels-like,
+.weather-stats span,
+.wind-card-meta,
+.bird-card-meta,
+.solar-time small,
+.forecast-grid small:not(.forecast-condition) {
+  font-size: clamp(9px, 0.6vw, 13px) !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Panel Padding Optimization */
+.panel {
+  padding: clamp(10px, 1.1vw, 20px) !important;
+}
+
+/* Current Weather Layout Sizing Optimization */
+.weather-glyph {
+  font-size: clamp(40px, 3.2vw, 68px) !important;
+}
+.weather-main {
+  gap: clamp(10px, 0.8vw, 16px) !important;
+}
+
+/* Compass dial wrapper and inline ticks */
 .compass-wrap {
   flex: 0 0 auto;
-  width: clamp(70px, 6.2vw, 104px);
-  height: clamp(70px, 6.2vw, 104px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: clamp(60px, 4.8vw, 84px) !important;
+  height: clamp(60px, 4.8vw, 84px) !important;
 }
 .compass-dial {
   position: relative;
@@ -80,7 +180,7 @@
 }
 .compass-label {
   position: absolute;
-  font: 800 clamp(8px, 0.7vw, 11px) Consolas, monospace;
+  font: 800 clamp(8px, 0.6vw, 10px) Consolas, monospace;
   color: #aebbc0;
   line-height: 1;
 }
@@ -114,11 +214,6 @@
   gap: 6px;
   min-width: 0;
 }
-.wind-info strong {
-  font: clamp(22px, 2.1vw, 38px)/1 Consolas, monospace !important;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
 .wind-separator {
   color: var(--line) !important;
   margin: 0 4px;
@@ -128,12 +223,6 @@
   color: var(--muted);
   font-weight: normal;
   letter-spacing: 0.05em;
-}
-.wind-card-meta {
-  color: #aebbc0;
-  font-size: clamp(9px, 0.72vw, 13px);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
 /* Bird Watch Condition Card Styles */
@@ -154,7 +243,6 @@
   min-width: 0;
 }
 .bird-severity {
-  font: clamp(22px, 2.1vw, 38px)/1 Consolas, monospace;
   letter-spacing: 0.05em;
 }
 .risk-severe .bird-severity {
@@ -169,32 +257,8 @@
   color: #72dbbd;
   text-shadow: 0 0 12px rgba(114, 219, 189, 0.3);
 }
-.bird-card-meta {
-  color: #aebbc0;
-  font-size: clamp(9px, 0.72vw, 13px);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
 
-/* Wrapping Weather Labels and Layout Corrections */
-.weather-main div b {
-  white-space: normal;
-  line-height: 1.25;
-  font-size: clamp(12px, 0.9vw, 18px);
-}
-.weather-main div small {
-  white-space: normal !important;
-  line-height: 1.35;
-  font-size: clamp(9px, 0.72vw, 13px);
-}
-.feels-like {
-  display: block;
-}
-.weather-main > strong {
-  white-space: nowrap !important;
-}
-
-/* Future Weather Card Typography Hierarchy Upgrades */
+/* Future Weather Card Layout Upgrades */
 .forecast-grid {
   gap: 10px;
   padding: 8px 0;
@@ -207,6 +271,7 @@
   height: 100%;
   padding: 4px 6px;
   gap: 4px;
+  min-width: 0 !important;
 }
 .forecast-grid time,
 .forecast-grid span,
@@ -218,39 +283,6 @@
 .forecast-grid span {
   display: grid;
   place-items: center;
-}
-.forecast-grid time {
-  font: 600 clamp(13px, 0.75vw, 24px) Consolas, monospace !important;
-  color: #c8d0d3 !important;
-  letter-spacing: 0.08em;
-  margin-bottom: 2px;
-}
-.forecast-grid .forecast-condition {
-  font-size: clamp(12px, 0.7vw, 22px) !important;
-  font-weight: 700 !important;
-  color: var(--white) !important;
-  line-height: 1.25 !important;
-  text-align: center;
-  min-height: 2.5em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-.forecast-grid strong {
-  font: 700 clamp(24px, 1.4vw, 44px) Consolas, monospace !important;
-  color: #f4b45b !important;
-  margin: 4px 0 !important;
-}
-.forecast-grid small:not(.forecast-condition) {
-  font-size: clamp(10px, 0.6vw, 18px) !important;
-  color: var(--muted) !important;
-  letter-spacing: 0.05em;
-  text-align: center;
-  line-height: 1.3;
 }
 .taf-hazard-band {
   padding: 8px 12px;
@@ -268,30 +300,8 @@
 
 /* Solar Layout Shrinking Support */
 .solar-layout {
-  grid-template-columns: minmax(60px, 0.72fr) minmax(90px, 1.35fr) minmax(60px, 0.72fr) !important;
+  grid-template-columns: minmax(50px, 0.72fr) minmax(80px, 1.35fr) minmax(50px, 0.72fr) !important;
   gap: clamp(4px, 0.5vw, 10px) !important;
-}
-
-/* Panel Padding Optimization */
-.panel {
-  padding: clamp(10px, 1vw, 20px) !important;
-}
-
-/* Current Weather Layout Sizing Optimization */
-.weather-glyph {
-  font-size: clamp(40px, 3.2vw, 68px) !important;
-}
-.weather-main > strong {
-  font-size: clamp(34px, 3vw, 64px) !important;
-}
-.weather-main {
-  gap: clamp(10px, 0.8vw, 16px) !important;
-}
-
-/* Optimize Compass wrap size */
-.compass-wrap {
-  width: clamp(60px, 4.8vw, 84px) !important;
-  height: clamp(60px, 4.8vw, 84px) !important;
 }
 
 /* Card Width Rebalancing on Desktop (>1280px) */
