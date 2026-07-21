@@ -1,19 +1,16 @@
 /* ============================================================
-   layout-tuning.css — Single Continuous Rail (1-Row All Screens)
+   layout-tuning.css — Continuous 1-Row Rail with 4K Responsive Scaling
    ============================================================ */
 
 /* ── SINGLE CONTINUOUS ROW AT ALL SCREEN SIZES ─────────────
-   SOLAR WINDOW | CURRENT WEATHER | WIND | BIRD WATCH CONDITION | FUTURE WEATHER
-   Never stacks vertically into multiple rows.
-   On desktop & laptop: 5 columns in 1 grid row.
-   On narrow / mobile screens: horizontal scroll rail with snap.
+   SOLAR WINDOW (0.85fr) | CURRENT WEATHER (1.5fr) | WIND (1fr) | BWC (0.95fr) | FUTURE WEATHER (1.7fr)
    ─────────────────────────────────────────────────────────── */
 
 .info {
   display: grid;
-  grid-template-columns: 0.9fr 1.45fr 1.05fr 0.95fr 1.6fr;
+  grid-template-columns: 0.85fr 1.5fr 1fr 0.95fr 1.7fr;
   grid-template-rows: 1fr;
-  gap: clamp(8px, 0.75vw, 14px);
+  gap: clamp(8px, 0.75vw, 16px);
   width: 100%;
   align-items: stretch;
 }
@@ -25,6 +22,7 @@
 .bwc-card      { order: 4 !important; grid-column: auto !important; grid-row: 1 !important; height: 100%; display: flex; flex-direction: column; }
 .forecast-card { order: 5 !important; grid-column: auto !important; grid-row: 1 !important; height: 100%; display: flex; flex-direction: column; }
 
+/* Mobile / Narrow horizontal scroll rail with snapping */
 @media (max-width: 1080px) {
   .info {
     display: flex !important;
@@ -96,6 +94,8 @@
 .solar-layout {
   grid-template-columns: auto 1fr auto;
   gap: clamp(6px, 0.8vw, 14px);
+  align-items: center;
+  height: calc(100% - 28px);
 }
 .solar-time {
   min-width: 0;
@@ -123,17 +123,23 @@
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
 .weather-main {
-  align-items: flex-start;
-  gap: clamp(8px, 0.9vw, 16px);
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(10px, 1vw, 18px);
+  height: calc(100% - 32px);
+  padding: 4px 0;
 }
 .weather-glyph {
   flex-shrink: 0;
-  font-size: clamp(34px, 2.8vw, 56px);
+  font-size: clamp(38px, 3.2vw, 64px);
+  display: flex;
+  align-items: center;
 }
 .weather-main > strong {
   flex-shrink: 0;
-  font-size: clamp(30px, 2.8vw, 56px);
+  font-size: clamp(34px, 3.2vw, 64px);
   white-space: nowrap;
+  line-height: 1;
 }
 .weather-copy {
   flex: 1 1 0%;
@@ -141,22 +147,22 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  justify-content: center;
 }
 .weather-copy b {
-  font-size: clamp(11px, 0.75vw, 15px);
+  font-size: clamp(11.5px, 0.8vw, 16px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: normal;
   overflow-wrap: break-word;
   line-height: 1.25;
 }
-
 .feels-like-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  font-size: clamp(9.5px, 0.6vw, 12px);
+  font-size: clamp(10px, 0.65vw, 13px);
   color: #aebbc0;
   line-height: 1.35;
   letter-spacing: 0.06em;
@@ -186,8 +192,8 @@
 }
 .compass-wrap {
   flex: 0 0 auto;
-  width: clamp(60px, 5.5vw, 86px);
-  height: clamp(60px, 5.5vw, 86px);
+  width: clamp(64px, 6vw, 92px);
+  height: clamp(64px, 6vw, 92px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,10 +202,10 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(88, 215, 245, 0.18);
+  border: 1.5px solid rgba(88, 215, 245, 0.28);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(6,16,21,0.65) 0%, rgba(2,6,8,0.9) 100%);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(88,215,245,0.06);
+  background: radial-gradient(circle, rgba(6,16,21,0.75) 0%, rgba(2,6,8,0.95) 100%);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.7), 0 0 10px rgba(88,215,245,0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,11 +220,11 @@
 }
 .compass-label {
   position: absolute;
-  font: 800 clamp(7.5px, 0.55vw, 10px) Consolas, monospace;
-  color: #aebbc0;
+  font: 800 clamp(8px, 0.6vw, 11px) Consolas, monospace;
+  color: #c0d0d5;
   line-height: 1;
 }
-.compass-n { top: 4px;    left: 50%; transform: translateX(-50%); color: var(--cyan); }
+.compass-n { top: 4px;    left: 50%; transform: translateX(-50%); color: var(--cyan); text-shadow: 0 0 6px rgba(88,215,245,0.4); }
 .compass-s { bottom: 4px; left: 50%; transform: translateX(-50%); }
 .compass-e { right: 5px;  top: 50%;  transform: translateY(-50%); }
 .compass-w { left: 5px;   top: 50%;  transform: translateY(-50%); }
@@ -232,12 +238,12 @@
   transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .compass-arrow-svg {
-  width: 62%;
-  height: 62%;
-  filter: drop-shadow(0 0 5px rgba(88, 215, 245, 0.55));
+  width: 65%;
+  height: 65%;
+  filter: drop-shadow(0 0 6px rgba(88, 215, 245, 0.65));
 }
 .compass-calm-indicator {
-  font: 700 clamp(12px, 1.2vw, 20px) Consolas, monospace;
+  font: 700 clamp(14px, 1.4vw, 22px) Consolas, monospace;
   color: var(--muted);
 }
 .wind-info {
@@ -246,50 +252,34 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  justify-content: center;
 }
 .wind-info strong {
-  font: 600 clamp(16px, 1.4vw, 26px) / 1.1 Consolas, monospace;
+  font: 600 clamp(17px, 1.5vw, 28px) / 1.1 Consolas, monospace;
   white-space: nowrap;
   letter-spacing: -0.02em;
 }
-.wind-separator {
-  color: var(--muted);
-  margin: 0 3px;
-  font-weight: 400;
-}
-.wind-unit {
-  font-size: 0.58em;
-  color: var(--muted);
-  font-weight: 400;
-  letter-spacing: 0.05em;
-}
 .wind-from {
-  font-size: clamp(8.5px, 0.55vw, 11px);
+  font-size: clamp(9px, 0.6vw, 12px);
   color: #aebbc0;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-.wind-card-meta {
-  display: none;
 }
 
 /* ── BWC CARD ─────────────────────────────────────────────── */
 .bird-main {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 0.8vw, 16px);
+  gap: clamp(10px, 1vw, 18px);
   height: calc(100% - 32px);
 }
 .bird-icon-symbol {
   flex-shrink: 0;
-  font-size: clamp(30px, 2.8vw, 44px);
+  font-size: clamp(34px, 3.2vw, 48px);
   line-height: 1;
   display: inline-block;
   font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans Egyptian Hieroglyphs", sans-serif;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-}
-.bird-icon-svg, .bird-icon {
-  display: none;
 }
 .bird-info {
   flex: 1 1 0%;
@@ -297,9 +287,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  justify-content: center;
 }
 .bird-severity {
-  font: 700 clamp(16px, 1.4vw, 26px) / 1 Consolas, monospace;
+  font: 700 clamp(17px, 1.5vw, 28px) / 1 Consolas, monospace;
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -308,14 +299,14 @@
 .risk-low      .bird-severity, .risk-low      .bird-icon-symbol { color: #72dbbd; text-shadow: 0 0 12px rgba(114,219,189,0.3); }
 
 .bird-card-meta {
-  font-size: clamp(8.5px, 0.55vw, 11px);
+  font-size: clamp(9px, 0.6vw, 12px);
   color: #aebbc0;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-/* ── FUTURE WEATHER (COMPACT STACKED FORECAST ENTRIES) ───── */
+/* ── FUTURE WEATHER (REFINED STACKED FORECAST ROWS) ─────── */
 .forecast-card {
   min-width: 0;
   box-sizing: border-box;
@@ -331,32 +322,32 @@
 .forecast-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 3px 0;
+  gap: 3px;
+  padding: 4px 0;
 }
 .forecast-item + .forecast-item {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(180, 211, 221, 0.12);
 }
 .forecast-item-top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 .forecast-item-top time {
-  font: 600 clamp(10px, 0.65vw, 14px) / 1 Consolas, monospace;
-  color: #c8d0d3;
+  font: 600 clamp(11px, 0.7vw, 15px) / 1 Consolas, monospace;
+  color: #d0dadc;
   letter-spacing: 0.06em;
   flex-shrink: 0;
 }
 .forecast-icon {
-  font-size: clamp(14px, 1.1vw, 20px);
+  font-size: clamp(16px, 1.2vw, 22px);
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 .forecast-condition {
-  font-size: clamp(9.5px, 0.65vw, 13px);
+  font-size: clamp(10.5px, 0.7vw, 14px);
   font-weight: 700;
   color: var(--white);
   white-space: nowrap;
@@ -366,22 +357,24 @@
   min-width: 0;
 }
 .forecast-temp {
-  font: 700 clamp(12px, 0.85vw, 17px) / 1 Consolas, monospace;
+  font: 700 clamp(13px, 0.9vw, 19px) / 1 Consolas, monospace;
   color: #f4b45b;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .forecast-item-sub {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: clamp(8.5px, 0.52vw, 11px);
-  color: var(--muted);
-  line-height: 1.2;
+  font-size: clamp(9px, 0.55vw, 12px);
+  color: #9eb1b7;
+  line-height: 1.25;
+  padding-left: 2px;
 }
 .forecast-badge {
   background: rgba(244, 180, 91, 0.15);
   color: #f4b45b;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 2px;
   font-weight: 700;
   font-size: 0.85em;
@@ -392,13 +385,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.forecast-empty {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  text-align: center;
-  padding: 1em 0;
-}
 .taf-hazard-band {
   padding: 4px 8px;
   font-size: clamp(9px, 0.55vw, 12px);
@@ -406,6 +392,56 @@
   margin-bottom: 4px;
 }
 
-@media (max-height: 700px) {
-  .panel { min-height: 100px; }
+/* ── 4K & LARGE DISPLAY FLUID SCALING (≥ 2560px width or ≥ 1440px height) ── */
+@media (min-width: 2560px), (min-height: 1400px) {
+  .info {
+    gap: clamp(16px, 1.2vw, 28px);
+  }
+  .panel {
+    padding: clamp(16px, 1.4vw, 26px);
+  }
+  .panel-title {
+    font-size: clamp(12px, 0.85vw, 17px);
+    padding-bottom: 12px;
+  }
+  .weather-glyph {
+    font-size: clamp(48px, 4vw, 84px);
+  }
+  .weather-main > strong {
+    font-size: clamp(48px, 4vw, 84px);
+  }
+  .weather-copy b {
+    font-size: clamp(16px, 1.1vw, 24px);
+  }
+  .feels-like-container {
+    font-size: clamp(13px, 0.85vw, 18px);
+  }
+  .compass-wrap {
+    width: clamp(86px, 7vw, 130px);
+    height: clamp(86px, 7vw, 130px);
+  }
+  .wind-info strong {
+    font-size: clamp(24px, 2vw, 40px);
+  }
+  .bird-icon-symbol {
+    font-size: clamp(48px, 4vw, 76px);
+  }
+  .bird-severity {
+    font-size: clamp(24px, 2vw, 40px);
+  }
+  .forecast-item-top time {
+    font-size: clamp(14px, 1vw, 20px);
+  }
+  .forecast-icon {
+    font-size: clamp(20px, 1.5vw, 30px);
+  }
+  .forecast-condition {
+    font-size: clamp(14px, 1vw, 20px);
+  }
+  .forecast-temp {
+    font-size: clamp(18px, 1.3vw, 28px);
+  }
+  .forecast-item-sub {
+    font-size: clamp(12px, 0.8vw, 16px);
+  }
 }
