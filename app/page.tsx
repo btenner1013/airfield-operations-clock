@@ -5,7 +5,7 @@ import { useSystemClock, type ClockDebug } from "./useClock";
 import { buildFxSpec, buildObscurationSpec, classifyEffect, type Intensity } from "./weatherFx";
 import PrecipCanvas from "./PrecipCanvas";
 import PreviewLab from "./PreviewLab";
-import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLightning } from "./lightning";
+import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningSource, type LightningReport } from "./lightning";
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, formatTafWindow, parseAviationSky, parseStructuredTaf, resolveOperationalWeather, type OperationalWeather } from "./aviationWeatherPriority";
 import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
@@ -13,7 +13,24 @@ import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchRes
 
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
 type Phase = "day"|"night"|"sunrise"|"sunset";
-type OpsBoardWeather = { metar?:string; taf?:string; metarFetchStatus?:string; tafFetchStatus?:string; metarObservedZ?:string; bwc?:string; bwcAhasRisk?:string; bwcBasedOn?:string; bwcUpdatedZ?:string; bwcFetchStatus?:string };
+type OpsBoardWeather = {
+  metar?:string;
+  taf?:string;
+  metarFetchStatus?:string;
+  tafFetchStatus?:string;
+  metarObservedZ?:string;
+  bwc?:string;
+  bwcAhasRisk?:string;
+  bwcBasedOn?:string;
+  bwcUpdatedZ?:string;
+  bwcFetchStatus?:string;
+  lightning?:string;
+  lightningSeverity?:string;
+  lightningFlash?:boolean;
+  lightningPulse?:boolean;
+  lightningSource?:string;
+  lightningLogText?:string;
+};
 // Normalized scene object (Phase 2A): the single source of truth the renderer reads, kept
 // deliberately separate from weather parsing so animation layers never re-parse METAR.
 type SceneModel = { baseScene:string; cloudCoverage:CloudCoverage; cloudBaseFt:number|null; phenomena:string[]; intensity:"light"|"moderate"|"heavy"; vicinityOnly:boolean; windDirectionDeg:number|null; windSpeedKt:number; gustKt:number|null; visibilitySm:number|null; timePhase:Phase };
@@ -99,6 +116,25 @@ async function getModelWeather(signal?:AbortSignal):Promise<Weather> {
 }
 function isOpsBoardWeather(value:unknown):value is OpsBoardWeather { return !!value&&typeof value==="object"&&(typeof (value as OpsBoardWeather).metar==="string"||typeof (value as OpsBoardWeather).taf==="string"); }
 function upstreamStatus(value:string|undefined) { return (value||"UNKNOWN").trim().toUpperCase(); }
+function resolveCurrentLightning(ops:OpsBoardWeather, metarFallback:LightningReport):LightningReport {
+  const sev = ops.lightningSeverity?.toLowerCase();
+  if (sev && ["none","distant","vicinity","station","severe"].includes(sev)) {
+    if (sev === "none") return { level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null };
+    const level = sev as LightningLevel;
+    const source = (ops.lightningSource?.toLowerCase().replace("_","-") || "none") as LightningSource;
+    const awareness = ops.lightningLogText || metarFallback.awareness || (level === "vicinity" ? "VCTS" : "TS OVR FIELD");
+    return {
+      level,
+      source,
+      code: metarFallback.code || "TS",
+      frequency: metarFallback.frequency,
+      types: metarFallback.types,
+      directions: metarFallback.directions,
+      awareness
+    };
+  }
+  return metarFallback;
+}
 async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   const feed=fetch(`${CONFIG.opsBoardWeatherUrl}?v=${Date.now()}_${Math.random().toString(36).slice(2)}`,{cache:"no-store",signal}).then(async response=>{if(!response.ok) throw new Error(`FEED HTTP ${response.status}`);const json:unknown=await response.json();if(!isOpsBoardWeather(json)) throw new Error("MALFORMED FEED");return json;});
   const [modelResult,feedResult]=await Promise.allSettled([getModelWeather(signal),feed]);
@@ -115,7 +151,8 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   const metar=metarValid?parseMetar(rawMetar):null, sky=metarValid?parseAviationSky(rawMetar):null, phenomena=metarValid?extractAviationPhenomena(rawMetar):null;
   const metarFetchStatus=upstreamStatus(ops.metarFetchStatus), tafFetchStatus=upstreamStatus(ops.tafFetchStatus), bwcFetchStatus=upstreamStatus(ops.bwcFetchStatus);
   const healthy=metarValid&&tafValid&&metarFetchStatus==="OK"&&tafFetchStatus==="OK";
-  const weather:Weather={...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?metarObsIso:model.observationTime,forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:phenomena&&phenomena.length?phenomena:model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED"};
+  const weather:Weather={...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,windSpeedKt:metar?.windSpeedKt??model.windSpeedKt,windDirection:metar?.windDirection??model.windDirection,windDegrees:metar?.windDegrees??model.windDegrees,windGustKt:metar?.windGustKt??model.windGustKt,observationTime:metarValid?metarObsIso:model.observationTime,forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED"};
+  weather.currentLightning=resolveCurrentLightning(ops,weather.currentLightning);
   return {weather,metarValid,tafValid,modelValid,feedReached:true};
 }
 function weatherGlyph(c:Theme) { return ({clear:"☀",night:"☾",rain:"🌧", "heavy-rain":"🌧",thunderstorm:"⛈",snow:"❄",fog:"≋",overcast:"☁","partly-cloudy":"⛅",sunrise:"☀",sunset:"☀",neutral:"—"} as Record<Theme,string>)[c]; }

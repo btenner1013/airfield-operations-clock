@@ -28,7 +28,9 @@ function bodyReport(code:string,level:"vicinity"|"station"|"severe"):LightningRe
 function directionText(values:LightningDirection[]):string{return values.length<2?(values[0]||""):values.join("–");}
 
 export function parseCurrentLightning(rawMetar:string):LightningReport {
-  const upper=(rawMetar||"").toUpperCase(), split=upper.split(/\sRMK\s/,2), body=split[0]||"", remarks=split[1]||"", bodyTokens=cleanTokens(body);
+  const upper=(rawMetar||"").toUpperCase();
+  if (upper.includes("TAF")) return {...NO_LIGHTNING};
+  const split=upper.split(/\sRMK\s/,2), body=split[0]||"", remarks=split[1]||"", bodyTokens=cleanTokens(body);
   const bodyThunder=bodyTokens.filter(token=>/^[+-]?TS(?:RA|SN|GR|GS){0,3}$/.test(token));
   const severe=bodyThunder.find(token=>token.startsWith("+"));
   if(severe) return bodyReport(severe,"severe");
@@ -71,11 +73,10 @@ export function debugLightningReport(key:string|null):LightningReport|null {
   return {...parseCurrentLightning(DEBUG_METARS[key]),source:"debug"};
 }
 
-const COORDS:Record<LightningDirection,{x:number;y:number}>={N:{x:50,y:18},NE:{x:78,y:23},E:{x:88,y:43},SE:{x:78,y:62},S:{x:50,y:68},SW:{x:22,y:62},W:{x:12,y:43},NW:{x:22,y:23}};
 export function lightningPlacement(report:LightningReport):{x:number;y:number} {
-  if(!report.directions.length) return {x:report.level==="distant"?68:62,y:report.level==="distant"?66:32};
-  const points=report.directions.map(direction=>COORDS[direction]), x=points.reduce((sum,p)=>sum+p.x,0)/points.length, rawY=points.reduce((sum,p)=>sum+p.y,0)/points.length;
-  return {x:Math.round(x),y:Math.round(report.level==="distant"?Math.max(55,rawY+24):rawY)};
+  if (report.level === "distant") return { x: 68, y: 66 };
+  if (report.level === "vicinity") return { x: 45, y: 40 };
+  return { x: 62, y: 32 };
 }
 
 export type LightningVisualState={active:boolean;pulse:0|1|2;bolt:boolean;cluster:number};

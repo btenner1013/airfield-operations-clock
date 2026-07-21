@@ -127,3 +127,123 @@ PROB40 2006/2008 3SM TSRA BKN020CB`;
   const result=applyStructuredTaf([],timeline,new Date("2026-07-20T07:00:00Z"));
   assert.deepEqual(result.hazards.map(h=>h.weather.sourceKind),["TAF_PROB40","TAF_PROB30","TAF_TEMPO"]);
 });
+
+import { parseCurrentLightning } from "../app/lightning.ts";
+import { classifyEffect, buildFxSpec, buildObscurationSpec } from "../app/weatherFx.ts";
+
+test("Current-versus-forecast separation regression test", () => {
+  const metarText = "METAR KMEM 210154Z 00000KT 10SM FEW070 BKN250 31/24 A2987 RMK AO2 SLP108 T03110239 $";
+  const tafText = `TAF KMEM 202327Z 2100/2206 VRB06KT P6SM VCSH SCT050 BKN250
+  FM210200 19004KT P6SM SCT100 SCT250
+  FM210600 19003KT P6SM FEW250
+  FM211500 24004KT P6SM SCT050
+  PROB30 2200/2206 4SM TSRA BKN050CB`;
+
+  // Parse METAR
+  const resolvedMetar = resolveOperationalWeather({ text: metarText, sourceKind: "METAR" });
+  const phenomena = extractAviationPhenomena(metarText);
+  const fx = classifyEffect(phenomena);
+  const lightning = parseCurrentLightning(metarText);
+
+  // Assert current:
+  // * Cloud scene
+  assert.equal(resolvedMetar.condition, "overcast");
+  assert.equal(resolvedMetar.category, "cloud");
+  // * No rain, no drizzle, no pane droplets
+  assert.equal(fx.precip, "none");
+  assert.equal(fx.secondaryPrecip, "none");
+  assert.equal(fx.liquidPresent, false);
+  // * No current lightning, no thunderstorm scene
+  assert.equal(lightning.level, "none");
+  assert.notEqual(resolvedMetar.condition, "thunderstorm");
+
+  // Parse TAF
+  const timeline = parseStructuredTaf(tafText, new Date("2026-07-21T02:00:00Z"));
+  assert.ok(timeline);
+
+  // Assert forecast:
+  // * VCSH forecast remains available
+  const basePeriod = timeline.prevailing.find(p => p.raw.includes("VCSH"));
+  assert.ok(basePeriod);
+  assert.equal(basePeriod.weather.label, "Showers nearby");
+
+  // * PROB30 TSRA remains available
+  const prob30Period = timeline.overlays.find(p => p.weather.sourceKind === "TAF_PROB30" && p.raw.includes("TSRA"));
+  assert.ok(prob30Period);
+  assert.equal(prob30Period.weather.label, "Thunderstorm, rain");
+
+  // * Forecast window remains 22/00Z-06Z
+  assert.equal(prob30Period.fromIso, "2026-07-22T00:00:00.000Z");
+  assert.equal(prob30Period.toIso, "2026-07-22T06:00:00.000Z");
+});
+
+test("Current METAR rain regression test", () => {
+  const metarText = "METAR KMEM 210154Z 00000KT 10SM -RA BKN020 31/24 A2987";
+  const phenomena = extractAviationPhenomena(metarText);
+  const fx = classifyEffect(phenomena);
+  const spec = buildFxSpec(fx, 1, 12, "full", false, false, null, 10);
+
+  // * Rain particles active
+  assert.equal(fx.precip, "rain");
+  assert.ok(spec && spec.count > 0);
+  // * Pane drops active
+  assert.ok(spec && spec.pane && spec.pane.count > 0);
+});
+
+test("Current METAR snow regression test", () => {
+  const metarText = "METAR KMEM 210154Z 00000KT 10SM SN BKN020 31/24 A2987";
+  const phenomena = extractAviationPhenomena(metarText);
+  const fx = classifyEffect(phenomena);
+  const spec = buildFxSpec(fx, 1, 12, "full", false, false, null, 10);
+
+  // * Snow active
+  assert.equal(fx.precip, "snow");
+  assert.ok(spec && spec.count > 0);
+  // * Pane drops inactive
+  assert.equal(fx.liquidPresent, false);
+  assert.ok(spec && spec.pane === null);
+});
+
+test("Mixed precipitation regression test", () => {
+  const metarText = "METAR KMEM 210154Z 00000KT 10SM RASN BKN020 31/24 A2987";
+  const phenomena = extractAviationPhenomena(metarText);
+  const fx = classifyEffect(phenomena);
+  const spec = buildFxSpec(fx, 1, 12, "full", false, false, null, 10);
+
+  // * Rain and snow behavior active
+  assert.equal(fx.precip, "snow");
+  assert.equal(fx.secondaryPrecip, "rain");
+  assert.ok(spec && spec.count > 0 && spec.secondary && spec.secondary.count > 0);
+  // * Pane drops active
+  assert.equal(fx.liquidPresent, true);
+  assert.ok(spec && spec.pane && spec.pane.count > 0);
+});
+
+test("Fog regression test", () => {
+  const metarText = "METAR KMEM 210154Z 00000KT 1/2SM FG BKN002 31/24 A2987";
+  const phenomena = extractAviationPhenomena(metarText);
+  const fx = classifyEffect(phenomena);
+
+  // * Fog active
+  assert.equal(fx.obscuration, "fog");
+
+  // * Fog density follows current visibility
+  const specRestricted = buildObscurationSpec(fx, 0.5, 1, 12, "full", false);
+  const specClear = buildObscurationSpec(fx, 10, 1, 12, "full", false);
+  assert.ok(specRestricted.density > specClear.density);
+});
+
+test("Lightning regression test", () => {
+  // Current METAR fallback VCTS -> vicinity lightning
+  const metarVcts = "METAR KMEM 210154Z 00000KT 10SM VCTS BKN020 31/24 A2987";
+  assert.equal(parseCurrentLightning(metarVcts).level, "vicinity");
+
+  // Current METAR fallback TSRA -> station lightning
+  const metarTsra = "METAR KMEM 210154Z 00000KT 10SM TSRA BKN020 31/24 A2987";
+  assert.equal(parseCurrentLightning(metarTsra).level, "station");
+
+  // TAF TSRA alone does not activate current lightning
+  const rawTaf = "TAF KMEM 202327Z 2100/2206 VRB06KT P6SM TSRA BKN020";
+  assert.equal(parseCurrentLightning(rawTaf).level, "none");
+});
+
