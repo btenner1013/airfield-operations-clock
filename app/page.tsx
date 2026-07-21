@@ -269,7 +269,7 @@ function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObs
 }
 
 export default function Home() {
-  const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
+  const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [debugMoon,setDebugMoon]=useState<string|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
   const [debugCloud,setDebugCloud]=useState<CloudCoverage|null>(null); const [debugCloudBase,setDebugCloudBase]=useState<number|null>(null); const [debugWind,setDebugWind]=useState<number|null>(null); const [debugWindSpeed,setDebugWindSpeed]=useState<number|null>(null); const [perf,setPerf]=useState<"full"|"low">("full");
   const [debugPhenomena,setDebugPhenomena]=useState<string|null>(null); const [debugIntensity,setDebugIntensity]=useState<Intensity|null>(null); const [debugVisibility,setDebugVisibility]=useState<number|null>(null); const [debugGust,setDebugGust]=useState<number|null>(null); const [reduced,setReduced]=useState(false); const [paneDrops,setPaneDrops]=useState<boolean|null>(null);
   const [showPreview,setShowPreview]=useState(false); const [debugLightning,setDebugLightning]=useState<string|null>(null); const mainRef=useRef<HTMLElement|null>(null);
@@ -280,7 +280,7 @@ export default function Home() {
   const {now,status:clock}=useSystemClock(clockDebug);
   useEffect(()=>{ setFlybys(Array.from({length:3},(_,i)=>({top:11+Math.random()*25,cycle:96+i*23+Math.random()*19,delay:7+i*39+Math.random()*16,scale:.78+Math.random()*.25,tilt:-2+Math.random()*4,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
   useEffect(()=>{
-    const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird);
+    const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
     const cc=q.get("debugCloud")?.toUpperCase(); if(cc&&["CLR","FEW","SCT","BKN","OVC","VV"].includes(cc)) setDebugCloud(cc as CloudCoverage);
     const cb=q.get("debugCloudBase"); if(cb!==null&&cb!=="") setDebugCloudBase(Number(cb));
     const wd=q.get("debugWind"); if(wd!==null&&wd!=="") setDebugWind(Number(wd));
@@ -387,8 +387,6 @@ export default function Home() {
   const metarDiagnostic=metarState==="UNAVAILABLE"?"METAR UNAVAILABLE":`METAR ${aviationStamp(weather.metarObsIso)} · AGE ${ageStr} · ${metarState}`;
   const tafDiagnostic=tafState==="UNAVAILABLE"?"TAF UNAVAILABLE":`TAF ${aviationStamp(weather.tafIssueIso)} · ${tafState==="CURRENT"?`VALID TO ${aviationStamp(weather.tafValidEndIso)}`:tafState}`;
   const feedDiagnostic=feed==="OK"?`FEED OK · UPDATED ${aviationStamp(weather.lastRefreshSuccessIso)}`:`FEED ${feed} · LAST OK ${aviationStamp(weather.lastRefreshSuccessIso)}`;
-  const zone=local.timeZoneName||"LOCAL";
-  const windLabel=weather.windDegrees===null?"VRB":`${String(weather.windDegrees).padStart(3,"0")}° ${weather.windDirection}`;
   const birdRisk=debugBird||weather.birdRisk;
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const clockZ=clock.lastCheckedUtc?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(clock.lastCheckedUtc)).replace(":","")+"Z":"—";
@@ -398,6 +396,7 @@ export default function Home() {
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
   const flightCat = getFlightCategory(weather.visibilitySm, weather.cloudBaseFt, weather.cloudCoverage);
   const moonInfo = getMoonPhase(now);
+  if(debugMoon){ moonInfo.name=`${debugMoon.toUpperCase()} MOON`; if(debugMoon==="crescent") moonInfo.phase=0.12; else if(debugMoon==="quarter") moonInfo.phase=0.25; else if(debugMoon==="full") moonInfo.phase=0.50; }
 
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
     <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
@@ -417,7 +416,6 @@ export default function Home() {
             <div className="solar-graphic-wrap">
               <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="solar-svg">
                 <defs>
-                  {/* Sun Gradients: Blinding core, intense glare bloom, outer corona */}
                   <radialGradient id="sunCoreGlow" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="#ffffff" />
                     <stop offset="20%" stopColor="#ffffff" />
@@ -432,8 +430,6 @@ export default function Home() {
                     <stop offset="80%" stopColor="rgba(255, 80, 0, 0.12)" />
                     <stop offset="100%" stopColor="rgba(255, 50, 0, 0)" />
                   </radialGradient>
-
-                  {/* Moon Gradients & Patterns: Realistic lunar maria and dimensional limb */}
                   <radialGradient id="moonBody" cx="40%" cy="35%" r="65%">
                     <stop offset="0%" stopColor="#f1f5f9" />
                     <stop offset="45%" stopColor="#cbd5e1" />
@@ -457,84 +453,44 @@ export default function Home() {
                   const cy = 105 - 65 * Math.sin(rad);
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      {/* Broad Camera Lens Flare Halo */}
                       <circle r="36" fill="url(#sunOuterCorona)" />
                       <circle r="22" fill="url(#sunCoreGlow)" />
-
-                      {/* Intense Starburst Radial Solar Rays */}
                       <g stroke="#ffffff" strokeWidth="1.2" opacity="0.95" strokeLinecap="round">
-                        <line x1="0" y1="-32" x2="0" y2="32" />
-                        <line x1="-32" y1="0" x2="32" y2="0" />
-                        <line x1="-22" y1="-22" x2="22" y2="22" />
-                        <line x1="-22" y1="22" x2="22" y2="-22" />
+                        <line x1="0" y1="-32" x2="0" y2="32" /><line x1="-32" y1="0" x2="32" y2="0" /><line x1="-22" y1="-22" x2="22" y2="22" /><line x1="-22" y1="22" x2="22" y2="-22" />
                       </g>
                       <g stroke="#ffe899" strokeWidth="0.8" opacity="0.75" strokeLinecap="round">
-                        <line x1="0" y1="-42" x2="0" y2="42" />
-                        <line x1="-42" y1="0" x2="42" y2="0" />
-                        <line x1="-29" y1="-29" x2="29" y2="29" />
-                        <line x1="-29" y1="29" x2="29" y2="-29" />
-                        <line x1="-12" y1="-36" x2="12" y2="36" />
-                        <line x1="-36" y1="-12" x2="36" y2="12" />
+                        <line x1="0" y1="-42" x2="0" y2="42" /><line x1="-42" y1="0" x2="42" y2="0" /><line x1="-29" y1="-29" x2="29" y2="29" /><line x1="-29" y1="29" x2="29" y2="-29" /><line x1="-12" y1="-36" x2="12" y2="36" /><line x1="-36" y1="-12" x2="36" y2="12" />
                       </g>
-
-                      {/* Camera Anamorphic Artifact Ring */}
-                      <circle r="18" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" />
-                      
-                      {/* Pure White Hot Center Disk */}
-                      <circle r="7" fill="#ffffff" />
+                      <circle r="18" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" /><circle r="7" fill="#ffffff" />
                     </g>
                   );
                 })() : (() => {
                   const rad = (solar.progress / 100) * Math.PI;
                   const cx = 20 + 160 * (solar.progress / 100);
                   const cy = 105 + 35 * Math.sin(rad);
+                  const isCrescent = moonInfo.phase < 0.20 || moonInfo.phase > 0.80;
+                  const isQuarter = (moonInfo.phase >= 0.20 && moonInfo.phase <= 0.32) || (moonInfo.phase >= 0.68 && moonInfo.phase <= 0.80);
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      {/* Lunar Outer Atmosphere Glow */}
                       <circle r="20" fill="url(#moonGlow)" />
-
-                      {/* Main Moon Sphere Base */}
                       <circle r="13" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
-
-                      {/* Dark Lunar Maria (Basaltic Seas) */}
                       <path d="M -5 -6 Q -2 -10 3 -7 Q 7 -3 4 2 Q -1 4 -6 1 Z" fill="#334155" opacity="0.55" />
                       <path d="M 2 1 Q 6 0 8 4 Q 7 8 2 7 Q -1 4 2 1 Z" fill="#334155" opacity="0.5" />
                       <path d="M -9 1 Q -6 0 -4 4 Q -7 8 -10 5 Z" fill="#334155" opacity="0.45" />
-
-                      {/* Impact Craters with Highlighted Rims & Shadows */}
-                      {/* Tycho Crater (Southern Highlands with ejecta rays) */}
-                      <circle cx="1" cy="7" r="2.2" fill="#1e293b" opacity="0.6" />
-                      <circle cx="1" cy="7" r="1.8" fill="none" stroke="#f8fafc" strokeWidth="0.5" opacity="0.8" />
-                      <line x1="1" y1="7" x2="-4" y2="11" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
-                      <line x1="1" y1="7" x2="6" y2="10" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
-
-                      {/* Copernicus Crater */}
-                      <circle cx="-4" cy="-2" r="1.8" fill="#1e293b" opacity="0.6" />
-                      <circle cx="-4" cy="-2" r="1.4" fill="none" stroke="#f8fafc" strokeWidth="0.4" opacity="0.7" />
-
-                      {/* Kepler Crater */}
-                      <circle cx="5" cy="-3" r="1.4" fill="#1e293b" opacity="0.5" />
-                      <circle cx="5" cy="-3" r="1.1" fill="none" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
-
-                      {/* Additional Rim Texture Craters */}
-                      <circle cx="-7" cy="4" r="1.2" fill="#334155" opacity="0.5" />
-                      <circle cx="6" cy="5" r="1.5" fill="#334155" opacity="0.4" />
+                      <circle cx="1" cy="7" r="2.2" fill="#1e293b" opacity="0.6" /><circle cx="1" cy="7" r="1.8" fill="none" stroke="#f8fafc" strokeWidth="0.5" opacity="0.8" />
+                      <line x1="1" y1="7" x2="-4" y2="11" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" /><line x1="1" y1="7" x2="6" y2="10" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
+                      <circle cx="-4" cy="-2" r="1.8" fill="#1e293b" opacity="0.6" /><circle cx="-4" cy="-2" r="1.4" fill="none" stroke="#f8fafc" strokeWidth="0.4" opacity="0.7" />
+                      <circle cx="5" cy="-3" r="1.4" fill="#1e293b" opacity="0.5" /><circle cx="5" cy="-3" r="1.1" fill="none" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
+                      {isCrescent && <path d="M 0 -13 A 13 13 0 0 1 0 13 A 6 13 0 0 0 0 -13 Z" fill="#0b131e" opacity="0.88" />}
+                      {isQuarter && <path d="M 0 -13 A 13 13 0 0 0 0 13 Z" fill="#0b131e" opacity="0.88" />}
                     </g>
                   );
                 })()}
               </svg>
             </div>
             <div className="solar-times-row">
-              <div className="solar-time solar-rise">
-                <span>SUNRISE</span>
-                <strong>{solar.sunrise}</strong>
-                <small>LOCAL · TODAY</small>
-              </div>
-              <div className="solar-time solar-set">
-                <span>SUNSET</span>
-                <strong>{solar.sunset}</strong>
-                <small>LOCAL · TODAY</small>
-              </div>
+              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · TODAY</small></div>
+              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · TODAY</small></div>
             </div>
           </div>
         </article>
@@ -545,7 +501,7 @@ export default function Home() {
       </section>
       <footer><span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span><span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span><span>PRESS F11 FOR FULL SCREEN</span></footer>
     </div>
-    {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a className={debugPhase==="day"?"active":""} href={`?debugWeather=${condition}&debugTime=day`}>DAY</a><a className={debugPhase==="night"?"active":""} href={`?debugWeather=${condition}&debugTime=night`}>NIGHT</a><a className={debugPhase==="sunrise"?"active":""} href={`?debugWeather=${condition}&debugTime=sunrise`}>SUNRISE</a><a className={debugPhase==="sunset"?"active":""} href={`?debugWeather=${condition}&debugTime=sunset`}>SUNSET</a>{(["LOW","MODERATE","SEVERE"] as const).map(level=><a className={debugBird===level?"active":""} href={`?debugWeather=${condition}&debugTime=${phase==="night"?"night":"day"}&debugBwc=${level.toLowerCase()}`} key={level}>BWC {level}</a>)}<a href="?">LIVE</a></nav>}
+    {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a className={debugPhase==="day"?"active":""} href={`?debugWeather=${condition}&debugTime=day`}>DAY</a><a className={debugPhase==="night"?"active":""} href={`?debugWeather=${condition}&debugTime=night`}>NIGHT</a><a className={debugPhase==="sunrise"?"active":""} href={`?debugWeather=${condition}&debugTime=sunrise`}>SUNRISE</a><a className={debugPhase==="sunset"?"active":""} href={`?debugWeather=${condition}&debugTime=sunset`}>SUNSET</a><a className={debugMoon==="crescent"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=crescent`}>CRESCENT MOON</a><a className={debugMoon==="quarter"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=quarter`}>QUARTER MOON</a><a className={debugMoon==="full"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=full`}>FULL MOON</a>{(["LOW","MODERATE","SEVERE"] as const).map(level=><a className={debugBird===level?"active":""} href={`?debugWeather=${condition}&debugTime=${phase==="night"?"night":"day"}&debugBwc=${level.toLowerCase()}`} key={level}>BWC {level}</a>)}<a href="?">LIVE</a></nav>}
     <PreviewLab active={showPreview} paneDrops={paneDrops} onPaneToggle={setPaneDrops}/>
   </main>;
 }
