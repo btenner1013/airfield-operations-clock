@@ -378,6 +378,11 @@ export default function Home() {
     return ()=>{ cancelled=true; };
   },[scene,imageBase]);
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
+  let effSolar = { ...solar };
+  if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, progress: 5 };
+  else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, progress: 95 };
+  else if (debugPhase === "day") effSolar = { ...solar, daylight: true, progress: 50 };
+  else if (debugPhase === "night") effSolar = { ...solar, daylight: false, progress: 50 };
   // Observation freshness (from actual METAR obs time) is tracked separately from feed-fetch health.
   const metarFreshness=classifyMetarFreshness(weather.metarObsIso,now.getTime()), metarState=metarFreshness.state, metarAgeMin=metarFreshness.ageMinutes;
   const tafState=classifyTafFreshness({issueIso:weather.tafIssueIso,validStartIso:weather.tafValidStartIso,validEndIso:weather.tafValidEndIso},now.getTime());
@@ -410,7 +415,7 @@ export default function Home() {
         <article className="sun-card panel">
           <div className="panel-title">
             <span>SOLAR WINDOW</span>
-            <b>{solar.daylight ? `${Math.round(solar.progress)}% DAYLIGHT` : `NIGHT · ${moonInfo.name}`}</b>
+            <b>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `NIGHT · ${moonInfo.name}`}</b>
           </div>
           <div className="solar-layout">
             <div className="solar-graphic-wrap">
@@ -447,8 +452,8 @@ export default function Home() {
                 <line x1="10" y1="105" x2="190" y2="105" stroke="var(--line)" strokeWidth="1.5" />
                 <circle cx="20" cy="105" r="3" fill="#eea54d" />
                 <circle cx="180" cy="105" r="3" fill="#eea54d" />
-                {solar.daylight ? (() => {
-                  const rad = (1 - solar.progress / 100) * Math.PI;
+                {effSolar.daylight ? (() => {
+                  const rad = (1 - effSolar.progress / 100) * Math.PI;
                   const cx = 100 + 80 * Math.cos(rad);
                   const cy = 105 - 65 * Math.sin(rad);
                   return (
@@ -465,8 +470,8 @@ export default function Home() {
                     </g>
                   );
                 })() : (() => {
-                  const rad = (solar.progress / 100) * Math.PI;
-                  const cx = 20 + 160 * (solar.progress / 100);
+                  const rad = (effSolar.progress / 100) * Math.PI;
+                  const cx = 20 + 160 * (effSolar.progress / 100);
                   const cy = 105 + 35 * Math.sin(rad);
                   const isCrescent = moonInfo.phase < 0.20 || moonInfo.phase > 0.80;
                   const isQuarter = (moonInfo.phase >= 0.20 && moonInfo.phase <= 0.32) || (moonInfo.phase >= 0.68 && moonInfo.phase <= 0.80);
