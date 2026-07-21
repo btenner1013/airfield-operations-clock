@@ -28,8 +28,8 @@ function bodyReport(code:string,level:"vicinity"|"station"|"severe"):LightningRe
 function directionText(values:LightningDirection[]):string{return values.length<2?(values[0]||""):values.join("–");}
 
 export function parseCurrentLightning(rawMetar:string):LightningReport {
+  if (/^\s*TAF\b/i.test(rawMetar || "")) return {...NO_LIGHTNING};
   const upper=(rawMetar||"").toUpperCase();
-  if (upper.includes("TAF")) return {...NO_LIGHTNING};
   const split=upper.split(/\sRMK\s/,2), body=split[0]||"", remarks=split[1]||"", bodyTokens=cleanTokens(body);
   const bodyThunder=bodyTokens.filter(token=>/^[+-]?TS(?:RA|SN|GR|GS){0,3}$/.test(token));
   const severe=bodyThunder.find(token=>token.startsWith("+"));
