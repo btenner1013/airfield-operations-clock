@@ -1,170 +1,195 @@
-.solar-line{background:rgba(159,178,184,.25)}
-.solar-fill{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,#f2a23e,#ff7548);box-shadow:0 0 8px rgba(255,157,65,.42)}
-.solar-now small{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 5px #000}
+/* ============================================================
+   layout-tuning.css
+   Single source of truth for:
+     - .info responsive grid breakpoints
+     - card-specific internal layout corrections
+     - header / brand scaling
+     - wind / solar / bwc / forecast component styles
+   No global !important overrides of typography or box-sizing.
+   Component-specific rules use normal cascade specificity.
+   ============================================================ */
 
-/* Solar Window Curve Cleanup */
-.solar-arc::before,
-.solar-arc::after {
-  display: none !important;
+/* == GRID BREAKPOINTS ========================================
+   Owns the .info grid -- nowhere else defines grid-template-columns.
+   ============================================================ */
+
+/* >= 1600px -- 5-column single row */
+@media (min-width: 1681px) {
+  .info {
+    grid-template-columns: 0.85fr 1.3fr 0.85fr 0.85fr 1.8fr;
+    gap: clamp(10px, 0.8vw, 16px);
+  }
+  .sun-card, .wind-card, .bwc-card, .forecast-card { grid-column: auto; }
 }
 
-/* Header Branding Updates */
+/* 1100-1599px -- 4-col top row + forecast full-width below */
+@media (min-width: 1100px) and (max-width: 1680px) {
+  .info {
+    grid-template-columns: 1fr 1.3fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: clamp(10px, 0.9vw, 16px);
+  }
+  .sun-card, .wind-card, .bwc-card { grid-column: auto; }
+  .forecast-card { grid-column: 1 / -1; }
+}
+
+/* 721-1099px -- 3-col top row + bwc 1fr / forecast 2fr below */
+@media (min-width: 721px) and (max-width: 1099px) {
+  .info {
+    grid-template-columns: 1fr 1.2fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+  }
+  .sun-card, .wind-card { grid-column: auto; }
+  .bwc-card   { grid-column: auto; }
+  .forecast-card { grid-column: span 2; }
+}
+
+/* <= 720px -- single column stack */
+@media (max-width: 720px) {
+  .info { grid-template-columns: 1fr; gap: 10px; }
+  .sun-card, .wind-card, .bwc-card, .forecast-card { grid-column: auto; }
+}
+
+/* == HEADER / BRAND ==========================================*/
 .brand-logo {
-  height: clamp(52px, 6.2vh, 84px) !important;
+  height: clamp(44px, 5.5vh, 76px);
   width: auto;
   object-fit: contain;
   border-radius: 4px;
 }
 .brand strong {
-  font-size: clamp(20px, 1.8vw, 32px) !important;
-  letter-spacing: .22em !important;
-  font-weight: 800 !important;
+  font-size: clamp(18px, 1.6vw, 30px);
+  letter-spacing: 0.22em;
+  font-weight: 800;
 }
 .brand small {
-  display: block;
-  margin-top: 6px;
-  color: #c8d0d3 !important;
-  font-size: clamp(11px, 0.9vw, 16px) !important;
-  letter-spacing: .18em !important;
+  font-size: clamp(10px, 0.8vw, 15px);
+  color: #c8d0d3;
+  letter-spacing: 0.18em;
   white-space: normal;
   word-break: break-word;
   line-height: 1.35;
+  margin-top: 5px;
 }
 
-/* Clocks Section Width Sizing Fixes */
-.clocks {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-.clock {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 1vh clamp(12px, 2.2vw, 36px) 2vh !important;
-}
-.clock time {
-  white-space: nowrap !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-.clock-foot {
-  min-width: 0 !important;
-  max-width: 100% !important;
-}
-
-/* Page Layout Fluidity & Overflow Constraints */
-.display,
-.burn-shift,
-.info,
-.panel,
-.forecast-card,
-.forecast-grid,
-.forecast-grid > div,
-.compass-wrap,
-.solar-layout,
-.solar-arc-wrap {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Padding scale-down for .burn-shift to prevent scrollbar overflows */
-.burn-shift {
-  padding: clamp(20px, 2.5vh, 48px) clamp(16px, 3vw, 54px) clamp(12px, 2vh, 32px) !important;
-  max-width: 100vw !important;
-  width: 100% !important;
-}
-
-/* Flex Container Sizing Fixes to prevent vertical layout collapse */
-.weather-copy {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-}
-.wind-info {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-}
-.bird-info {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-}
-
-/* Typography Unified Scale */
-/* Level 1: Huge primary metrics */
-.weather-main > strong {
-  font-size: clamp(34px, 3.2vw, 64px) !important;
-  white-space: nowrap !important;
-}
-
-/* Level 2: Large primary metrics */
-.solar-time strong,
-.forecast-grid strong,
-.wind-info strong,
-.bird-severity {
-  font-size: clamp(22px, 2.1vw, 38px) !important;
-  white-space: nowrap !important;
-}
-
-/* Level 3: Intermediate text / Labels */
-.weather-main div b,
-.forecast-grid .forecast-condition {
-  font-size: clamp(12px, 0.8vw, 18px) !important;
-  white-space: normal !important;
-  overflow-wrap: break-word !important;
-  max-width: 100% !important;
-}
-
-/* Level 4: Small titles / labels */
-.panel-title,
-.panel-title b,
-.clock-head span,
-.solar-time span,
-.forecast-grid time {
-  font-size: clamp(11px, 0.7vw, 14px) !important;
-}
-
-/* Level 5: Micro / Metadata details */
-.weather-main div small,
-.feels-like,
-.weather-stats span,
-.wind-card-meta,
-.bird-card-meta,
-.solar-time small,
-.forecast-grid small:not(.forecast-condition) {
-  font-size: clamp(9px, 0.6vw, 13px) !important;
-  white-space: normal !important;
-  overflow-wrap: break-word !important;
-  max-width: 100% !important;
-}
-
-/* Panel Padding Optimization */
+/* == PANEL BASE ==============================================*/
 .panel {
-  padding: clamp(10px, 1.1vw, 20px) !important;
+  padding: clamp(12px, 1.2vw, 22px);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-/* Current Weather Layout Sizing Optimization */
-.weather-glyph {
-  font-size: clamp(40px, 3.2vw, 68px) !important;
+/* == SOLAR WINDOW ============================================
+   Remove halfpipe pseudo-elements; fix time-column sizing.
+   ============================================================ */
+.solar-arc::before,
+.solar-arc::after {
+  display: none;
 }
+
+/* Use auto for time cols so arc gets remaining space */
+.solar-layout {
+  grid-template-columns: auto 1fr auto;
+  gap: clamp(6px, 0.8vw, 14px);
+}
+.solar-time {
+  min-width: 0;
+  overflow: hidden;
+}
+.solar-time strong {
+  font: 600 clamp(16px, 1.4vw, 26px) / 1 Consolas, monospace;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.solar-time span {
+  font-size: clamp(7px, 0.55vw, 10px);
+  color: #9eacb1;
+  letter-spacing: 0.16em;
+}
+.solar-time small {
+  font-size: clamp(6px, 0.45vw, 8px);
+  color: #708087;
+  white-space: nowrap;
+}
+.solar-arc-wrap {
+  min-width: 0;
+  overflow: visible;
+}
+
+/* == CURRENT WEATHER =========================================
+   Fix detail-column collapsing and white-space clipping.
+   ============================================================ */
 .weather-main {
-  gap: clamp(10px, 0.8vw, 16px) !important;
+  align-items: flex-start;
+  gap: clamp(10px, 1vw, 18px);
+}
+.weather-glyph {
+  flex-shrink: 0;
+  font-size: clamp(38px, 3.2vw, 64px);
+}
+.weather-main > strong {
+  flex-shrink: 0;
+  font-size: clamp(36px, 3.5vw, 68px);
+  white-space: nowrap;
+}
+/* Detail text column */
+.weather-copy {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  
+}
+.weather-copy b {
+  font-size: clamp(12px, 0.9vw, 17px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.25;
+}
+.weather-copy small,
+.feels-like {
+  font-size: clamp(10px, 0.7vw, 13px);
+  color: #aebbc0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+  letter-spacing: 0.07em;
+}
+.weather-stats span {
+  font-size: clamp(10px, 0.7vw, 13px);
+  color: #aebbc0;
+  letter-spacing: 0.07em;
 }
 
-/* Compass dial wrapper and inline ticks */
+/* == WIND CARD ===============================================
+   Larger compass, cleaner value display, FROM-cardinal label.
+   ============================================================ */
+.wind-main {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.4vw, 26px);
+  height: calc(100% - 42px);
+}
 .compass-wrap {
   flex: 0 0 auto;
-  width: clamp(60px, 4.8vw, 84px) !important;
-  height: clamp(60px, 4.8vw, 84px) !important;
+  width: clamp(72px, 7vw, 110px);
+  height: clamp(72px, 7vw, 110px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .compass-dial {
   position: relative;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(88, 215, 245, 0.15);
+  border: 1px solid rgba(88, 215, 245, 0.18);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(6,16,21,0.6) 0%, rgba(2,6,8,0.85) 100%);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 1px 2px rgba(255,255,255,0.05);
+  background: radial-gradient(circle, rgba(6,16,21,0.65) 0%, rgba(2,6,8,0.9) 100%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(88,215,245,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,19 +200,18 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  color: rgba(88, 215, 245, 0.25);
   pointer-events: none;
 }
 .compass-label {
   position: absolute;
-  font: 800 clamp(8px, 0.6vw, 10px) Consolas, monospace;
+  font: 800 clamp(8px, 0.65vw, 11px) Consolas, monospace;
   color: #aebbc0;
   line-height: 1;
 }
-.compass-n { top: 6px; left: 50%; transform: translateX(-50%); color: var(--cyan); }
-.compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
-.compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
-.compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+.compass-n { top: 5px;    left: 50%; transform: translateX(-50%); color: var(--cyan); }
+.compass-s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.compass-e { right: 7px;  top: 50%;  transform: translateY(-50%); }
+.compass-w { left: 7px;   top: 50%;  transform: translateY(-50%); }
 
 .compass-arrow {
   position: absolute;
@@ -198,173 +222,192 @@
   transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .compass-arrow-svg {
-  width: 65%;
-  height: 65%;
-  filter: drop-shadow(0 0 4px rgba(88, 215, 245, 0.6));
+  width: 62%;
+  height: 62%;
+  filter: drop-shadow(0 0 5px rgba(88, 215, 245, 0.55));
 }
 .compass-calm-indicator {
-  font: 700 clamp(16px, 1.5vw, 24px) Consolas, monospace;
+  font: 700 clamp(14px, 1.4vw, 22px) Consolas, monospace;
   color: var(--muted);
-  animation: pulse 2s infinite ease-in-out;
 }
 
 .wind-info {
+  flex: 1 1 0%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+  gap: 5px;
+}
+.wind-info strong {
+  font: 600 clamp(18px, 1.8vw, 32px) / 1.1 Consolas, monospace;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
 }
 .wind-separator {
-  color: var(--line) !important;
-  margin: 0 4px;
+  color: var(--muted);
+  margin: 0 3px;
+  font-weight: 400;
 }
 .wind-unit {
-  font-size: 0.55em;
+  font-size: 0.58em;
   color: var(--muted);
-  font-weight: normal;
+  font-weight: 400;
   letter-spacing: 0.05em;
 }
+/* FROM-cardinal label replacing DIRECTIONAL FLOW */
+.wind-from {
+  font-size: clamp(9px, 0.65vw, 12px);
+  color: #aebbc0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+/* Hide old DIRECTIONAL FLOW meta */
+.wind-card-meta {
+  display: none;
+}
 
-/* Bird Watch Condition Card Styles */
+/* == BWC CARD ================================================
+   SVG icon + severity always fits, metadata readable.
+   ============================================================ */
 .bird-main {
-  height: 75%;
   display: flex;
   align-items: center;
-  gap: clamp(12px, 1.2vw, 22px);
+  gap: clamp(10px, 1vw, 18px);
+  height: calc(100% - 42px);
 }
+.bird-icon-svg {
+  flex-shrink: 0;
+  width: clamp(36px, 3.2vw, 52px);
+  height: auto;
+  opacity: 0.9;
+}
+/* Hide platform emoji fallback */
 .bird-icon {
-  font-size: clamp(34px, 3.2vw, 56px);
-  line-height: 1;
+  display: none;
 }
 .bird-info {
+  flex: 1 1 0%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+  gap: 5px;
 }
 .bird-severity {
-  letter-spacing: 0.05em;
+  font: 700 clamp(18px, 1.7vw, 30px) / 1 Consolas, monospace;
+  letter-spacing: 0.06em;
+  white-space: normal;
+  
+  
 }
-.risk-severe .bird-severity {
-  color: #ff6b6b;
-  text-shadow: 0 0 12px rgba(255, 107, 107, 0.3);
-}
-.risk-moderate .bird-severity {
-  color: #f3ae5a;
-  text-shadow: 0 0 12px rgba(243, 174, 90, 0.3);
-}
-.risk-low .bird-severity {
-  color: #72dbbd;
-  text-shadow: 0 0 12px rgba(114, 219, 189, 0.3);
+.risk-severe   .bird-severity { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.3); }
+.risk-severe   .bird-icon-svg { color: #ff6b6b; }
+.risk-moderate .bird-severity { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
+.risk-moderate .bird-icon-svg { color: #f3ae5a; }
+.risk-low      .bird-severity { color: #72dbbd; text-shadow: 0 0 12px rgba(114,219,189,0.3); }
+.risk-low      .bird-icon-svg { color: #72dbbd; }
+
+.bird-card-meta {
+  font-size: clamp(9px, 0.65vw, 12px);
+  color: #aebbc0;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* Future Weather Card Layout Upgrades */
-.forecast-grid {
-  gap: 10px;
-  padding: 8px 0;
+/* == FUTURE WEATHER (FORECAST) ===============================
+   Three equal columns; enlarged readable typography.
+   ============================================================ */
+.forecast-card {
+  min-width: 0;
+  box-sizing: border-box;
 }
-.forecast-grid>div {
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: calc(100% - 30px);
+  gap: 0;
+  align-items: stretch;
+  padding: 6px 0 0;
+}
+.forecast-grid > div {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  height: 100%;
-  padding: 4px 6px;
+  justify-content: space-between;
+  padding: 6px 8px;
   gap: 4px;
-  min-width: 0 !important;
+  min-width: 0;
+  box-sizing: border-box;
 }
-.forecast-grid time,
-.forecast-grid span,
-.forecast-grid strong,
-.forecast-grid small {
-  align-self: center;
-  line-height: 1;
+.forecast-grid > div + div {
+  border-left: 1px solid var(--line);
+}
+.forecast-grid time {
+  font: 600 clamp(11px, 0.75vw, 18px) / 1 Consolas, monospace;
+  color: #c8d0d3;
+  letter-spacing: 0.08em;
 }
 .forecast-grid span {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(26px, 2.2vw, 42px);
+  color: #f4b45b;
+}
+.forecast-grid .forecast-condition {
+  font-size: clamp(11px, 0.7vw, 16px);
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
+  min-height: 2.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+.forecast-modifier {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+.forecast-grid strong {
+  font: 700 clamp(20px, 1.4vw, 36px) / 1 Consolas, monospace;
+  color: #f4b45b;
+}
+.forecast-grid small:not(.forecast-condition) {
+  font-size: clamp(9px, 0.55vw, 13px);
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.forecast-empty {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-align: center;
+  padding: 2em 0;
 }
 .taf-hazard-band {
-  padding: 8px 12px;
-  font-size: clamp(11px, 0.65vw, 20px) !important;
+  padding: 7px 10px;
+  font-size: clamp(10px, 0.65vw, 14px);
   line-height: 1.3;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .taf-hazard-band b {
-  font-size: inherit !important;
+  font-size: inherit;
 }
 
-@media(max-height:760px){
-  .forecast-grid span{font-size:24px}
+/* == UTILITY / REDUCED-MOTION ================================*/
+@media (max-height: 760px) {
+  .forecast-grid span { font-size: 24px; }
+}
+@media (max-height: 700px) {
+  .panel { min-height: 120px; }
 }
 
-/* Solar Layout Shrinking Support */
-.solar-layout {
-  grid-template-columns: minmax(50px, 0.72fr) minmax(80px, 1.35fr) minmax(50px, 0.72fr) !important;
-  gap: clamp(4px, 0.5vw, 10px) !important;
-}
 
-/* Card Width Rebalancing on Desktop (>1280px) */
-@media(min-width: 1281px) {
-  .info {
-    display: grid !important;
-    grid-template-columns: 0.9fr 1.35fr 0.9fr 0.9fr 1.8fr !important;
-    grid-template-rows: auto !important;
-    gap: clamp(8px, 0.8vw, 14px) !important;
-  }
-  .bwc-card {
-    grid-column: auto !important;
-  }
-  .forecast-card {
-    grid-column: auto !important;
-  }
-}
-
-/* Medium Desktop/Laptop Breakpoint (1025px - 1280px) */
-@media(min-width: 1025px) and (max-width: 1280px) {
-  .info {
-    display: grid !important;
-    grid-template-columns: 1fr 1.2fr 1fr 1fr !important;
-    grid-template-rows: auto auto !important;
-    gap: 12px !important;
-  }
-  .bwc-card {
-    grid-column: auto !important;
-  }
-  .forecast-card {
-    grid-column: span 4 !important;
-  }
-}
-
-/* Tablet Breakpoint (721px - 1024px) */
-@media(min-width: 721px) and (max-width: 1024px) {
-  .info {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    grid-template-rows: auto auto !important;
-    gap: 12px !important;
-  }
-  .bwc-card {
-    grid-column: span 1 !important;
-  }
-  .forecast-card {
-    grid-column: span 2 !important;
-  }
-}
-
-/* Phone Breakpoint (<720px) */
-@media(max-width: 720px), (orientation: portrait) {
-  .info {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto !important;
-    gap: 10px !important;
-  }
-  .bwc-card,
-  .forecast-card {
-    grid-column: span 1 !important;
-  }
-  html, body {
-    overflow: auto;
-  }
-}
