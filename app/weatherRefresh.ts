@@ -76,7 +76,7 @@ export function classifyTafFreshness(times:TafTimes, nowMs:number):TafFreshness 
   return "CURRENT";
 }
 
-const METAR_KEYS:(keyof Weather)[]=["temperatureF","condition","description","operationalWeather","currentLightning","windSpeedKt","windDirection","windDegrees","windGustKt","observationTime","source","cloudCoverage","cloudBaseFt","visibilitySm","phenomena","metarObsIso"];
+const METAR_KEYS:(keyof Weather)[]=["temperatureF","condition","description","operationalWeather","currentLightning","windSpeedKt","windDirection","windDegrees","windGustKt","observationTime","source","cloudCoverage","cloudBaseFt","visibilitySm","phenomena","metarObsIso","rawMetar"];
 const TAF_KEYS:(keyof Weather)[]=["forecast","tafHazards","tafIssueIso","tafValidStartIso","tafValidEndIso"];
 const MODEL_KEYS:(keyof Weather)[]=["feelsLikeF","humidity","sunriseLocal","sunsetLocal","solarDays"];
 

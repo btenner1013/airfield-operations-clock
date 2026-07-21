@@ -46,6 +46,7 @@ export type Weather = {
   lastRefreshAttemptIso:string|null;
   lastRefreshSuccessIso:string|null;
   feedError:string|null;
+  rawMetar?:string|null;
 };
 
 export type WeatherFetchResult = {

@@ -1,1 +1,158 @@
-.solar-line{background:rgba(159,178,184,.25)}.solar-fill{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,#f2a23e,#ff7548);box-shadow:0 0 8px rgba(255,157,65,.42)}.solar-now small{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 5px #000}.forecast-grid>div{grid-template-rows:16px 36px 12px 30px 12px;align-content:center;gap:2px;height:100%;padding:4px 5px}.forecast-grid time,.forecast-grid span,.forecast-grid strong,.forecast-grid small{align-self:center;line-height:1}.forecast-grid span{display:grid;place-items:center}.forecast-grid strong{margin:0}.forecast-grid .forecast-condition{overflow:hidden;text-overflow:ellipsis;max-width:100%}@media(max-height:760px){.forecast-grid>div{grid-template-rows:14px 28px 10px 25px 10px}.forecast-grid span{font-size:24px}}
+.solar-line{background:rgba(159,178,184,.25)}.solar-fill{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,#f2a23e,#ff7548);box-shadow:0 0 8px rgba(255,157,65,.42)}.solar-now small{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 5px #000}
+
+/* Wind Card Styles */
+.wind-main {
+  height: 75%;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1vw, 20px);
+}
+.compass-wrap {
+  flex: 0 0 auto;
+  width: clamp(56px, 5.2vw, 84px);
+  height: clamp(56px, 5.2vw, 84px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compass-dial {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compass-label {
+  position: absolute;
+  font: 700 8px Consolas, monospace;
+  color: var(--muted);
+  line-height: 1;
+}
+.compass-n { top: 3px; }
+.compass-s { bottom: 3px; }
+.compass-e { right: 4px; }
+.compass-w { left: 4px; }
+.compass-arrow {
+  font-size: clamp(18px, 1.8vw, 28px);
+  color: var(--cyan);
+  line-height: 1;
+  transition: transform 1s ease-out;
+  font-family: Consolas, monospace;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(88, 215, 245, 0.35);
+}
+.wind-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.wind-info strong {
+  font: clamp(20px, 2vw, 36px)/1 Consolas, monospace;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.wind-separator {
+  color: var(--muted);
+  font-weight: normal;
+}
+.wind-unit {
+  font-size: 0.5em;
+  color: var(--muted);
+  font-weight: normal;
+  letter-spacing: 0.05em;
+}
+.wind-card-meta {
+  color: #aebbc0;
+  font-size: clamp(7px, 0.62vw, 12px);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Bird Watch Condition Card Styles */
+.bird-main {
+  height: 75%;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 1.2vw, 22px);
+}
+.bird-icon {
+  font-size: clamp(34px, 3.2vw, 56px);
+  line-height: 1;
+}
+.bird-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.bird-severity {
+  font: clamp(20px, 2vw, 36px)/1 Consolas, monospace;
+  letter-spacing: 0.05em;
+}
+.risk-severe .bird-severity {
+  color: #ff6b6b;
+  text-shadow: 0 0 12px rgba(255, 107, 107, 0.3);
+}
+.risk-moderate .bird-severity {
+  color: #f3ae5a;
+  text-shadow: 0 0 12px rgba(243, 174, 90, 0.3);
+}
+.risk-low .bird-severity {
+  color: #72dbbd;
+  text-shadow: 0 0 12px rgba(114, 219, 189, 0.3);
+}
+.bird-card-meta {
+  color: #aebbc0;
+  font-size: clamp(7px, 0.62vw, 12px);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Wrapping Weather Labels and Layout Corrections */
+.weather-main div b {
+  white-space: normal;
+  line-height: 1.25;
+  font-size: clamp(11px, 0.9vw, 18px);
+}
+
+.forecast-grid>div{display:flex;flex-direction:column;justify-content:space-between;align-items:center;height:100%;padding:4px 5px;gap:2px}
+.forecast-grid time,.forecast-grid span,.forecast-grid strong,.forecast-grid small{align-self:center;line-height:1}
+.forecast-grid span{display:grid;place-items:center}
+.forecast-grid strong{margin:0}
+.forecast-grid .forecast-condition{overflow:visible;text-overflow:clip;max-width:100%;white-space:normal;line-height:1.2;font-size:clamp(6px,.48vw,9px);text-align:center;min-height:2.4em;display:flex;align-items:center;justify-content:center}
+
+@media(max-height:760px){
+  .forecast-grid span{font-size:24px}
+}
+
+/* Layout overrides for 1024x768 and smaller */
+@media(max-width:1280px){
+  .info {
+    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-rows: auto auto;
+    gap: 12px;
+  }
+  .forecast-card {
+    grid-column: span 4 !important;
+  }
+}
+
+@media(max-width:720px),(orientation:portrait){
+  .info {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto;
+    gap: 10px;
+  }
+  .forecast-card {
+    grid-column: span 1 !important;
+  }
+  html,body {
+    overflow: auto;
+  }
+}
+

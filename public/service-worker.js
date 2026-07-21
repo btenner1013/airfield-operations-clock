@@ -1,6 +1,6 @@
 const CACHE="airfield-clock-v10";
 // Shell cached immediately on install so the display boots offline without waiting on wallpapers.
-const SHELL=["./","./manifest.json","./lightning-bolt-isolated.png","./assets/backgrounds/clear-day.png","./assets/backgrounds/clear-night.png"];
+const SHELL=["./","./manifest.json","./lightning-bolt-isolated.png","./assets/patch-155.png","./assets/backgrounds/clear-day.png","./assets/backgrounds/clear-night.png"];
 // Full wallpaper set; populated in the background (or on demand) rather than blocking the page.
 const WALLPAPERS=["partly-cloudy-day","partly-cloudy-night","overcast-day","overcast-night","rain-day","rain-night","thunderstorm-day","thunderstorm-night","fog-day","fog-night","snow-day","snow-night","sunrise","sunset"].map(n=>"./assets/backgrounds/"+n+".png");
 const CORE=[...SHELL,...WALLPAPERS];
