@@ -272,7 +272,7 @@ export default function Home() {
   const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [debugMoon,setDebugMoon]=useState<string|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
   const [debugCloud,setDebugCloud]=useState<CloudCoverage|null>(null); const [debugCloudBase,setDebugCloudBase]=useState<number|null>(null); const [debugWind,setDebugWind]=useState<number|null>(null); const [debugWindSpeed,setDebugWindSpeed]=useState<number|null>(null); const [perf,setPerf]=useState<"full"|"low">("full");
   const [debugPhenomena,setDebugPhenomena]=useState<string|null>(null); const [debugIntensity,setDebugIntensity]=useState<Intensity|null>(null); const [debugVisibility,setDebugVisibility]=useState<number|null>(null); const [debugGust,setDebugGust]=useState<number|null>(null); const [reduced,setReduced]=useState(false); const [paneDrops,setPaneDrops]=useState<boolean|null>(null);
-  const [showPreview,setShowPreview]=useState(false); const [debugLightning,setDebugLightning]=useState<string|null>(null); const mainRef=useRef<HTMLElement|null>(null);
+  const [showPreview,setShowPreview]=useState(false); const [showSim,setShowSim]=useState(false); const [debugLightning,setDebugLightning]=useState<string|null>(null); const mainRef=useRef<HTMLElement|null>(null);
   useEffect(()=>{ if(typeof matchMedia==="undefined") return; const mq=matchMedia("(prefers-reduced-motion: reduce)"); const on=()=>setReduced(mq.matches); on(); mq.addEventListener?.("change",on); return()=>mq.removeEventListener?.("change",on); },[]);
   const [aScene,setAScene]=useState("clear-night"); const [bScene,setBScene]=useState("clear-night"); const [active,setActive]=useState<"a"|"b">("a");
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
@@ -281,6 +281,7 @@ export default function Home() {
   useEffect(()=>{ setFlybys(Array.from({length:3},(_,i)=>({top:11+Math.random()*25,cycle:96+i*23+Math.random()*19,delay:7+i*39+Math.random()*16,scale:.78+Math.random()*.25,tilt:-2+Math.random()*4,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
+    if(q.has("debugWeather")||q.has("debugTime")||q.has("debugBwc")||q.has("debugMoonPhase")||q.has("sim")||q.has("demo")) setShowSim(true);
     const cc=q.get("debugCloud")?.toUpperCase(); if(cc&&["CLR","FEW","SCT","BKN","OVC","VV"].includes(cc)) setDebugCloud(cc as CloudCoverage);
     const cb=q.get("debugCloudBase"); if(cb!==null&&cb!=="") setDebugCloudBase(Number(cb));
     const wd=q.get("debugWind"); if(wd!==null&&wd!=="") setDebugWind(Number(wd));
@@ -509,9 +510,70 @@ export default function Home() {
         <article className={`bird-card panel risk-${birdClass}`}><div className="panel-title"><span>BIRD WATCH CONDITION</span><b>USAF AHAS</b></div><div className="bird-main"><span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span><div className="bird-info"><strong className="bird-severity">{birdRisk}</strong><small className="bird-card-meta">AHAS · UPDATED {birdStamp || "1730Z"}</small></div></div></article>
         <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&<div className="taf-hazard-band"><span>TAF HAZARD</span>{weather.tafHazards.slice(0,1).map(h=>{const window=formatTafWindow(h.fromIso,h.toIso,now);return <b key={h.id} data-category={h.weather.category}><time><span>{window.full}</span><small>{window.compact}</small></time><em>TS POSSIBLE · {window.compact}</em></b>})}{weather.tafHazards.length>1&&<i>+{weather.tafHazards.length-1}</i>}</div>}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudCoverage && ["BKN","OVC","VV"].includes(f.operationalWeather.cloudCoverage) && f.operationalWeather.cloudBaseFt !== null ? ` · CIG ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
-      <footer><span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span><span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span><span>PRESS F11 FOR FULL SCREEN</span></footer>
+      <footer>
+        <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
+        <span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span>
+        <span>
+          <button className={`sim-trigger-btn ${showSim ? "active" : ""}`} onClick={() => setShowSim(v => !v)}>
+            🎛️ DEMO SIMULATOR
+          </button>
+          &nbsp;· PRESS F11 FOR FULL SCREEN
+        </span>
+      </footer>
     </div>
-    {debug&&<nav className="debug" aria-label="Weather theme simulator"><b>SIM</b>{DEBUG_THEMES.map((t,i)=><a className={t===debug?"active":""} href={debugHref[i]} key={t}>{t.replace("-"," ")}</a>)}<a className={debugPhase==="day"?"active":""} href={`?debugWeather=${condition}&debugTime=day`}>DAY</a><a className={debugPhase==="night"?"active":""} href={`?debugWeather=${condition}&debugTime=night`}>NIGHT</a><a className={debugPhase==="sunrise"?"active":""} href={`?debugWeather=${condition}&debugTime=sunrise`}>SUNRISE</a><a className={debugPhase==="sunset"?"active":""} href={`?debugWeather=${condition}&debugTime=sunset`}>SUNSET</a><a className={debugMoon==="crescent"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=crescent`}>CRESCENT MOON</a><a className={debugMoon==="quarter"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=quarter`}>QUARTER MOON</a><a className={debugMoon==="full"?"active":""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=full`}>FULL MOON</a>{(["LOW","MODERATE","SEVERE"] as const).map(level=><a className={debugBird===level?"active":""} href={`?debugWeather=${condition}&debugTime=${phase==="night"?"night":"day"}&debugBwc=${level.toLowerCase()}`} key={level}>BWC {level}</a>)}<a href="?">LIVE</a></nav>}
+    {(showSim || debug) && (
+      <nav className="sim-panel" aria-label="Airfield Operations Demo Simulator">
+        <div className="sim-header">
+          <strong>🎛️ AIRFIELD OPERATIONS DEMO SIMULATOR</strong>
+          <button className="sim-close" onClick={() => setShowSim(false)}>✕ CLOSE</button>
+        </div>
+
+        <div className="sim-section">
+          <span className="sim-section-label">TIME & SOLAR:</span>
+          <a className={debugPhase === "day" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=day`}>☀️ DAY (NOON)</a>
+          <a className={debugPhase === "sunrise" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=sunrise`}>🌅 SUNRISE</a>
+          <a className={debugPhase === "sunset" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=sunset`}>🌇 SUNSET</a>
+          <a className={debugMoon === "crescent" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=crescent`}>🌙 CRESCENT MOON</a>
+          <a className={debugMoon === "quarter" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=quarter`}>🌓 QUARTER MOON</a>
+          <a className={debugMoon === "full" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=full`}>🌕 FULL MOON</a>
+        </div>
+
+        <div className="sim-section">
+          <span className="sim-section-label">WEATHER & PRECIP:</span>
+          {DEBUG_THEMES.map((t, i) => (
+            <a className={t === debug ? "active" : ""} href={`?debugWeather=${t}&debugTime=${phase}`} key={t}>
+              {t.toUpperCase().replace("-", " ")}
+            </a>
+          ))}
+        </div>
+
+        <div className="sim-section">
+          <span className="sim-section-label">BIRD WATCH (BWC):</span>
+          {(["LOW", "MODERATE", "SEVERE"] as const).map(level => (
+            <a className={debugBird === level ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugBwc=${level.toLowerCase()}`} key={level}>
+              BWC {level}
+            </a>
+          ))}
+        </div>
+
+        <div className="sim-section">
+          <span className="sim-section-label">FLIGHT CATEGORY:</span>
+          <a className={weather.visibilitySm === 10 && weather.cloudBaseFt === 8000 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=10&debugCloudBase=8000&debugCloud=FEW`}>🟢 VFR (10 SM / 8000 FT)</a>
+          <a className={weather.visibilitySm === 4 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=4&debugCloudBase=2000&debugCloud=BKN`}>🔵 MVFR (4 SM / 2000 FT)</a>
+          <a className={weather.visibilitySm === 2 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=2&debugCloudBase=800&debugCloud=OVC`}>🔴 IFR (2 SM / 800 FT)</a>
+          <a className={weather.visibilitySm === 0.5 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=0.5&debugCloudBase=200&debugCloud=VV`}>🟣 LIFR (0.5 SM / 200 FT)</a>
+        </div>
+
+        <div className="sim-section sim-actions">
+          <a className={showPreview ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&previewWeatherFx=${showPreview ? "0" : "1"}`}>
+            💧 {showPreview ? "HIDE PRECIP LAB" : "SHOW PRECIP LAB"}
+          </a>
+          <a className="sim-reset-link" href="?">
+            🔄 RESET TO LIVE METAR/TAF
+          </a>
+        </div>
+      </nav>
+    )}
     <PreviewLab active={showPreview} paneDrops={paneDrops} onPaneToggle={setPaneDrops}/>
   </main>;
 }

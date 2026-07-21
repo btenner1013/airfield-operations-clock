@@ -504,3 +504,119 @@
     font-size: clamp(12px, 0.8vw, 16px);
   }
 }
+
+/* ── DEMO SIMULATOR PANEL ─────────────────────────────────── */
+.sim-trigger-btn {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: clamp(10px, 0.75vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 12px;
+}
+.sim-trigger-btn:hover,
+.sim-trigger-btn.active {
+  background: var(--cyan);
+  color: #0b131e;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+.sim-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(11, 19, 30, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.8);
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: inherit;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.sim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+.sim-header strong {
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  color: var(--cyan);
+}
+.sim-close {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.sim-close:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.sim-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sim-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+  min-width: 140px;
+}
+.sim-section a {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.sim-section a:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--cyan);
+  color: #fff;
+}
+.sim-section a.active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #0b131e;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+.sim-reset-link {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+.sim-reset-link:hover {
+  background: #ef4444 !important;
+  color: #fff !important;
+}
