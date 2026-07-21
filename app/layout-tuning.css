@@ -152,14 +152,26 @@
   overflow-wrap: break-word;
   line-height: 1.25;
 }
-.weather-copy small,
-.feels-like {
+
+.feels-like-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
   font-size: clamp(10px, 0.65vw, 13px);
   color: #aebbc0;
-  white-space: normal;
-  overflow-wrap: break-word;
   line-height: 1.35;
   letter-spacing: 0.07em;
+}
+.feels-like {
+  white-space: nowrap;
+}
+.ceiling-line {
+  white-space: nowrap;
+}
+.ceiling-line::before {
+  content: "· ";
+  color: var(--muted);
 }
 .weather-stats span {
   font-size: clamp(10px, 0.65vw, 13px);
@@ -267,17 +279,18 @@
 .bird-main {
   display: flex;
   align-items: center;
-  gap: clamp(12px, 1.2vw, 22px);
+  gap: clamp(10px, 1vw, 18px);
   height: calc(100% - 36px);
 }
-.bird-icon-svg {
+.bird-icon-symbol {
   flex-shrink: 0;
-  width: clamp(40px, 3.5vw, 56px);
-  height: auto;
-  opacity: 0.92;
+  font-size: clamp(34px, 3.2vw, 50px);
+  line-height: 1;
+  display: inline-block;
+  font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans Egyptian Hieroglyphs", sans-serif;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
 }
-.bird-icon {
+.bird-icon-svg, .bird-icon {
   display: none;
 }
 .bird-info {
@@ -292,12 +305,9 @@
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
-.risk-severe   .bird-severity { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.3); }
-.risk-severe   .bird-icon-svg { color: #ff6b6b; }
-.risk-moderate .bird-severity { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
-.risk-moderate .bird-icon-svg { color: #f3ae5a; }
-.risk-low      .bird-severity { color: #72dbbd; text-shadow: 0 0 12px rgba(114,219,189,0.3); }
-.risk-low      .bird-icon-svg { color: #72dbbd; }
+.risk-severe   .bird-severity, .risk-severe   .bird-icon-symbol { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.3); }
+.risk-moderate .bird-severity, .risk-moderate .bird-icon-symbol { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
+.risk-low      .bird-severity, .risk-low      .bird-icon-symbol { color: #72dbbd; text-shadow: 0 0 12px rgba(114,219,189,0.3); }
 
 .bird-card-meta {
   font-size: clamp(9px, 0.65vw, 12px);
@@ -345,7 +355,7 @@
   font-size: clamp(26px, 2.2vw, 42px);
   color: #f4b45b;
 }
-.forecast-grid .forecast-condition {
+.forecast-condition {
   font-size: clamp(11px, 0.75vw, 16px);
   font-weight: 700;
   color: var(--white);
