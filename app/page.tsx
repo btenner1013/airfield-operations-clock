@@ -470,8 +470,15 @@ export default function Home() {
                   }
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="22" fill="url(#sunOuterCorona)" />
-                      <circle r="14" fill="url(#sunCoreGlow)" />
+                      <circle r="32" fill="url(#sunOuterCorona)" />
+                      <circle r="20" fill="url(#sunCoreGlow)" />
+                      <g stroke="#ffffff" strokeWidth="1.2" opacity="0.95" strokeLinecap="round">
+                        <line x1="0" y1="-28" x2="0" y2="28" /><line x1="-28" y1="0" x2="28" y2="0" /><line x1="-20" y1="-20" x2="20" y2="20" /><line x1="-20" y1="20" x2="20" y2="-20" />
+                      </g>
+                      <g stroke="#ffe899" strokeWidth="0.8" opacity="0.8" strokeLinecap="round">
+                        <line x1="0" y1="-36" x2="0" y2="36" /><line x1="-36" y1="0" x2="36" y2="0" /><line x1="-25" y1="-25" x2="25" y2="25" /><line x1="-25" y1="25" x2="25" y2="-25" /><line x1="-10" y1="-30" x2="10" y2="30" /><line x1="-30" y1="-10" x2="30" y2="10" />
+                      </g>
+                      <circle r="16" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" />
                       <circle r="7" fill="#ffffff" stroke="#fde047" strokeWidth="1.5" />
                     </g>
                   );
