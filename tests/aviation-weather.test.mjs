@@ -17,23 +17,23 @@ test("one operational priority puts phenomena ahead of cloud coverage",()=>{
   const rain=metar("METAR KMEM 201653Z 18008KT 4SM -RA BKN020");
   assert.equal(rain.category,"liquid-precipitation");
   assert.equal(rain.condition,"rain");
-  assert.equal(rain.label,"Light rain");
+  assert.equal(rain.label,"LIGHT RAIN");
   assert.equal(rain.cloudCoverage,"BKN");
 
   const cloud=metar("METAR KMEM 201653Z 18008KT P6SM BKN020");
   assert.equal(cloud.category,"cloud");
-  assert.equal(cloud.label,"Broken clouds");
+  assert.equal(cloud.label,"BROKEN CEILING");
   assert.equal(cloud.cloudBaseFt,2000);
 });
 
 test("shared resolver covers ordered operational phenomenon families",()=>{
   const cases=[
-    ["+FC TSRA BKN010","severe-convection","Tornado"],
-    ["TSRAGR BKN010","thunderstorm","Thunderstorm, hail"],
-    ["+FZRA OVC008","freezing-precipitation","Heavy freezing rain"],
-    ["-RASN BKN012","winter-precipitation","Rain and snow"],
-    ["+RA OVC015","liquid-precipitation","Heavy rain"],
-    ["2SM BR BKN005","obscuration","Mist"],
+    ["+FC TSRA BKN010","severe-convection","TORNADO"],
+    ["TSRAGR BKN010","thunderstorm","THUNDERSTORMS WITH RAIN AND HAIL"],
+    ["+FZRA OVC008","freezing-precipitation","HEAVY FREEZING RAIN"],
+    ["-RASN BKN012","winter-precipitation","RAIN AND SNOW"],
+    ["+RA OVC015","liquid-precipitation","HEAVY RAIN"],
+    ["2SM BR BKN005","obscuration","MIST"],
   ];
   for(const [text,category,label] of cases){const resolved=metar(text);assert.equal(resolved.category,category);assert.equal(resolved.label,label);}
   assert.deepEqual(extractAviationPhenomena("P6SM VCTS SCT030CB"),["VCTS"]);
@@ -55,7 +55,7 @@ test("structured TAF parses base, FM, TEMPO, PROB, combined groups, and month ro
   assert.equal(timeline.validEndIso,"2026-08-02T12:00:00.000Z");
   assert.deepEqual(timeline.prevailing.map(p=>p.weather.sourceKind),["TAF_BASE","TAF_FM","TAF_FM"]);
   assert.deepEqual(timeline.overlays.map(p=>p.weather.sourceKind),["TAF_TEMPO","TAF_PROB30","TAF_PROB40_TEMPO"]);
-  assert.equal(timeline.overlays[0].weather.label,"Thunderstorm, rain");
+  assert.equal(timeline.overlays[0].weather.label,"THUNDERSTORMS WITH RAIN");
   assert.equal(timeline.overlays[1].weather.probability,30);
   assert.equal(timeline.overlays[2].weather.temporary,true);
 });
@@ -72,7 +72,7 @@ test("forecast slots use active overlays, severity, and exclusive TAF end times"
   ].map(([time,iso])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitation:10,source:"MODEL",operationalWeather:null}));
   const result=applyStructuredTaf(slots,timeline,new Date("2026-08-01T03:00:00Z"));
   assert.deepEqual(result.forecast.map(f=>f.operationalWeather?.sourceKind),["TAF_FM","TAF_TEMPO","TAF_PROB30","TAF_PROB40_TEMPO","TAF_FM"]);
-  assert.deepEqual(result.forecast.map(f=>f.description),["Broken clouds","Thunderstorm, rain","Heavy snow","Heavy freezing rain","Clear"]);
+  assert.deepEqual(result.forecast.map(f=>f.description),["BROKEN CEILING","THUNDERSTORMS WITH RAIN","HEAVY SNOW","HEAVY FREEZING RAIN","CLEAR"]);
   assert.equal(result.forecast[2].operationalWeather?.sourceKind,"TAF_PROB30");
   assert.equal(result.forecast[3].operationalWeather?.category,"freezing-precipitation");
   assert.deepEqual(result.hazards.map(h=>h.weather.sourceKind),["TAF_TEMPO","TAF_PROB40_TEMPO","TAF_PROB30"]);
@@ -83,7 +83,7 @@ test("prevailing TAF phenomena also outrank prevailing cloud layers",()=>{
   const timeline=parseStructuredTaf(taf,new Date("2026-07-20T07:00:00Z"));
   assert.ok(timeline);
   assert.equal(timeline.prevailing[0].weather.category,"liquid-precipitation");
-  assert.equal(timeline.prevailing[0].weather.label,"Light rain");
+  assert.equal(timeline.prevailing[0].weather.label,"LIGHT RAIN");
   assert.equal(timeline.prevailing[1].weather.category,"cloud");
 });
 
@@ -103,7 +103,7 @@ function resolveTaf(text,sourceKind="TAF_BASE",probability=null,temporary=false)
 
 test("hazard-band policy keeps routine VCSH in the card but out of the band",()=>{
   const vcsh=resolveTaf("P6SM VCSH SCT050");
-  assert.equal(vcsh.label,"Showers nearby");
+  assert.equal(vcsh.label,"SHOWERS IN THE VICINITY");
   assert.equal(vcsh.category,"liquid-precipitation");
   assert.equal(qualifiesForTafHazardBand(vcsh),false);
   assert.equal(qualifiesForTafHazardBand(resolveTaf("P6SM VCTS SCT050")),true);
@@ -165,12 +165,12 @@ test("Current-versus-forecast separation regression test", () => {
   // * VCSH forecast remains available
   const basePeriod = timeline.prevailing.find(p => p.raw.includes("VCSH"));
   assert.ok(basePeriod);
-  assert.equal(basePeriod.weather.label, "Showers nearby");
+  assert.equal(basePeriod.weather.label, "SHOWERS IN THE VICINITY");
 
   // * PROB30 TSRA remains available
   const prob30Period = timeline.overlays.find(p => p.weather.sourceKind === "TAF_PROB30" && p.raw.includes("TSRA"));
   assert.ok(prob30Period);
-  assert.equal(prob30Period.weather.label, "Thunderstorm, rain");
+  assert.equal(prob30Period.weather.label, "THUNDERSTORMS WITH RAIN");
 
   // * Forecast window remains 22/00Z-06Z
   assert.equal(prob30Period.fromIso, "2026-07-22T00:00:00.000Z");
@@ -246,4 +246,64 @@ test("Lightning regression test", () => {
   const rawTaf = "TAF KMEM 202327Z 2100/2206 VRB06KT P6SM TSRA BKN020";
   assert.equal(parseCurrentLightning(rawTaf).level, "none");
 });
+
+test("Consistent current and future naming shared resolver and authority test", () => {
+  // Required examples:
+  // * -TSRA -> LIGHT THUNDERSTORMS WITH RAIN
+  assert.equal(metar("METAR KMEM 201653Z -TSRA BKN020").label, "LIGHT THUNDERSTORMS WITH RAIN");
+  // * TSRA -> THUNDERSTORMS WITH RAIN
+  assert.equal(metar("METAR KMEM 201653Z TSRA BKN020").label, "THUNDERSTORMS WITH RAIN");
+  // * +TSRA -> HEAVY THUNDERSTORMS WITH RAIN
+  assert.equal(metar("METAR KMEM 201653Z +TSRA BKN020").label, "HEAVY THUNDERSTORMS WITH RAIN");
+  // * FZRA -> FREEZING RAIN
+  assert.equal(metar("METAR KMEM 201653Z FZRA BKN020").label, "FREEZING RAIN");
+  // * VA -> VOLCANIC ASH
+  assert.equal(metar("METAR KMEM 201653Z VA BKN020").label, "VOLCANIC ASH");
+  // * BLSN -> BLOWING SNOW
+  assert.equal(metar("METAR KMEM 201653Z BLSN BKN020").label, "BLOWING SNOW");
+  // * MIFG -> SHALLOW FOG
+  assert.equal(metar("METAR KMEM 201653Z MIFG BKN020").label, "SHALLOW FOG");
+  // * BCFG -> PATCHES OF FOG
+  assert.equal(metar("METAR KMEM 201653Z BCFG BKN020").label, "PATCHES OF FOG");
+  // * VCSH -> SHOWERS IN THE VICINITY
+  assert.equal(metar("METAR KMEM 201653Z VCSH BKN020").label, "SHOWERS IN THE VICINITY");
+  // * RASN -> RAIN AND SNOW
+  assert.equal(metar("METAR KMEM 201653Z RASN BKN020").label, "RAIN AND SNOW");
+
+  // Cloud fallback:
+  // * FEW070 -> FEW CLOUDS
+  assert.equal(metar("METAR KMEM 201653Z FEW070").label, "FEW CLOUDS");
+  // * SCT050 -> SCATTERED CLOUDS
+  assert.equal(metar("METAR KMEM 201653Z SCT050").label, "SCATTERED CLOUDS");
+  // * BKN050 -> BROKEN CEILING
+  assert.equal(metar("METAR KMEM 201653Z BKN050").label, "BROKEN CEILING");
+  // * OVC008 -> OVERCAST CEILING
+  assert.equal(metar("METAR KMEM 201653Z OVC008").label, "OVERCAST CEILING");
+  // * VV003 -> INDEFINITE CEILING
+  assert.equal(metar("METAR KMEM 201653Z VV003").label, "INDEFINITE CEILING");
+  // * FEW070 BKN250 -> BROKEN CEILING
+  assert.equal(metar("METAR KMEM 201653Z FEW070 BKN250").label, "BROKEN CEILING");
+
+  // Authority test:
+  // Current METAR: FEW070 BKN250
+  // TAF: VCSH ... PROB30 TSRA
+  const metarText = "METAR KMEM 210154Z 10SM FEW070 BKN250";
+  const tafText = `TAF KMEM 202327Z 2100/2206 VCSH SCT050 BKN250
+  PROB30 2200/2206 4SM TSRA BKN050CB`;
+
+  const resolvedMetar = resolveOperationalWeather({ text: metarText, sourceKind: "METAR" });
+  assert.equal(resolvedMetar.label, "BROKEN CEILING");
+
+  const timeline = parseStructuredTaf(tafText, new Date("2026-07-21T02:00:00Z"));
+  assert.ok(timeline);
+
+  const prevailingPeriod = timeline.prevailing.find(p => p.raw.includes("VCSH"));
+  assert.ok(prevailingPeriod);
+  assert.equal(prevailingPeriod.weather.label, "SHOWERS IN THE VICINITY");
+
+  const probPeriod = timeline.overlays.find(p => p.weather.sourceKind === "TAF_PROB30" && p.raw.includes("TSRA"));
+  assert.ok(probPeriod);
+  assert.equal(probPeriod.weather.label, "THUNDERSTORMS WITH RAIN");
+});
+
 

@@ -4,6 +4,7 @@ export type WeatherSourceKind = "METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PRO
 export type WeatherCategory = "severe-convection"|"thunderstorm"|"freezing-precipitation"|"winter-precipitation"|"liquid-precipitation"|"obscuration"|"cloud"|"clear"|"unknown";
 export type OperationalWeather = {
   code:string|null; codes:string[]; category:WeatherCategory; condition:Theme; label:string; shortLabel:string;
+  secondaryLabel?:string|null;
   intensity:"light"|"moderate"|"heavy"|null; vicinity:boolean; temporary:boolean; probability:number|null;
   visibilitySm:number|null; cloudCoverage:CloudCoverage|null; cloudBaseFt:number|null; cloudSummary:string|null; sourceKind:WeatherSourceKind;
 };
@@ -50,28 +51,233 @@ function intensityFor(code:string,category:WeatherCategory):"light"|"moderate"|"
   return code.startsWith("+")?"heavy":code.startsWith("-")?"light":"moderate";
 }
 
-function labelFor(code:string,codes:string[],category:WeatherCategory):string {
-  const all=codes.join(" "), heavy=code.startsWith("+"), light=code.startsWith("-"), vicinity=code.startsWith("VC");
-  if(/\+FC/.test(all)) return "Tornado"; if(/FC/.test(code)) return "Funnel cloud"; if(/SQ/.test(code)) return "Squall";
-  if(category==="severe-convection"&&/GR|GS/.test(all)) return /GS/.test(all)?"Small hail":"Hail";
-  if(category==="thunderstorm") return /GR|GS/.test(all)?"Thunderstorm, hail":/SN/.test(all)?"Thunderstorm, snow":/RA/.test(all)?"Thunderstorm, rain":vicinity?"Thunderstorm nearby":"Thunderstorm";
-  if(/FZRA/.test(code)) return `${heavy?"Heavy ":light?"Light ":""}freezing rain`; if(/FZDZ/.test(code)) return "Freezing drizzle";
-  if(/PL/.test(code)) return "Ice pellets"; if(/SG/.test(code)) return "Snow grains"; if(/IC/.test(code)) return "Ice crystals"; if(/BLSN/.test(code)) return "Blowing snow"; if(/DRSN/.test(code)) return "Drifting snow"; if(/SHSN/.test(code)) return "Snow showers";
-  if(category==="winter-precipitation") return /RA/.test(all)?"Rain and snow":`${heavy?"Heavy ":light?"Light ":""}snow`;
-  if(/DZ/.test(code)&&!/RA/.test(code)) return `${light?"Light ":""}drizzle`; if(/SHRA/.test(code)) return "Rain showers"; if(/RA/.test(code)) return `${heavy?"Heavy ":light?"Light ":""}rain`; if(/SH/.test(code)) return "Showers nearby"; if(/UP/.test(code)) return "Precipitation";
-  if(vicinity&&/FG/.test(code)) return "Fog nearby"; if(/FZFG/.test(code)) return "Freezing fog"; if(/MIFG/.test(code)) return "Shallow fog"; if(/BCFG/.test(code)) return "Patches of fog"; if(/PRFG/.test(code)) return "Partial fog"; if(/FG/.test(code)) return "Fog"; if(/BR/.test(code)) return "Mist"; if(/HZ/.test(code)) return "Haze"; if(/FU/.test(code)) return "Smoke"; if(/VA/.test(code)) return "Volcanic ash"; if(/BLDU/.test(code)) return "Blowing dust"; if(/DRDU/.test(code)) return "Drifting dust"; if(/DU/.test(code)) return "Dust"; if(/BLSA/.test(code)) return "Blowing sand"; if(/DRSA/.test(code)) return "Drifting sand"; if(/SA/.test(code)) return "Sand"; if(/PY/.test(code)) return "Spray"; if(/PO/.test(code)) return "Dust whirls"; if(/DS/.test(code)) return "Dust storm"; if(/SS/.test(code)) return "Sandstorm";
-  return "Weather";
+function decodeSingleCode(token: string): { label: string; short: string } {
+  const intensity = token.startsWith("+") ? "HEAVY" : token.startsWith("-") ? "LIGHT" : "";
+  const clean = token.replace(/^[+-]/, "");
+  
+  if (clean === "FC") return { label: token.startsWith("+") ? "TORNADO" : "FUNNEL CLOUD", short: token.startsWith("+") ? "TORNADO" : "FUNNEL CLOUD" };
+  if (clean === "SQ") return { label: "SQUALL", short: "SQUALL" };
+  if (clean === "UP") return { label: "UNKNOWN PRECIPITATION", short: "UNKNOWN PRECIP" };
+  if (clean === "TS") return { label: "THUNDERSTORMS", short: "TSTMS" };
+  if (clean === "VCTS") return { label: "THUNDERSTORMS IN THE VICINITY", short: "VICINITY TSTMS" };
+  if (clean.includes("TS")) {
+    const hasHail = /GR/.test(clean);
+    const hasSmallHail = /GS/.test(clean);
+    const hasSnow = /SN/.test(clean);
+    const hasRain = /RA/.test(clean);
+    
+    let base = "THUNDERSTORMS";
+    let shortBase = "TSTMS";
+    if (hasRain && hasHail) {
+      base += " WITH RAIN AND HAIL";
+      shortBase += " W/ RAIN & HAIL";
+    } else if (hasRain) {
+      base += " WITH RAIN";
+      shortBase += " WITH RAIN";
+    } else if (hasSnow) {
+      base += " WITH SNOW";
+      shortBase += " WITH SNOW";
+    } else if (hasHail) {
+      base += " WITH HAIL";
+      shortBase += " WITH HAIL";
+    } else if (hasSmallHail) {
+      base += " WITH SMALL HAIL";
+      shortBase += " W/ SMALL HAIL";
+    }
+    
+    const fullLabel = intensity ? `${intensity} ${base}` : base;
+    const shortLabel = intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} ${shortBase}` : shortBase;
+    return { label: fullLabel, short: shortLabel };
+  }
+  
+  if (clean === "VCSH") return { label: "SHOWERS IN THE VICINITY", short: "VICINITY SHOWERS" };
+  if (clean === "SHRA") {
+    return {
+      label: intensity ? `${intensity} RAIN SHOWERS` : "RAIN SHOWERS",
+      short: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} RAIN SHOWERS` : "RAIN SHOWERS"
+    };
+  }
+  if (clean === "SHSN") {
+    return {
+      label: intensity ? `${intensity} SNOW SHOWERS` : "SNOW SHOWERS",
+      short: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} SNOW SHOWERS` : "SNOW SHOWERS"
+    };
+  }
+  
+  if (clean === "FZRA") {
+    return {
+      label: intensity ? `${intensity} FREEZING RAIN` : "FREEZING RAIN",
+      short: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} FREEZING RAIN` : "FREEZING RAIN"
+    };
+  }
+  if (clean === "FZDZ") return { label: "FREEZING DRIZZLE", short: "FREEZING DRIZZLE" };
+  
+  if (clean === "RA") {
+    return {
+      label: intensity ? `${intensity} RAIN` : "RAIN",
+      short: intensity ? `${intensity} RAIN` : "RAIN"
+    };
+  }
+  if (clean === "DZ") {
+    return {
+      label: intensity ? `${intensity} DRIZZLE` : "DRIZZLE",
+      short: intensity ? `${intensity} DRIZZLE` : "DRIZZLE"
+    };
+  }
+  
+  if (clean === "SN") {
+    return {
+      label: intensity ? `${intensity} SNOW` : "SNOW",
+      short: intensity ? `${intensity} SNOW` : "SNOW"
+    };
+  }
+  if (clean === "BLSN") {
+    return {
+      label: intensity ? `${intensity} BLOWING SNOW` : "BLOWING SNOW",
+      short: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} BLOWING SNOW` : "BLOWING SNOW"
+    };
+  }
+  if (clean === "DRSN") return { label: "DRIFTING SNOW", short: "DRIFTING SNOW" };
+  if (clean === "SG") return { label: "SNOW GRAINS", short: "SNOW GRAINS" };
+  if (clean === "IC") return { label: "ICE CRYSTALS", short: "ICE CRYSTALS" };
+  if (clean === "PL") return { label: "ICE PELLETS", short: "ICE PELLETS" };
+  if (clean === "GR") return { label: "HAIL", short: "HAIL" };
+  if (clean === "GS") return { label: "SMALL HAIL", short: "SMALL HAIL" };
+  
+  if (clean === "RASN" || clean === "SNRA") return { label: "RAIN AND SNOW", short: "RAIN AND SNOW" };
+  
+  if (clean === "BR") return { label: "MIST", short: "MIST" };
+  if (clean === "FG") return { label: "FOG", short: "FOG" };
+  if (clean === "FZFG") return { label: "FREEZING FOG", short: "FREEZING FOG" };
+  if (clean === "MIFG") return { label: "SHALLOW FOG", short: "SHALLOW FOG" };
+  if (clean === "BCFG") return { label: "PATCHES OF FOG", short: "PATCHES OF FOG" };
+  if (clean === "PRFG") return { label: "PARTIAL FOG", short: "PARTIAL FOG" };
+  if (clean === "HZ") return { label: "HAZE", short: "HAZE" };
+  if (clean === "FU") return { label: "SMOKE", short: "SMOKE" };
+  if (clean === "DU") return { label: "DUST", short: "DUST" };
+  if (clean === "BLDU") return { label: "BLOWING DUST", short: "BLOWING DUST" };
+  if (clean === "DRDU") return { label: "DRIFTING DUST", short: "DRIFTING DUST" };
+  if (clean === "SA") return { label: "SAND", short: "SAND" };
+  if (clean === "BLSA") return { label: "BLOWING SAND", short: "BLOWING SAND" };
+  if (clean === "DRSA") return { label: "DRIFTING SAND", short: "DRIFTING SAND" };
+  if (clean === "DS") return { label: "DUST STORM", short: "DUST STORM" };
+  if (clean === "SS") return { label: "SANDSTORM", short: "SANDSTORM" };
+  if (clean === "VA") return { label: "VOLCANIC ASH", short: "VOLCANIC ASH" };
+  
+  return { label: token, short: token };
 }
 
-function cloudLabel(coverage:CloudCoverage|null):string { return coverage==="VV"?"Vertical visibility":coverage==="OVC"?"Overcast":coverage==="BKN"?"Broken clouds":coverage==="SCT"?"Scattered clouds":coverage==="FEW"?"Few clouds":coverage==="CLR"?"Clear":"Weather unavailable"; }
+export function resolvePhenomenaLabels(codes: string[]): { label: string; shortLabel: string; secondaryLabel: string | null } {
+  if (!codes || !codes.length) return { label: "CLEAR", shortLabel: "CLR", secondaryLabel: null };
+  const upperCodes = codes.map(c => c.toUpperCase());
+  
+  const hasFzra = upperCodes.some(c => c.includes("FZRA"));
+  const hasPl = upperCodes.some(c => c.includes("PL"));
+  if (hasFzra && hasPl) {
+    return { label: "FREEZING RAIN AND ICE PELLETS", shortLabel: "FZRA + ICE PELLETS", secondaryLabel: null };
+  }
+  
+  const snToken = codes.find(c => c.toUpperCase().replace(/^[+-]/, "") === "SN");
+  const hasBlsn = upperCodes.some(c => c === "BLSN");
+  if (snToken && hasBlsn) {
+    const intensity = snToken.startsWith("+") ? "HEAVY" : snToken.startsWith("-") ? "LIGHT" : "";
+    const base = "SNOW AND BLOWING SNOW";
+    const shortBase = "SNOW & BLOWING SNOW";
+    return {
+      label: intensity ? `${intensity} ${base}` : base,
+      shortLabel: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} ${shortBase}` : shortBase,
+      secondaryLabel: null
+    };
+  }
+  
+  const hasRa = upperCodes.some(c => c.replace(/^[+-]/, "") === "RA");
+  const hasSn = upperCodes.some(c => c.replace(/^[+-]/, "") === "SN");
+  const hasRasn = upperCodes.some(c => c === "RASN" || c === "SNRA");
+  if ((hasRa && hasSn) || hasRasn) {
+    return { label: "RAIN AND SNOW", shortLabel: "RAIN AND SNOW", secondaryLabel: null };
+  }
+  
+  const sorted = [...codes].sort((a,b)=>CATEGORY_RANK[categoryFor(b)]-CATEGORY_RANK[categoryFor(a)]||({heavy:3,moderate:2,light:1}[intensityFor(b,categoryFor(b))||"light"]-({heavy:3,moderate:2,light:1}[intensityFor(a,categoryFor(a))||"light"])));
+  const primaryToken = sorted[0];
+  const secondaryToken = sorted[1];
+  const primary = decodeSingleCode(primaryToken);
+  
+  let secondaryLabel: string | null = null;
+  if (secondaryToken) {
+    const secDecoded = decodeSingleCode(secondaryToken);
+    secondaryLabel = secDecoded.label;
+  }
+  
+  return {
+    label: primary.label,
+    shortLabel: primary.short,
+    secondaryLabel
+  };
+}
+
+function cloudLabel(coverage:CloudCoverage|null):string {
+  if (!coverage) return "WEATHER UNAVAILABLE";
+  const cov = coverage.toUpperCase();
+  if (cov === "CLR" || cov === "SKC" || cov === "NSC" || cov === "NCD") return "CLEAR";
+  if (cov === "FEW") return "FEW CLOUDS";
+  if (cov === "SCT") return "SCATTERED CLOUDS";
+  if (cov === "BKN") return "BROKEN CEILING";
+  if (cov === "OVC") return "OVERCAST CEILING";
+  if (cov === "VV") return "INDEFINITE CEILING";
+  return "WEATHER UNAVAILABLE";
+}
 
 export function resolveOperationalWeather(input:{text?:string;codes?:string[];visibilitySm?:number|null;cloudCoverage?:CloudCoverage|null;cloudBaseFt?:number|null;cloudSummary?:string|null;sourceKind:WeatherSourceKind;temporary?:boolean;probability?:number|null}):OperationalWeather {
   const sky=parseAviationSky(input.text||""), codes=input.codes||extractAviationPhenomena(input.text||"");
   const sorted=[...codes].sort((a,b)=>CATEGORY_RANK[categoryFor(b)]-CATEGORY_RANK[categoryFor(a)]||({heavy:3,moderate:2,light:1}[intensityFor(b,categoryFor(b))||"light"]-({heavy:3,moderate:2,light:1}[intensityFor(a,categoryFor(a))||"light"])));
   const code=sorted[0]||null, coverage=input.cloudCoverage??sky.cloudCoverage, base=input.cloudBaseFt??sky.cloudBaseFt, summary=input.cloudSummary??sky.cloudSummary, visibility=input.visibilitySm??sky.visibilitySm;
-  if(code){const category=categoryFor(code),label=labelFor(code,codes,category);return {code,codes,category,condition:category==="severe-convection"||category==="thunderstorm"?"thunderstorm":category==="freezing-precipitation"?code.startsWith("+")?"heavy-rain":"rain":category==="winter-precipitation"?"snow":category==="liquid-precipitation"?code.startsWith("+")?"heavy-rain":"rain":category==="obscuration"?"fog":"neutral",label:label.replace(/^./,c=>c.toUpperCase()),shortLabel:code,intensity:intensityFor(code,category),vicinity:code.startsWith("VC"),temporary:!!input.temporary,probability:input.probability??null,visibilitySm:visibility,cloudCoverage:coverage,cloudBaseFt:base,cloudSummary:summary,sourceKind:input.sourceKind};}
-  const category:WeatherCategory=coverage==="CLR"?"clear":coverage?"cloud":"unknown", condition:Theme=coverage==="CLR"?"clear":coverage==="FEW"||coverage==="SCT"?"partly-cloudy":coverage?"overcast":"neutral", label=cloudLabel(coverage);
-  return {code:null,codes:[],category,condition,label,shortLabel:summary||coverage||"WX",intensity:null,vicinity:false,temporary:!!input.temporary,probability:input.probability??null,visibilitySm:visibility,cloudCoverage:coverage,cloudBaseFt:base,cloudSummary:summary,sourceKind:input.sourceKind};
+  
+  if(code){
+    const category=categoryFor(code);
+    const res=resolvePhenomenaLabels(codes);
+    const condition=category==="severe-convection"||category==="thunderstorm"?"thunderstorm":category==="freezing-precipitation"?code.startsWith("+")?"heavy-rain":"rain":category==="winter-precipitation"?"snow":category==="liquid-precipitation"?code.startsWith("+")?"heavy-rain":"rain":category==="obscuration"?"fog":"neutral";
+    return {
+      code,
+      codes,
+      category,
+      condition,
+      label: res.label,
+      shortLabel: res.shortLabel,
+      secondaryLabel: res.secondaryLabel,
+      intensity: intensityFor(code,category),
+      vicinity: code.startsWith("VC"),
+      temporary: !!input.temporary,
+      probability: input.probability??null,
+      visibilitySm: visibility,
+      cloudCoverage: coverage,
+      cloudBaseFt: base,
+      cloudSummary: summary,
+      sourceKind: input.sourceKind
+    };
+  }
+  
+  const category:WeatherCategory=coverage==="CLR"?"clear":coverage?"cloud":"unknown";
+  const condition:Theme=coverage==="CLR"?"clear":coverage==="FEW"||coverage==="SCT"?"partly-cloudy":coverage?"overcast":"neutral";
+  const label=cloudLabel(coverage);
+  
+  return {
+    code: null,
+    codes: [],
+    category,
+    condition,
+    label,
+    shortLabel: summary||coverage||"WX",
+    secondaryLabel: null,
+    intensity: null,
+    vicinity: false,
+    temporary: !!input.temporary,
+    probability: input.probability??null,
+    visibilitySm: visibility,
+    cloudCoverage: coverage,
+    cloudBaseFt: base,
+    cloudSummary: summary,
+    sourceKind: input.sourceKind
+  };
 }
 
 function score(weather:OperationalWeather):number { const intensity=weather.intensity==="heavy"?30:weather.intensity==="moderate"?20:weather.intensity==="light"?10:0;return CATEGORY_RANK[weather.category]+intensity+(weather.probability||0)/100; }
