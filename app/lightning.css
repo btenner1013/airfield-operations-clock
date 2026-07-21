@@ -9,7 +9,7 @@
 .lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{position:absolute;inset:0;display:block;pointer-events:none;opacity:0;animation:none!important;transition:opacity 65ms ease-out}
 .lightning-glow{background:radial-gradient(ellipse 34% 31% at var(--lightning-x,62%) var(--lightning-y,32%),rgba(181,215,242,.88),rgba(103,151,194,.34) 28%,transparent 70%);filter:blur(9px)}
 .lightning-horizon-glow{background:radial-gradient(ellipse 58% 19% at var(--lightning-x,62%) 72%,rgba(145,191,228,.52),rgba(78,119,157,.18) 42%,transparent 74%);filter:blur(13px)}
-.lightning-bolt-overlay{inset:auto;top:0;bottom:12%;left:var(--lightning-x,62%);width:60vh;transform:translateX(-50%);background-size:auto 100%;background-position:74% top;background-repeat:no-repeat;filter:brightness(.9) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
+.lightning-bolt-overlay{inset:auto;top:var(--lightning-y,32%);bottom:auto;left:var(--lightning-x,62%);height:clamp(140px,42vh,640px);height:clamp(140px,42dvh,640px);aspect-ratio:535/795;transform:translate(-50%,-8%);transform-origin:50% 0;background-size:contain;background-position:top center;background-repeat:no-repeat;filter:brightness(1) saturate(.7) drop-shadow(0 0 10px rgba(172,216,250,.48));mix-blend-mode:screen}
 
 .display[data-lightning-level="distant"][data-lightning-pulse="1"] .lightning-glow{opacity:.54}
 .display[data-lightning-level="distant"][data-lightning-pulse="2"] .lightning-glow{opacity:.36}
@@ -23,9 +23,10 @@
 .display[data-lightning-level="severe"][data-lightning-pulse="1"] .lightning-glow{opacity:.96}
 .display[data-lightning-level="severe"][data-lightning-pulse="2"] .lightning-glow{opacity:.64}
 .display[data-lightning-level="severe"][data-lightning-pulse]:not([data-lightning-pulse="0"]) .lightning-horizon-glow{opacity:.68}
-.display[data-lightning-bolt="1"][data-lightning-level="distant"] .lightning-bolt-overlay{opacity:.22}
-.display[data-lightning-bolt="1"][data-lightning-level="station"] .lightning-bolt-overlay{opacity:.62}
-.display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.88}
+.display[data-lightning-bolt="1"][data-lightning-level="distant"][data-lightning-frequency="frequent"] .lightning-bolt-overlay{opacity:.28;transform:translate(-50%,-4%) scale(0.65)}
+.display[data-lightning-bolt="1"][data-lightning-level="vicinity"] .lightning-bolt-overlay{opacity:.48}
+.display[data-lightning-bolt="1"][data-lightning-level="station"] .lightning-bolt-overlay{opacity:.72}
+.display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.96}
 
 .sky-base{transition:filter 160ms ease-out}
 .display[data-lightning-pulse="1"] .sky-base{filter:brightness(0.48) contrast(1.18) saturate(0.85);transition:filter 35ms ease-out}
