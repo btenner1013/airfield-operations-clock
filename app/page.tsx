@@ -456,17 +456,22 @@ export default function Home() {
                   const rad = (1 - effSolar.progress / 100) * Math.PI;
                   const cx = 100 + 80 * Math.cos(rad);
                   const cy = 105 - 65 * Math.sin(rad);
+                  const isHorizon = effSolar.progress <= 18 || effSolar.progress >= 82 || phase === "sunrise" || phase === "sunset";
+                  if (isHorizon) {
+                    return (
+                      <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
+                        <circle r="20" fill="rgba(255, 140, 0, 0.3)" />
+                        <circle r="13" fill="rgba(255, 183, 77, 0.6)" />
+                        <circle r="8" fill="#ffe082" stroke="#ffb74d" strokeWidth="1.5" />
+                        <circle r="4" fill="#ffffff" />
+                      </g>
+                    );
+                  }
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="36" fill="url(#sunOuterCorona)" />
-                      <circle r="22" fill="url(#sunCoreGlow)" />
-                      <g stroke="#ffffff" strokeWidth="1.2" opacity="0.95" strokeLinecap="round">
-                        <line x1="0" y1="-32" x2="0" y2="32" /><line x1="-32" y1="0" x2="32" y2="0" /><line x1="-22" y1="-22" x2="22" y2="22" /><line x1="-22" y1="22" x2="22" y2="-22" />
-                      </g>
-                      <g stroke="#ffe899" strokeWidth="0.8" opacity="0.75" strokeLinecap="round">
-                        <line x1="0" y1="-42" x2="0" y2="42" /><line x1="-42" y1="0" x2="42" y2="0" /><line x1="-29" y1="-29" x2="29" y2="29" /><line x1="-29" y1="29" x2="29" y2="-29" /><line x1="-12" y1="-36" x2="12" y2="36" /><line x1="-36" y1="-12" x2="36" y2="12" />
-                      </g>
-                      <circle r="18" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" /><circle r="7" fill="#ffffff" />
+                      <circle r="22" fill="url(#sunOuterCorona)" />
+                      <circle r="14" fill="url(#sunCoreGlow)" />
+                      <circle r="7" fill="#ffffff" stroke="#fde047" strokeWidth="1.5" />
                     </g>
                   );
                 })() : (() => {
