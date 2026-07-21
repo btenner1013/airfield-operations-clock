@@ -416,8 +416,38 @@ export default function Home() {
           <div className="solar-layout">
             <div className="solar-graphic-wrap">
               <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="solar-svg">
-                <path d="M 20 105 A 80 65 0 0 1 180 105" className="solar-arc-bg" fill="none" stroke="rgba(255,184,84,0.4)" strokeWidth="2" strokeDasharray="4 3" />
-                <path d="M 20 105 A 80 35 0 0 0 180 105" className="lunar-arc-bg" fill="none" stroke="rgba(96,165,250,0.35)" strokeWidth="2" strokeDasharray="4 3" />
+                <defs>
+                  {/* Sun Gradients: Blinding core, intense glare bloom, outer corona */}
+                  <radialGradient id="sunCoreGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="20%" stopColor="#ffffff" />
+                    <stop offset="45%" stopColor="#fffae6" />
+                    <stop offset="70%" stopColor="#ffe680" />
+                    <stop offset="100%" stopColor="rgba(255, 204, 0, 0)" />
+                  </radialGradient>
+                  <radialGradient id="sunOuterCorona" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(255, 255, 255, 0.9)" />
+                    <stop offset="25%" stopColor="rgba(255, 220, 100, 0.6)" />
+                    <stop offset="55%" stopColor="rgba(255, 140, 0, 0.3)" />
+                    <stop offset="80%" stopColor="rgba(255, 80, 0, 0.12)" />
+                    <stop offset="100%" stopColor="rgba(255, 50, 0, 0)" />
+                  </radialGradient>
+
+                  {/* Moon Gradients & Patterns: Realistic lunar maria and dimensional limb */}
+                  <radialGradient id="moonBody" cx="40%" cy="35%" r="65%">
+                    <stop offset="0%" stopColor="#f1f5f9" />
+                    <stop offset="45%" stopColor="#cbd5e1" />
+                    <stop offset="75%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#0f172a" />
+                  </radialGradient>
+                  <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(226, 232, 240, 0.35)" />
+                    <stop offset="70%" stopColor="rgba(148, 163, 184, 0.1)" />
+                    <stop offset="100%" stopColor="rgba(148, 163, 184, 0)" />
+                  </radialGradient>
+                </defs>
+                <path d="M 20 105 A 80 65 0 0 1 180 105" className="solar-arc-bg" fill="none" stroke="rgba(255, 220, 100, 0.5)" strokeWidth="2.5" strokeDasharray="4 3" />
+                <path d="M 20 105 A 80 35 0 0 0 180 105" className="lunar-arc-bg" fill="none" stroke="rgba(148, 163, 184, 0.45)" strokeWidth="2" strokeDasharray="4 3" />
                 <line x1="10" y1="105" x2="190" y2="105" stroke="var(--line)" strokeWidth="1.5" />
                 <circle cx="20" cy="105" r="3" fill="#eea54d" />
                 <circle cx="180" cy="105" r="3" fill="#eea54d" />
@@ -427,8 +457,31 @@ export default function Home() {
                   const cy = 105 - 65 * Math.sin(rad);
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="14" fill="rgba(255, 196, 0, 0.22)" />
-                      <circle r="7" fill="#fff8db" stroke="#ffb751" strokeWidth="2" />
+                      {/* Broad Camera Lens Flare Halo */}
+                      <circle r="36" fill="url(#sunOuterCorona)" />
+                      <circle r="22" fill="url(#sunCoreGlow)" />
+
+                      {/* Intense Starburst Radial Solar Rays */}
+                      <g stroke="#ffffff" strokeWidth="1.2" opacity="0.95" strokeLinecap="round">
+                        <line x1="0" y1="-32" x2="0" y2="32" />
+                        <line x1="-32" y1="0" x2="32" y2="0" />
+                        <line x1="-22" y1="-22" x2="22" y2="22" />
+                        <line x1="-22" y1="22" x2="22" y2="-22" />
+                      </g>
+                      <g stroke="#ffe899" strokeWidth="0.8" opacity="0.75" strokeLinecap="round">
+                        <line x1="0" y1="-42" x2="0" y2="42" />
+                        <line x1="-42" y1="0" x2="42" y2="0" />
+                        <line x1="-29" y1="-29" x2="29" y2="29" />
+                        <line x1="-29" y1="29" x2="29" y2="-29" />
+                        <line x1="-12" y1="-36" x2="12" y2="36" />
+                        <line x1="-36" y1="-12" x2="36" y2="12" />
+                      </g>
+
+                      {/* Camera Anamorphic Artifact Ring */}
+                      <circle r="18" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" />
+                      
+                      {/* Pure White Hot Center Disk */}
+                      <circle r="7" fill="#ffffff" />
                     </g>
                   );
                 })() : (() => {
@@ -437,9 +490,35 @@ export default function Home() {
                   const cy = 105 + 35 * Math.sin(rad);
                   return (
                     <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.2" />
-                      <circle cx="-2" cy="-2" r="1.5" fill="#64748b" opacity="0.6" />
-                      <circle cx="2" cy="2" r="2" fill="#64748b" opacity="0.5" />
+                      {/* Lunar Outer Atmosphere Glow */}
+                      <circle r="20" fill="url(#moonGlow)" />
+
+                      {/* Main Moon Sphere Base */}
+                      <circle r="13" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
+
+                      {/* Dark Lunar Maria (Basaltic Seas) */}
+                      <path d="M -5 -6 Q -2 -10 3 -7 Q 7 -3 4 2 Q -1 4 -6 1 Z" fill="#334155" opacity="0.55" />
+                      <path d="M 2 1 Q 6 0 8 4 Q 7 8 2 7 Q -1 4 2 1 Z" fill="#334155" opacity="0.5" />
+                      <path d="M -9 1 Q -6 0 -4 4 Q -7 8 -10 5 Z" fill="#334155" opacity="0.45" />
+
+                      {/* Impact Craters with Highlighted Rims & Shadows */}
+                      {/* Tycho Crater (Southern Highlands with ejecta rays) */}
+                      <circle cx="1" cy="7" r="2.2" fill="#1e293b" opacity="0.6" />
+                      <circle cx="1" cy="7" r="1.8" fill="none" stroke="#f8fafc" strokeWidth="0.5" opacity="0.8" />
+                      <line x1="1" y1="7" x2="-4" y2="11" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
+                      <line x1="1" y1="7" x2="6" y2="10" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
+
+                      {/* Copernicus Crater */}
+                      <circle cx="-4" cy="-2" r="1.8" fill="#1e293b" opacity="0.6" />
+                      <circle cx="-4" cy="-2" r="1.4" fill="none" stroke="#f8fafc" strokeWidth="0.4" opacity="0.7" />
+
+                      {/* Kepler Crater */}
+                      <circle cx="5" cy="-3" r="1.4" fill="#1e293b" opacity="0.5" />
+                      <circle cx="5" cy="-3" r="1.1" fill="none" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
+
+                      {/* Additional Rim Texture Craters */}
+                      <circle cx="-7" cy="4" r="1.2" fill="#334155" opacity="0.5" />
+                      <circle cx="6" cy="5" r="1.5" fill="#334155" opacity="0.4" />
                     </g>
                   );
                 })()}
