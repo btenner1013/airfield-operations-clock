@@ -1,16 +1,58 @@
-.solar-line{background:rgba(159,178,184,.25)}.solar-fill{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,#f2a23e,#ff7548);box-shadow:0 0 8px rgba(255,157,65,.42)}.solar-now small{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 5px #000}
+.solar-line{background:rgba(159,178,184,.25)}
+.solar-fill{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,#f2a23e,#ff7548);box-shadow:0 0 8px rgba(255,157,65,.42)}
+.solar-now small{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);font:700 7px/1 Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;text-shadow:0 1px 5px #000}
 
-/* Wind Card Styles */
+/* Solar Window Curve Cleanup */
+.solar-arc::before,
+.solar-arc::after {
+  display: none !important;
+}
+
+/* Header Branding Updates */
+.brand-logo {
+  height: clamp(52px, 6.2vh, 84px) !important;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.brand strong {
+  font-size: clamp(20px, 1.8vw, 32px) !important;
+  letter-spacing: .22em !important;
+  font-weight: 800 !important;
+}
+.brand small {
+  display: block;
+  margin-top: 6px;
+  color: #c8d0d3 !important;
+  font-size: clamp(11px, 0.9vw, 16px) !important;
+  letter-spacing: .18em !important;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+/* Global Panel Title Size */
+.panel-title {
+  font-size: clamp(11px, 0.6vw, 18px) !important;
+  letter-spacing: .17em;
+  color: #bbc7ca;
+}
+.panel-title b {
+  font-size: inherit !important;
+  color: #77878d;
+}
+
+/* Wind Card Styles & Compass Gauge */
 .wind-main {
   height: 75%;
   display: flex;
   align-items: center;
-  gap: clamp(10px, 1vw, 20px);
+  gap: clamp(12px, 1.2vw, 24px);
 }
 .compass-wrap {
   flex: 0 0 auto;
-  width: clamp(56px, 5.2vw, 84px);
-  height: clamp(56px, 5.2vw, 84px);
+  width: clamp(70px, 6.2vw, 104px);
+  height: clamp(70px, 6.2vw, 104px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,32 +61,53 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(88, 215, 245, 0.15);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.02);
+  background: radial-gradient(circle, rgba(6,16,21,0.6) 0%, rgba(2,6,8,0.85) 100%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 1px 2px rgba(255,255,255,0.05);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+}
+.compass-ticks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: rgba(88, 215, 245, 0.25);
+  pointer-events: none;
 }
 .compass-label {
   position: absolute;
-  font: 700 8px Consolas, monospace;
-  color: var(--muted);
+  font: 800 clamp(8px, 0.7vw, 11px) Consolas, monospace;
+  color: #aebbc0;
   line-height: 1;
 }
-.compass-n { top: 3px; }
-.compass-s { bottom: 3px; }
-.compass-e { right: 4px; }
-.compass-w { left: 4px; }
+.compass-n { top: 6px; left: 50%; transform: translateX(-50%); color: var(--cyan); }
+.compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
+.compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+
 .compass-arrow {
-  font-size: clamp(18px, 1.8vw, 28px);
-  color: var(--cyan);
-  line-height: 1;
-  transition: transform 1s ease-out;
-  font-family: Consolas, monospace;
-  font-weight: bold;
-  text-shadow: 0 0 10px rgba(88, 215, 245, 0.35);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
+.compass-arrow-svg {
+  width: 65%;
+  height: 65%;
+  filter: drop-shadow(0 0 4px rgba(88, 215, 245, 0.6));
+}
+.compass-calm-indicator {
+  font: 700 clamp(16px, 1.5vw, 24px) Consolas, monospace;
+  color: var(--muted);
+  animation: pulse 2s infinite ease-in-out;
+}
+
 .wind-info {
   display: flex;
   flex-direction: column;
@@ -52,23 +115,23 @@
   min-width: 0;
 }
 .wind-info strong {
-  font: clamp(20px, 2vw, 36px)/1 Consolas, monospace;
+  font: clamp(22px, 2.1vw, 38px)/1 Consolas, monospace !important;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
 .wind-separator {
-  color: var(--muted);
-  font-weight: normal;
+  color: var(--line) !important;
+  margin: 0 4px;
 }
 .wind-unit {
-  font-size: 0.5em;
+  font-size: 0.55em;
   color: var(--muted);
   font-weight: normal;
   letter-spacing: 0.05em;
 }
 .wind-card-meta {
   color: #aebbc0;
-  font-size: clamp(7px, 0.62vw, 12px);
+  font-size: clamp(9px, 0.72vw, 13px);
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -91,7 +154,7 @@
   min-width: 0;
 }
 .bird-severity {
-  font: clamp(20px, 2vw, 36px)/1 Consolas, monospace;
+  font: clamp(22px, 2.1vw, 38px)/1 Consolas, monospace;
   letter-spacing: 0.05em;
 }
 .risk-severe .bird-severity {
@@ -108,7 +171,7 @@
 }
 .bird-card-meta {
   color: #aebbc0;
-  font-size: clamp(7px, 0.62vw, 12px);
+  font-size: clamp(9px, 0.72vw, 13px);
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -117,25 +180,159 @@
 .weather-main div b {
   white-space: normal;
   line-height: 1.25;
-  font-size: clamp(11px, 0.9vw, 18px);
+  font-size: clamp(12px, 0.9vw, 18px);
+}
+.weather-main div small {
+  white-space: normal !important;
+  line-height: 1.35;
+  font-size: clamp(9px, 0.72vw, 13px);
+}
+.feels-like {
+  display: block;
+}
+.weather-main > strong {
+  white-space: nowrap !important;
 }
 
-.forecast-grid>div{display:flex;flex-direction:column;justify-content:space-between;align-items:center;height:100%;padding:4px 5px;gap:2px}
-.forecast-grid time,.forecast-grid span,.forecast-grid strong,.forecast-grid small{align-self:center;line-height:1}
-.forecast-grid span{display:grid;place-items:center}
-.forecast-grid strong{margin:0}
-.forecast-grid .forecast-condition{overflow:visible;text-overflow:clip;max-width:100%;white-space:normal;line-height:1.2;font-size:clamp(6px,.48vw,9px);text-align:center;min-height:2.4em;display:flex;align-items:center;justify-content:center}
+/* Future Weather Card Typography Hierarchy Upgrades */
+.forecast-grid {
+  gap: 10px;
+  padding: 8px 0;
+}
+.forecast-grid>div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 4px 6px;
+  gap: 4px;
+}
+.forecast-grid time,
+.forecast-grid span,
+.forecast-grid strong,
+.forecast-grid small {
+  align-self: center;
+  line-height: 1;
+}
+.forecast-grid span {
+  display: grid;
+  place-items: center;
+}
+.forecast-grid time {
+  font: 600 clamp(13px, 0.75vw, 24px) Consolas, monospace !important;
+  color: #c8d0d3 !important;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.forecast-grid .forecast-condition {
+  font-size: clamp(12px, 0.7vw, 22px) !important;
+  font-weight: 700 !important;
+  color: var(--white) !important;
+  line-height: 1.25 !important;
+  text-align: center;
+  min-height: 2.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.forecast-grid strong {
+  font: 700 clamp(24px, 1.4vw, 44px) Consolas, monospace !important;
+  color: #f4b45b !important;
+  margin: 4px 0 !important;
+}
+.forecast-grid small:not(.forecast-condition) {
+  font-size: clamp(10px, 0.6vw, 18px) !important;
+  color: var(--muted) !important;
+  letter-spacing: 0.05em;
+  text-align: center;
+  line-height: 1.3;
+}
+.taf-hazard-band {
+  padding: 8px 12px;
+  font-size: clamp(11px, 0.65vw, 20px) !important;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+.taf-hazard-band b {
+  font-size: inherit !important;
+}
 
 @media(max-height:760px){
   .forecast-grid span{font-size:24px}
 }
 
-/* Layout overrides for 1024x768 and smaller */
-@media(max-width:1280px){
+/* Solar Layout Shrinking Support */
+.solar-layout {
+  grid-template-columns: minmax(60px, 0.72fr) minmax(90px, 1.35fr) minmax(60px, 0.72fr) !important;
+  gap: clamp(4px, 0.5vw, 10px) !important;
+}
+
+/* Panel Padding Optimization */
+.panel {
+  padding: clamp(10px, 1vw, 20px) !important;
+}
+
+/* Current Weather Layout Sizing Optimization */
+.weather-glyph {
+  font-size: clamp(40px, 3.2vw, 68px) !important;
+}
+.weather-main > strong {
+  font-size: clamp(34px, 3vw, 64px) !important;
+}
+.weather-main {
+  gap: clamp(10px, 0.8vw, 16px) !important;
+}
+
+/* Optimize Compass wrap size */
+.compass-wrap {
+  width: clamp(60px, 4.8vw, 84px) !important;
+  height: clamp(60px, 4.8vw, 84px) !important;
+}
+
+/* Card Width Rebalancing on Desktop (>1280px) */
+@media(min-width: 1281px) {
   .info {
+    display: grid !important;
+    grid-template-columns: 0.9fr 1.35fr 0.9fr 0.9fr 1.8fr !important;
+    grid-template-rows: auto !important;
+    gap: clamp(8px, 0.8vw, 14px) !important;
+  }
+  .bwc-card {
+    grid-column: auto !important;
+  }
+  .forecast-card {
+    grid-column: auto !important;
+  }
+}
+
+/* Medium Desktop/Laptop Breakpoint (1025px - 1280px) */
+@media(min-width: 1025px) and (max-width: 1280px) {
+  .info {
+    display: grid !important;
+    grid-template-columns: 1fr 1.2fr 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
+  }
+  .bwc-card {
+    grid-column: auto !important;
+  }
+  .forecast-card {
+    grid-column: span 4 !important;
+  }
+}
+
+/* Tablet Breakpoint (721px - 1024px) */
+@media(min-width: 721px) and (max-width: 1024px) {
+  .info {
+    display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
-    grid-template-rows: auto auto;
-    gap: 12px;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
   }
   .bwc-card {
     grid-column: span 1 !important;
@@ -145,17 +342,19 @@
   }
 }
 
-@media(max-width:720px),(orientation:portrait){
+/* Phone Breakpoint (<720px) */
+@media(max-width: 720px), (orientation: portrait) {
   .info {
+    display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: auto;
-    gap: 10px;
+    grid-template-rows: auto !important;
+    gap: 10px !important;
   }
+  .bwc-card,
   .forecast-card {
     grid-column: span 1 !important;
   }
-  html,body {
+  html, body {
     overflow: auto;
   }
 }
-
