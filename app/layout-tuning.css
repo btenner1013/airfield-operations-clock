@@ -1,5 +1,5 @@
 /* ============================================================
-   layout-tuning.css — Continuous 1-Row Rail with 4K Responsive Scaling
+   layout-tuning.css — Continuous 1-Row Rail & Polished Instruments
    ============================================================ */
 
 /* ── SINGLE CONTINUOUS ROW AT ALL SCREEN SIZES ─────────────
@@ -86,11 +86,7 @@
   font-weight: 600;
 }
 
-/* ── SOLAR WINDOW ─────────────────────────────────────────── */
-.solar-arc::before,
-.solar-arc::after {
-  display: none !important;
-}
+/* ── SOLAR WINDOW (DAY ARC + NIGHT MOON ORBIT) ────────────── */
 .solar-layout {
   grid-template-columns: auto 1fr auto;
   gap: clamp(6px, 0.8vw, 14px);
@@ -117,8 +113,90 @@
   white-space: nowrap;
 }
 .solar-arc-wrap {
-  min-width: 0;
+  position: relative;
+  width: 100%;
+  height: clamp(52px, 4.5vw, 78px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.solar-svg {
+  width: 100%;
+  height: 100%;
   overflow: visible;
+}
+.solar-arc-bg {
+  stroke: rgba(255, 184, 84, 0.45);
+  filter: drop-shadow(0 0 4px rgba(255, 184, 84, 0.3));
+}
+.lunar-arc-bg {
+  stroke: rgba(96, 165, 250, 0.35);
+  filter: drop-shadow(0 0 3px rgba(96, 165, 250, 0.25));
+}
+
+/* Sun Visual */
+.solar-sun {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.sun-core {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff8db;
+  box-shadow: 0 0 0 3px rgba(255, 196, 0, 0.4), 0 0 14px 4px rgba(255, 184, 84, 0.8);
+}
+.sun-corona {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 215, 0, 0.6);
+  animation: coronaRotate 12s linear infinite;
+}
+@keyframes coronaRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Moon Orbit & Phase Visual */
+.lunar-moon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.moon-disk {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e2e8f0 0%, #94a3b8 70%, #475569 100%);
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.6), 0 0 10px rgba(148,163,184,0.5);
+  overflow: hidden;
+}
+.moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(51, 65, 85, 0.45);
+  box-shadow: inset 1px 1px 1px rgba(0,0,0,0.4);
+}
+.moon-crater.c1 { width: 3px; height: 3px; top: 3px; left: 3px; }
+.moon-crater.c2 { width: 4px; height: 4px; bottom: 3px; right: 2px; }
+.moon-crater.c3 { width: 2px; height: 2px; top: 7px; left: 8px; }
+.moon-phase-tag {
+  font-size: 7px;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin-top: 2px;
 }
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
@@ -158,32 +236,22 @@
   line-height: 1.25;
 }
 .feels-like-container {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  font-size: clamp(10px, 0.65vw, 13px);
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 8px;
+  font-size: clamp(9.5px, 0.6vw, 12px);
   color: #aebbc0;
   line-height: 1.35;
   letter-spacing: 0.06em;
 }
-.feels-like {
-  white-space: nowrap;
-}
-.ceiling-line {
+.feels-like, .ceiling-line, .vis-line, .humidity-line {
   white-space: nowrap;
 }
 .ceiling-line::before {
-  content: "· ";
-  color: var(--muted);
-}
-.weather-stats span {
-  font-size: clamp(9.5px, 0.6vw, 12px);
-  color: #aebbc0;
-  letter-spacing: 0.06em;
+  content: "";
 }
 
-/* ── WIND CARD ────────────────────────────────────────────── */
+/* ── WIND CARD & FLIGHT CATEGORY ─────────────────────────── */
 .wind-main {
   display: flex;
   align-items: center;
@@ -264,6 +332,25 @@
   color: #aebbc0;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+.wind-flight-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.flight-cat-pill {
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font: 700 0.82em Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.wind-vis-tag {
+  font-size: 0.8em;
+  color: #aebbc0;
+  letter-spacing: 0.06em;
 }
 
 /* ── BWC CARD ─────────────────────────────────────────────── */
