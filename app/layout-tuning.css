@@ -133,12 +133,15 @@
 /* Layout overrides for 1024x768 and smaller */
 @media(max-width:1280px){
   .info {
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     grid-template-rows: auto auto;
     gap: 12px;
   }
+  .bwc-card {
+    grid-column: span 1 !important;
+  }
   .forecast-card {
-    grid-column: span 4 !important;
+    grid-column: span 2 !important;
   }
 }
 
