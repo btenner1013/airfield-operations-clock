@@ -400,7 +400,7 @@ export default function Home() {
   const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const debugHref=useMemo(()=>DEBUG_THEMES.map(t=>`?debugWeather=${t}`),[]);
-  const flightCat = getFlightCategory(weather.visibilitySm, weather.cloudBaseFt, weather.cloudCoverage);
+  const flightCat = getFlightCategory(effVisibility, effBase, effCoverage);
   const moonInfo = getMoonPhase(now);
   if(debugMoon){ moonInfo.name=`${debugMoon.toUpperCase()} MOON`; if(debugMoon==="crescent") moonInfo.phase=0.12; else if(debugMoon==="quarter") moonInfo.phase=0.25; else if(debugMoon==="full") moonInfo.phase=0.50; }
 
@@ -506,88 +506,16 @@ export default function Home() {
           </div>
         </article>
         <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b><div className="feels-like-container"><span className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span><span className="ceiling-line">CEILING <strong>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNL"}</strong></span><span className="humidity-line">HUMIDITY <strong>{weather.humidity}%</strong></span></div>{lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}</div></div><div className={`metar-health health-${metarState.toLowerCase()}`}><span>METAR {metarState}</span>{feed!=="OK"&&<span className={`feed-${feed.toLowerCase()}`}>FEED {feed}</span>}</div></article>
-        <article className="wind-card panel"><div className="panel-title"><span>WIND & FLIGHT CAT</span></div><div className="wind-main"><div className="compass-wrap"><div className="compass-dial"><svg className="compass-ticks" viewBox="0 0 100 100" fill="none" stroke="currentColor"><circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="1.2" opacity="0.4" /><circle cx="50" cy="50" r="42" stroke="var(--line)" strokeWidth="0.5" strokeDasharray="1.5, 3" /><line x1="50" y1="2" x2="50" y2="8" stroke="var(--cyan)" strokeWidth="2" /><line x1="50" y1="92" x2="50" y2="98" stroke="var(--muted)" strokeWidth="1.2" /><line x1="2" y1="50" x2="8" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><line x1="92" y1="50" x2="98" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><circle cx="50" cy="50" r="4" fill="var(--cyan)" box-shadow="0 0 6px var(--cyan)" /></svg><span className="compass-label compass-n">N</span><span className="compass-label compass-e">E</span><span className="compass-label compass-s">S</span><span className="compass-label compass-w">W</span><div className="compass-arrow" style={effWindDir !== null ? { transform: `rotate(${effWindDir + 180}deg)` } : undefined}>{effWindDir !== null ? <svg viewBox="0 0 100 100" className="compass-arrow-svg" fill="none" stroke="currentColor"><path d="M50 10 L60 38 L50 32 L40 38 Z" fill="var(--cyan)" stroke="var(--cyan)" strokeWidth="1.5" strokeLinejoin="round" /><line x1="50" y1="32" x2="50" y2="78" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round" /><circle cx="50" cy="78" r="2.5" fill="var(--cyan)" /></svg> : <div className="compass-calm-indicator">↻</div>}</div></div></div><div className="wind-info"><strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G ${effGust}` : ""}`}</strong>{effWindDir !== null && effWindSpd > 0 && <small className="wind-from">FROM {bearingToCardinal(effWindDir)}</small>}<div className="wind-flight-meta"><span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{flightCat.cat}</span><span className="wind-vis-tag">VIS <strong>{weather.visibilitySm ?? 10} SM</strong></span></div></div></div></article>
+        <article className="wind-card panel"><div className="panel-title"><span>WIND & FLIGHT CAT</span></div><div className="wind-main"><div className="compass-wrap"><div className="compass-dial"><svg className="compass-ticks" viewBox="0 0 100 100" fill="none" stroke="currentColor"><circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="1.2" opacity="0.4" /><circle cx="50" cy="50" r="42" stroke="var(--line)" strokeWidth="0.5" strokeDasharray="1.5, 3" /><line x1="50" y1="2" x2="50" y2="8" stroke="var(--cyan)" strokeWidth="2" /><line x1="50" y1="92" x2="50" y2="98" stroke="var(--muted)" strokeWidth="1.2" /><line x1="2" y1="50" x2="8" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><line x1="92" y1="50" x2="98" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><circle cx="50" cy="50" r="4" fill="var(--cyan)" box-shadow="0 0 6px var(--cyan)" /></svg><span className="compass-label compass-n">N</span><span className="compass-label compass-e">E</span><span className="compass-label compass-s">S</span><span className="compass-label compass-w">W</span><div className="compass-arrow" style={effWindDir !== null ? { transform: `rotate(${effWindDir + 180}deg)` } : undefined}>{effWindDir !== null ? <svg viewBox="0 0 100 100" className="compass-arrow-svg" fill="none" stroke="currentColor"><path d="M50 10 L60 38 L50 32 L40 38 Z" fill="var(--cyan)" stroke="var(--cyan)" strokeWidth="1.5" strokeLinejoin="round" /><line x1="50" y1="32" x2="50" y2="78" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round" /><circle cx="50" cy="78" r="2.5" fill="var(--cyan)" /></svg> : <div className="compass-calm-indicator">↻</div>}</div></div></div><div className="wind-info"><strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G ${effGust}` : ""}`}</strong>{effWindDir !== null && effWindSpd > 0 && <small className="wind-from">FROM {bearingToCardinal(effWindDir)}</small>}<div className="wind-flight-meta"><span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{flightCat.cat}</span><span className="wind-vis-tag">VIS <strong>{effVisibility ?? 10} SM</strong></span></div></div></div></article>
         <article className={`bird-card panel risk-${birdClass}`}><div className="panel-title"><span>BIRD WATCH CONDITION</span><b>USAF AHAS</b></div><div className="bird-main"><span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span><div className="bird-info"><strong className="bird-severity">{birdRisk}</strong><small className="bird-card-meta">AHAS · UPDATED {birdStamp || "1730Z"}</small></div></div></article>
         <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&<div className="taf-hazard-band"><span>TAF HAZARD</span>{weather.tafHazards.slice(0,1).map(h=>{const window=formatTafWindow(h.fromIso,h.toIso,now);return <b key={h.id} data-category={h.weather.category}><time><span>{window.full}</span><small>{window.compact}</small></time><em>TS POSSIBLE · {window.compact}</em></b>})}{weather.tafHazards.length>1&&<i>+{weather.tafHazards.length-1}</i>}</div>}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudCoverage && ["BKN","OVC","VV"].includes(f.operationalWeather.cloudCoverage) && f.operationalWeather.cloudBaseFt !== null ? ` · CIG ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
         <span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span>
-        <span>
-          <button className={`sim-trigger-btn ${showSim ? "active" : ""}`} onClick={() => setShowSim(v => !v)}>
-            DEMO SIMULATOR
-          </button>
-          &nbsp;· PRESS F11 FOR FULL SCREEN
-        </span>
+        <span>PRESS F11 FOR FULL SCREEN</span>
       </footer>
     </div>
-    {showSim && (
-      <nav className="sim-panel" aria-label="Airfield Operations Demo Simulator">
-        <div className="sim-header">
-          <strong>🎛️ AIRFIELD OPERATIONS DEMO SIMULATOR</strong>
-          <button
-            className="sim-close"
-            onClick={() => {
-              setShowSim(false);
-              setDebug(null);
-              setDebugPhase(null);
-              setDebugBird(null);
-              setDebugMoon(null);
-              if (typeof window !== "undefined" && window.history?.pushState) {
-                window.history.pushState({}, "", window.location.pathname);
-              }
-            }}
-          >
-            ✕ CLOSE
-          </button>
-        </div>
-
-        <div className="sim-section">
-          <span className="sim-section-label">TIME & SOLAR:</span>
-          <a className={debugPhase === "day" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=day`}>☀️ DAY (NOON)</a>
-          <a className={debugPhase === "sunrise" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=sunrise`}>🌅 SUNRISE</a>
-          <a className={debugPhase === "sunset" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=sunset`}>🌇 SUNSET</a>
-          <a className={debugMoon === "crescent" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=crescent`}>🌙 CRESCENT MOON</a>
-          <a className={debugMoon === "quarter" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=quarter`}>🌓 QUARTER MOON</a>
-          <a className={debugMoon === "full" ? "active" : ""} href={`?debugWeather=${condition}&debugTime=night&debugMoonPhase=full`}>🌕 FULL MOON</a>
-        </div>
-
-        <div className="sim-section">
-          <span className="sim-section-label">WEATHER & PRECIP:</span>
-          {DEBUG_THEMES.map((t, i) => (
-            <a className={t === debug ? "active" : ""} href={`?debugWeather=${t}&debugTime=${phase}`} key={t}>
-              {t.toUpperCase().replace("-", " ")}
-            </a>
-          ))}
-        </div>
-
-        <div className="sim-section">
-          <span className="sim-section-label">BIRD WATCH (BWC):</span>
-          {(["LOW", "MODERATE", "SEVERE"] as const).map(level => (
-            <a className={debugBird === level ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugBwc=${level.toLowerCase()}`} key={level}>
-              BWC {level}
-            </a>
-          ))}
-        </div>
-
-        <div className="sim-section">
-          <span className="sim-section-label">FLIGHT CATEGORY:</span>
-          <a className={weather.visibilitySm === 10 && weather.cloudBaseFt === 8000 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=10&debugCloudBase=8000&debugCloud=FEW`}>🟢 VFR (10 SM / 8000 FT)</a>
-          <a className={weather.visibilitySm === 4 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=4&debugCloudBase=2000&debugCloud=BKN`}>🔵 MVFR (4 SM / 2000 FT)</a>
-          <a className={weather.visibilitySm === 2 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=2&debugCloudBase=800&debugCloud=OVC`}>🔴 IFR (2 SM / 800 FT)</a>
-          <a className={weather.visibilitySm === 0.5 ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&debugVisibility=0.5&debugCloudBase=200&debugCloud=VV`}>🟣 LIFR (0.5 SM / 200 FT)</a>
-        </div>
-
-        <div className="sim-section sim-actions">
-          <a className={showPreview ? "active" : ""} href={`?debugWeather=${condition}&debugTime=${phase}&previewWeatherFx=${showPreview ? "0" : "1"}`}>
-            💧 {showPreview ? "HIDE PRECIP LAB" : "SHOW PRECIP LAB"}
-          </a>
-          <a className="sim-reset-link" href="?">
-            🔄 RESET TO LIVE METAR/TAF
-          </a>
-        </div>
-      </nav>
-    )}
     <PreviewLab active={showPreview} paneDrops={paneDrops} onPaneToggle={setPaneDrops}/>
   </main>;
 }

@@ -444,11 +444,91 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.taf-hazard-band {
+/* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
+.metar-health {
+  font-size: clamp(11.5px, 0.75vw, 15px);
+  font-weight: 800;
+  letter-spacing: 0.12em;
   padding: 4px 8px;
-  font-size: clamp(9px, 0.55vw, 12px);
-  line-height: 1.2;
-  margin-bottom: 4px;
+  border-radius: 4px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.metar-health span {
+  font-size: 1em;
+  font-weight: 800;
+}
+.metar-health.health-ok span {
+  color: #4ade80;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+.metar-health.health-stale span {
+  color: #facc15;
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.4);
+}
+.metar-health.health-unavailable span {
+  color: #f87171;
+  text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+}
+
+.taf-hazard-band {
+  padding: clamp(6px, 0.5vw, 10px) clamp(10px, 0.8vw, 14px);
+  font-size: clamp(11px, 0.75vw, 14px);
+  line-height: 1.35;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: rgba(234, 88, 12, 0.22);
+  border: 1px solid rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 12px rgba(234, 88, 12, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.taf-hazard-band > span {
+  font-size: clamp(10px, 0.65vw, 12px);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #ffedd5;
+  background: rgba(194, 65, 12, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.taf-hazard-band b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.taf-hazard-band time {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.taf-hazard-band time span {
+  font-size: clamp(10px, 0.65vw, 13px);
+  font-weight: 700;
+  color: #fdba74;
+}
+.taf-hazard-band time small {
+  font-size: clamp(9px, 0.55vw, 11px);
+  color: #fed7aa;
+}
+.taf-hazard-band em {
+  font-size: clamp(11.5px, 0.75vw, 14.5px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  font-style: normal;
+  text-shadow: 0 0 8px rgba(251, 146, 60, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── 4K & LARGE DISPLAY FLUID SCALING (≥ 2560px width or ≥ 1440px height) ── */

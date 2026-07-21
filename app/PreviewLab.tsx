@@ -67,6 +67,26 @@ const LIGHTNING:Preset[]=[
   ["FLASH TEST","debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=flash-test&debugTime=night"],
 ];
 
+const SOLAR:Preset[]=[
+  ["Day (Noon)","debugTime=day"],
+  ["Sunrise","debugTime=sunrise"],
+  ["Sunset","debugTime=sunset"],
+  ["Crescent Moon","debugTime=night&debugMoonPhase=crescent"],
+  ["Quarter Moon","debugTime=night&debugMoonPhase=quarter"],
+  ["Full Moon","debugTime=night&debugMoonPhase=full"],
+];
+const FLIGHT_CAT:Preset[]=[
+  ["VFR (10SM / 8000FT)","debugVisibility=10&debugCloudBase=8000&debugCloud=FEW"],
+  ["MVFR (4SM / 2000FT)","debugVisibility=4&debugCloudBase=2000&debugCloud=BKN"],
+  ["IFR (2SM / 800FT)","debugVisibility=2&debugCloudBase=800&debugCloud=OVC"],
+  ["LIFR (0.5SM / 200FT)","debugVisibility=.5&debugCloudBase=200&debugCloud=VV"],
+];
+const BWC:Preset[]=[
+  ["BWC LOW","debugBwc=low"],
+  ["BWC MODERATE","debugBwc=moderate"],
+  ["BWC SEVERE","debugBwc=severe"],
+];
+
 export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boolean;paneDrops:boolean|null;onPaneToggle:(v:boolean|null)=>void}){
   const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(true);
   useEffect(()=>{if(!active)return;const read=()=>{const m=document.querySelector("main.display") as HTMLElement|null,c=document.querySelector(".precip-canvas") as HTMLElement|null;if(!m)return;setD({
@@ -102,6 +122,6 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
       <div><dt>WIND</dt><dd>{d.wind}</dd></div><div><dt>PERF / REDUCED</dt><dd>{d.perf} / {d.reduced}</dd></div>
       <div><dt>LIGHTNING</dt><dd>{d.lightning}</dd></div><div><dt>LTG DETAIL</dt><dd>{d.lightningDetail}</dd></div><div><dt>LTG VISUAL</dt><dd>{d.lightningVisual}</dd></div>
     </dl>}
-    <h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
+    <h4>SOLAR / TIME OF DAY</h4>{links(SOLAR)}<h4>FLIGHT CATEGORY</h4>{links(FLIGHT_CAT)}<h4>BIRD WATCH CONDITION</h4>{links(BWC)}<h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
   </div>}</aside>;
 }
