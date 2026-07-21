@@ -86,43 +86,27 @@
   font-weight: 600;
 }
 
-/* ── SOLAR WINDOW (DAY ARC + NIGHT MOON ORBIT) ────────────── */
+/* ── SOLAR WINDOW (GRAPHIC TOP AREA, TIMES BOTTOM ROW) ────── */
 .solar-layout {
-  grid-template-columns: auto 1fr auto;
-  gap: clamp(6px, 0.8vw, 14px);
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   height: calc(100% - 28px);
+  gap: 4px;
 }
-.solar-time {
-  min-width: 0;
-  overflow: hidden;
-}
-.solar-time strong {
-  font: 600 clamp(15px, 1.3vw, 24px) / 1 Consolas, monospace;
-  letter-spacing: -0.04em;
-  white-space: nowrap;
-}
-.solar-time span {
-  font-size: clamp(7px, 0.55vw, 10px);
-  color: #9eacb1;
-  letter-spacing: 0.16em;
-}
-.solar-time small {
-  font-size: clamp(6px, 0.45vw, 8px);
-  color: #708087;
-  white-space: nowrap;
-}
-.solar-arc-wrap {
-  position: relative;
+.solar-graphic-wrap {
+  flex: 1 1 0%;
   width: 100%;
-  height: clamp(52px, 4.5vw, 78px);
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-top: 4px;
 }
 .solar-svg {
   width: 100%;
   height: 100%;
+  max-height: 110px;
   overflow: visible;
 }
 .solar-arc-bg {
@@ -133,70 +117,40 @@
   stroke: rgba(96, 165, 250, 0.35);
   filter: drop-shadow(0 0 3px rgba(96, 165, 250, 0.25));
 }
-
-/* Sun Visual */
-.solar-sun {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  transform: translate(-50%, -50%);
+.solar-times-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  pointer-events: none;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
 }
-.sun-core {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #fff8db;
-  box-shadow: 0 0 0 3px rgba(255, 196, 0, 0.4), 0 0 14px 4px rgba(255, 184, 84, 0.8);
-}
-.sun-corona {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 215, 0, 0.6);
-  animation: coronaRotate 12s linear infinite;
-}
-@keyframes coronaRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Moon Orbit & Phase Visual */
-.lunar-moon {
-  position: absolute;
-  transform: translate(-50%, -50%);
+.solar-time {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  pointer-events: none;
+  gap: 1px;
 }
-.moon-disk {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #e2e8f0 0%, #94a3b8 70%, #475569 100%);
-  box-shadow: inset 0 0 3px rgba(0,0,0,0.6), 0 0 10px rgba(148,163,184,0.5);
-  overflow: hidden;
+.solar-rise {
+  align-items: flex-start;
+  text-align: left;
 }
-.moon-crater {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(51, 65, 85, 0.45);
-  box-shadow: inset 1px 1px 1px rgba(0,0,0,0.4);
+.solar-set {
+  align-items: flex-end;
+  text-align: right;
 }
-.moon-crater.c1 { width: 3px; height: 3px; top: 3px; left: 3px; }
-.moon-crater.c2 { width: 4px; height: 4px; bottom: 3px; right: 2px; }
-.moon-crater.c3 { width: 2px; height: 2px; top: 7px; left: 8px; }
-.moon-phase-tag {
-  font-size: 7px;
-  color: #94a3b8;
-  letter-spacing: 0.08em;
+.solar-time strong {
+  font: 600 clamp(14px, 1.2vw, 22px) / 1 Consolas, monospace;
+  letter-spacing: -0.02em;
+}
+.solar-time span {
+  font-size: clamp(7.5px, 0.55vw, 10px);
+  color: #9eacb1;
+  letter-spacing: 0.14em;
+}
+.solar-time small {
+  font-size: clamp(6.5px, 0.48vw, 9px);
+  color: #708087;
   white-space: nowrap;
-  margin-top: 2px;
 }
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
@@ -246,9 +200,6 @@
 }
 .feels-like, .ceiling-line, .vis-line, .humidity-line {
   white-space: nowrap;
-}
-.ceiling-line::before {
-  content: "";
 }
 
 /* ── WIND CARD & FLIGHT CATEGORY ─────────────────────────── */

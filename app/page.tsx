@@ -396,7 +396,57 @@ export default function Home() {
         <article className="clock zulu"><div className="clock-head"><span>ZULU</span><b><i/> UNIVERSAL</b></div><time>{utcTime}<em>Z</em></time><div className="clock-foot"><strong>UTC</strong><span>{dateLine(utc)}</span></div></article>
       </section>
       <section className="info">
-        <article className="sun-card panel"><div className="panel-title"><span>SOLAR WINDOW</span><b>{solar.daylight?`${Math.round(solar.progress)}% DAYLIGHT`:`NIGHT · ${moonInfo.name}`}</b></div><div className="solar-layout"><div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div><div className={`solar-arc-wrap ${solar.daylight?"is-daylight":"is-night"}`}><svg className="solar-svg" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="M 5 45 A 45 35 0 0 1 95 45" className="solar-arc-bg" fill="none" stroke="rgba(255,184,84,0.3)" strokeWidth="1.5" strokeDasharray="3 2"/><path d="M 5 45 A 45 30 0 0 0 95 45" className="lunar-arc-bg" fill="none" stroke="rgba(96,165,250,0.3)" strokeWidth="1.5" strokeDasharray="3 2"/><line x1="2" y1="45" x2="98" y2="45" stroke="var(--line)" strokeWidth="1"/></svg>{solar.daylight ? <div className="solar-sun" style={{ left: `${solar.markerX}%`, top: `${solar.markerY}%` }}><div className="sun-core"/><div className="sun-corona"/></div> : <div className="lunar-moon" style={{ left: `${solar.markerX}%`, top: `${Math.min(92, Math.max(52, 45 + Math.sin((solar.progress / 100) * Math.PI) * 40))}%` }}><div className="moon-disk"><div className="moon-crater c1"/><div className="moon-crater c2"/><div className="moon-crater c3"/></div><small className="moon-phase-tag">{moonInfo.name}</small></div>}</div><div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · {solar.label}</small></div></div></article>
+        <article className="sun-card panel">
+          <div className="panel-title">
+            <span>SOLAR WINDOW</span>
+            <b>{solar.daylight ? `${Math.round(solar.progress)}% DAYLIGHT` : `NIGHT · ${moonInfo.name}`}</b>
+          </div>
+          <div className="solar-layout">
+            <div className="solar-graphic-wrap">
+              <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="solar-svg">
+                <path d="M 20 105 A 80 65 0 0 1 180 105" className="solar-arc-bg" fill="none" stroke="rgba(255,184,84,0.4)" strokeWidth="2" strokeDasharray="4 3" />
+                <path d="M 20 105 A 80 35 0 0 0 180 105" className="lunar-arc-bg" fill="none" stroke="rgba(96,165,250,0.35)" strokeWidth="2" strokeDasharray="4 3" />
+                <line x1="10" y1="105" x2="190" y2="105" stroke="var(--line)" strokeWidth="1.5" />
+                <circle cx="20" cy="105" r="3" fill="#eea54d" />
+                <circle cx="180" cy="105" r="3" fill="#eea54d" />
+                {solar.daylight ? (() => {
+                  const rad = (1 - solar.progress / 100) * Math.PI;
+                  const cx = 100 + 80 * Math.cos(rad);
+                  const cy = 105 - 65 * Math.sin(rad);
+                  return (
+                    <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
+                      <circle r="14" fill="rgba(255, 196, 0, 0.22)" />
+                      <circle r="7" fill="#fff8db" stroke="#ffb751" strokeWidth="2" />
+                    </g>
+                  );
+                })() : (() => {
+                  const rad = (solar.progress / 100) * Math.PI;
+                  const cx = 20 + 160 * (solar.progress / 100);
+                  const cy = 105 + 35 * Math.sin(rad);
+                  return (
+                    <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
+                      <circle r="8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.2" />
+                      <circle cx="-2" cy="-2" r="1.5" fill="#64748b" opacity="0.6" />
+                      <circle cx="2" cy="2" r="2" fill="#64748b" opacity="0.5" />
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+            <div className="solar-times-row">
+              <div className="solar-time solar-rise">
+                <span>SUNRISE</span>
+                <strong>{solar.sunrise}</strong>
+                <small>LOCAL · {solar.label}</small>
+              </div>
+              <div className="solar-time solar-set">
+                <span>SUNSET</span>
+                <strong>{solar.sunset}</strong>
+                <small>LOCAL · {solar.label}</small>
+              </div>
+            </div>
+          </div>
+        </article>
         <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b><div className="feels-like-container"><span className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null && <span className="ceiling-line">CEILING <strong>{weather.cloudBaseFt.toLocaleString()} FT</strong></span>}<span className="vis-line">VIS <strong>{weather.visibilitySm ?? 10} SM</strong></span><span className="humidity-line">HUMIDITY <strong>{weather.humidity}%</strong></span></div>{lightning.awareness&&<small className="lightning-awareness">{lightning.awareness}</small>}</div></div><div className={`metar-health health-${metarState.toLowerCase()}`}><span>METAR {metarState}</span>{feed!=="OK"&&<span className={`feed-${feed.toLowerCase()}`}>FEED {feed}</span>}</div></article>
         <article className="wind-card panel"><div className="panel-title"><span>WIND & FLIGHT CAT</span><b style={{ color: flightCat.color }}>{flightCat.cat} · {flightCat.label}</b></div><div className="wind-main"><div className="compass-wrap"><div className="compass-dial"><svg className="compass-ticks" viewBox="0 0 100 100" fill="none" stroke="currentColor"><circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="1.2" opacity="0.4" /><circle cx="50" cy="50" r="42" stroke="var(--line)" strokeWidth="0.5" strokeDasharray="1.5, 3" /><line x1="50" y1="2" x2="50" y2="8" stroke="var(--cyan)" strokeWidth="2" /><line x1="50" y1="92" x2="50" y2="98" stroke="var(--muted)" strokeWidth="1.2" /><line x1="2" y1="50" x2="8" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><line x1="92" y1="50" x2="98" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><circle cx="50" cy="50" r="4" fill="var(--cyan)" box-shadow="0 0 6px var(--cyan)" /></svg><span className="compass-label compass-n">N</span><span className="compass-label compass-e">E</span><span className="compass-label compass-s">S</span><span className="compass-label compass-w">W</span><div className="compass-arrow" style={effWindDir !== null ? { transform: `rotate(${effWindDir + 180}deg)` } : undefined}>{effWindDir !== null ? <svg viewBox="0 0 100 100" className="compass-arrow-svg" fill="none" stroke="currentColor"><path d="M50 10 L60 38 L50 32 L40 38 Z" fill="var(--cyan)" stroke="var(--cyan)" strokeWidth="1.5" strokeLinejoin="round" /><line x1="50" y1="32" x2="50" y2="78" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round" /><circle cx="50" cy="78" r="2.5" fill="var(--cyan)" /></svg> : <div className="compass-calm-indicator">↻</div>}</div></div></div><div className="wind-info"><strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G ${effGust}` : ""}`}</strong>{effWindDir !== null && effWindSpd > 0 && <small className="wind-from">FROM {bearingToCardinal(effWindDir)}</small>}<div className="wind-flight-meta"><span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}18` }}>{flightCat.cat}</span><span className="wind-vis-tag">VIS {weather.visibilitySm ?? 10} SM</span></div></div></div></article>
         <article className={`bird-card panel risk-${birdClass}`}><div className="panel-title"><span>BIRD WATCH CONDITION</span><b>USAF AHAS</b></div><div className="bird-main"><span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span><div className="bird-info"><strong className="bird-severity">{birdRisk}</strong><small className="bird-card-meta">AHAS · UPDATED {birdStamp || "1730Z"}</small></div></div></article>
