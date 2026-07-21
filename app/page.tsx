@@ -515,17 +515,31 @@ export default function Home() {
         <span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span>
         <span>
           <button className={`sim-trigger-btn ${showSim ? "active" : ""}`} onClick={() => setShowSim(v => !v)}>
-            🎛️ DEMO SIMULATOR
+            DEMO SIMULATOR
           </button>
           &nbsp;· PRESS F11 FOR FULL SCREEN
         </span>
       </footer>
     </div>
-    {(showSim || debug) && (
+    {showSim && (
       <nav className="sim-panel" aria-label="Airfield Operations Demo Simulator">
         <div className="sim-header">
           <strong>🎛️ AIRFIELD OPERATIONS DEMO SIMULATOR</strong>
-          <button className="sim-close" onClick={() => setShowSim(false)}>✕ CLOSE</button>
+          <button
+            className="sim-close"
+            onClick={() => {
+              setShowSim(false);
+              setDebug(null);
+              setDebugPhase(null);
+              setDebugBird(null);
+              setDebugMoon(null);
+              if (typeof window !== "undefined" && window.history?.pushState) {
+                window.history.pushState({}, "", window.location.pathname);
+              }
+            }}
+          >
+            ✕ CLOSE
+          </button>
         </div>
 
         <div className="sim-section">
