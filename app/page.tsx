@@ -244,15 +244,15 @@ function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:strin
 }
 function dateKey(date:Date,zone:string) { const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value])); return `${p.year}-${p.month}-${p.day}`; }
 function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fallbackRise:string,fallbackSet:string) {
-  const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}, today=dateKey(now,CONFIG.timeZone), current=Number(nowParts.hour)*60+Number(nowParts.minute)+Number(nowParts.second||0)/60;
+  const today=dateKey(now,CONFIG.timeZone), current=Number(nowParts.hour)*60+Number(nowParts.minute)+Number(nowParts.second||0)/60;
   const todayIndex=Math.max(0,days.findIndex(d=>d.date===today)), todaySolar=days[todayIndex]||{date:today,sunriseLocal:fallbackRise,sunsetLocal:fallbackSet};
-  const todaySet=parse(todaySolar.sunsetLocal), afterSunset=Number.isFinite(todaySet)&&current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
-  const rise=parse(selected.sunriseLocal), set=parse(selected.sunsetLocal), selectedIsToday=selected.date===today, daylight=selectedIsToday&&current>=rise&&current<=set;
+  const todaySet=parseTimeMinutes(todaySolar.sunsetLocal), afterSunset=current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
+  const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal), selectedIsToday=selected.date===today, daylight=selectedIsToday&&current>=rise&&current<=set;
   const progress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
   let markerX=8+progress*.84, markerY=76-Math.sin((progress/100)*Math.PI)*59;
   if(!daylight) {
-    const nightStart = parse(todaySolar.sunsetLocal);
-    const nightEnd = 1440 + rise;
+    const nightStart = parseTimeMinutes(todaySolar.sunsetLocal);
+    const nightEnd = 1440 + parseTimeMinutes(selected.sunriseLocal);
     const nightClock = current < rise ? current + 1440 : current;
     const nightProgress = Math.max(0, Math.min(1, (nightClock - nightStart) / (nightEnd - nightStart)));
     markerX = 180 - nightProgress * 160;
@@ -496,8 +496,8 @@ export default function Home() {
               <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
-              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · TODAY</small></div>
-              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · TODAY</small></div>
+              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div>
+              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · {solar.label}</small></div>
             </div>
           </div>
         </article>
