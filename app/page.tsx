@@ -390,24 +390,13 @@ export default function Home() {
   const fxSpec=buildFxSpec(fx,cloudVec.nx,effWindSpd,perf,phase==="night",reduced,paneDrops,effVisibility);
   const obscuration=buildObscurationSpec(fx,effVisibility,cloudVec.nx,effWindSpd,perf,reduced);
   
-  // High-ceiling visual sanity correction:
-  // If the lowest ceiling is at/above 18,000 ft, lower FEW/SCT layers are present, and there is no active rain/snow/thunderstorm,
-  // fall back to the partly-cloudy theme background visually.
+  // High-ceiling visual sanity correction (per reference photos):
+  // High broken/overcast ceilings (effBase >= 5,000 FT or null) MUST NOT use the dark low-overcast wallpaper.
+  // Reserve gloomy solid-overcast wallpapers strictly for genuinely low BKN/OVC ceilings (< 5,000 FT).
   let visualBaseScene = sceneModel.baseScene;
-  const metarText = weather.rawMetar || "";
-  
-  // 1. High-ceiling visual sanity rule (18,000 ft + lower SCT/FEW breaks)
-  const isHighCeiling = (effCoverage === "BKN" || effCoverage === "OVC") && effBase !== null && effBase >= 18000;
-  const hasLowerLayer = /\b(FEW|SCT)\d{3}\b/.test(metarText);
-  const forceHighCeiling = isHighCeiling && (hasLowerLayer || debugCloudBase !== null);
-
-  // 2. Mid/High BKN/OVC ceiling sanity rule (>= 5,000 ft, daylight, no active precip/fog/thunderstorm/snow)
-  const isDaylight = phase === "day" || phase === "sunrise" || phase === "sunset";
-  const hasNoSevereWx = !["rain", "heavy-rain", "thunderstorm", "fog", "snow"].includes(condition);
-  const isHighOrMidCeiling = effBase !== null && effBase >= 5000;
-  const forceMidCeilingBrighter = (effCoverage === "BKN" || effCoverage === "OVC") && isDaylight && hasNoSevereWx && isHighOrMidCeiling;
-
-  if ((forceHighCeiling || forceMidCeilingBrighter) && visualBaseScene.startsWith("overcast-")) {
+  const isHighCeiling = (effCoverage === "BKN" || effCoverage === "OVC") && (effBase === null || effBase >= 5000);
+  const isSevereWx = ["rain", "heavy-rain", "thunderstorm", "fog", "snow"].includes(condition);
+  if (isHighCeiling && !isSevereWx && visualBaseScene.startsWith("overcast-")) {
     visualBaseScene = sceneFor("partly-cloudy", phase, effCoverage);
   }
 
