@@ -155,14 +155,27 @@
   stroke: rgba(96, 165, 250, 0.4);
   filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.3));
 }
-.solar-times-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  border-top: 1px solid rgba(180, 211, 221, 0.12);
-  padding-top: 6px;
-  margin-top: auto;
+.solar-subtitle {
+  text-align: center;
+  margin: 2px 0 6px 0;
+}
+.solar-subtitle strong {
+  font-size: clamp(10px, 0.7vw, 13px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #f4b45b;
+  text-shadow: 0 0 8px rgba(244, 180, 91, 0.4);
+  text-transform: uppercase;
+}
+
+.sky-base {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
 }
 .solar-time {
   display: flex;

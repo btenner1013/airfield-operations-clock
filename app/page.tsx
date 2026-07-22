@@ -251,7 +251,9 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   const progress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
   let markerX=8+progress*.84, markerY=76-Math.sin((progress/100)*Math.PI)*59;
   if(!daylight) { const nightStart=parse(todaySolar.sunsetLocal), nightEnd=1440+rise, nightClock=current<rise?current+1440:current, nightProgress=Math.max(0,Math.min(1,(nightClock-nightStart)/(nightEnd-nightStart))); markerX=92-nightProgress*84; markerY=76+Math.sin(nightProgress*Math.PI)*18; }
-  return {sunrise:selected.sunriseLocal,sunset:selected.sunsetLocal,label:selectedIsToday?"TODAY":"TOMORROW",daylight,progress,markerX,markerY};
+  const safeX = Number.isFinite(markerX) ? markerX : 100;
+  const safeY = Number.isFinite(markerY) ? markerY : 40;
+  return {sunrise:selected.sunriseLocal,sunset:selected.sunsetLocal,label:selectedIsToday?"TODAY":"TOMORROW",daylight,progress,markerX:safeX,markerY:safeY};
 }
 function zStamp(value:string) { const match=(value||"").match(/\d{4}-\d{2}-(\d{2})[ T](\d{2}):(\d{2})/); return match?`${match[1]}/${match[2]}${match[3]}Z`:"—"; }
 function aviationStamp(value:string|null) { const time=value?Date.parse(value):NaN; if(!Number.isFinite(time)) return "—"; const d=new Date(time); return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`; }
@@ -454,95 +456,36 @@ export default function Home() {
         <article className="sun-card panel">
           <div className="panel-title">
             <span>SOLAR WINDOW</span>
-            <b>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `NIGHT · ${moonInfo.name}`}</b>
           </div>
           <div className="solar-layout">
             <div className="solar-graphic-wrap">
               <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="solar-svg">
                 <defs>
-                  <radialGradient id="sunCoreGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="20%" stopColor="#ffffff" />
-                    <stop offset="45%" stopColor="#fffae6" />
-                    <stop offset="70%" stopColor="#ffe680" />
-                    <stop offset="100%" stopColor="rgba(255, 204, 0, 0)" />
-                  </radialGradient>
-                  <radialGradient id="sunOuterCorona" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(255, 255, 255, 0.9)" />
-                    <stop offset="25%" stopColor="rgba(255, 220, 100, 0.6)" />
-                    <stop offset="55%" stopColor="rgba(255, 140, 0, 0.3)" />
-                    <stop offset="80%" stopColor="rgba(255, 80, 0, 0.12)" />
-                    <stop offset="100%" stopColor="rgba(255, 50, 0, 0)" />
-                  </radialGradient>
-                  <radialGradient id="moonBody" cx="40%" cy="35%" r="65%">
-                    <stop offset="0%" stopColor="#f1f5f9" />
-                    <stop offset="45%" stopColor="#cbd5e1" />
-                    <stop offset="75%" stopColor="#64748b" />
-                    <stop offset="100%" stopColor="#0f172a" />
-                  </radialGradient>
-                  <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(226, 232, 240, 0.35)" />
-                    <stop offset="70%" stopColor="rgba(148, 163, 184, 0.1)" />
-                    <stop offset="100%" stopColor="rgba(148, 163, 184, 0)" />
-                  </radialGradient>
+                  <radialGradient id="sunCoreGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#ffffff" /><stop offset="20%" stopColor="#ffffff" /><stop offset="45%" stopColor="#fffae6" /><stop offset="70%" stopColor="#ffe680" /><stop offset="100%" stopColor="rgba(255, 204, 0, 0)" /></radialGradient>
+                  <radialGradient id="sunOuterHalo" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(255, 255, 255, 0.4)" /><stop offset="100%" stopColor="rgba(255, 140, 0, 0)" /></radialGradient>
+                  <radialGradient id="moonBody" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#f1f5f9" /><stop offset="45%" stopColor="#cbd5e1" /><stop offset="75%" stopColor="#64748b" /><stop offset="100%" stopColor="#0f172a" /></radialGradient>
+                  <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(226, 232, 240, 0.35)" /><stop offset="70%" stopColor="rgba(148, 163, 184, 0.1)" /><stop offset="100%" stopColor="rgba(148, 163, 184, 0)" /></radialGradient>
                 </defs>
-                <path d="M 20 105 A 80 65 0 0 1 180 105" className="solar-arc-bg" fill="none" stroke="rgba(255, 220, 100, 0.5)" strokeWidth="2.5" strokeDasharray="4 3" />
-                <path d="M 20 105 A 80 35 0 0 0 180 105" className="lunar-arc-bg" fill="none" stroke="rgba(148, 163, 184, 0.45)" strokeWidth="2" strokeDasharray="4 3" />
-                <line x1="10" y1="105" x2="190" y2="105" stroke="var(--line)" strokeWidth="1.5" />
-                <circle cx="20" cy="105" r="3" fill="#eea54d" />
-                <circle cx="180" cy="105" r="3" fill="#eea54d" />
-                {effSolar.daylight ? (() => {
-                  const rad = (1 - effSolar.progress / 100) * Math.PI;
-                  const cx = 100 + 80 * Math.cos(rad);
-                  const cy = 105 - 65 * Math.sin(rad);
-                  const isHorizon = effSolar.progress <= 18 || effSolar.progress >= 82 || phase === "sunrise" || phase === "sunset";
-                  if (isHorizon) {
-                    return (
-                      <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                        <circle r="20" fill="rgba(255, 140, 0, 0.3)" />
-                        <circle r="13" fill="rgba(255, 183, 77, 0.6)" />
-                        <circle r="8" fill="#ffe082" stroke="#ffb74d" strokeWidth="1.5" />
-                        <circle r="4" fill="#ffffff" />
-                      </g>
-                    );
-                  }
-                  return (
-                    <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="32" fill="url(#sunOuterCorona)" />
-                      <circle r="20" fill="url(#sunCoreGlow)" />
-                      <g stroke="#ffffff" strokeWidth="1.2" opacity="0.95" strokeLinecap="round">
-                        <line x1="0" y1="-28" x2="0" y2="28" /><line x1="-28" y1="0" x2="28" y2="0" /><line x1="-20" y1="-20" x2="20" y2="20" /><line x1="-20" y1="20" x2="20" y2="-20" />
-                      </g>
-                      <g stroke="#ffe899" strokeWidth="0.8" opacity="0.8" strokeLinecap="round">
-                        <line x1="0" y1="-36" x2="0" y2="36" /><line x1="-36" y1="0" x2="36" y2="0" /><line x1="-25" y1="-25" x2="25" y2="25" /><line x1="-25" y1="25" x2="25" y2="-25" /><line x1="-10" y1="-30" x2="10" y2="30" /><line x1="-30" y1="-10" x2="30" y2="10" />
-                      </g>
-                      <circle r="16" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" opacity="0.5" />
-                      <circle r="7" fill="#ffffff" stroke="#fde047" strokeWidth="1.5" />
-                    </g>
-                  );
-                })() : (() => {
-                  const rad = (effSolar.progress / 100) * Math.PI;
-                  const cx = 20 + 160 * (effSolar.progress / 100);
-                  const cy = 105 + 35 * Math.sin(rad);
-                  const isCrescent = moonInfo.phase < 0.20 || moonInfo.phase > 0.80;
-                  const isQuarter = (moonInfo.phase >= 0.20 && moonInfo.phase <= 0.32) || (moonInfo.phase >= 0.68 && moonInfo.phase <= 0.80);
-                  return (
-                    <g transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
-                      <circle r="20" fill="url(#moonGlow)" />
-                      <circle r="13" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
-                      <path d="M -5 -6 Q -2 -10 3 -7 Q 7 -3 4 2 Q -1 4 -6 1 Z" fill="#334155" opacity="0.55" />
-                      <path d="M 2 1 Q 6 0 8 4 Q 7 8 2 7 Q -1 4 2 1 Z" fill="#334155" opacity="0.5" />
-                      <path d="M -9 1 Q -6 0 -4 4 Q -7 8 -10 5 Z" fill="#334155" opacity="0.45" />
-                      <circle cx="1" cy="7" r="2.2" fill="#1e293b" opacity="0.6" /><circle cx="1" cy="7" r="1.8" fill="none" stroke="#f8fafc" strokeWidth="0.5" opacity="0.8" />
-                      <line x1="1" y1="7" x2="-4" y2="11" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" /><line x1="1" y1="7" x2="6" y2="10" stroke="#f1f5f9" strokeWidth="0.4" opacity="0.5" />
-                      <circle cx="-4" cy="-2" r="1.8" fill="#1e293b" opacity="0.6" /><circle cx="-4" cy="-2" r="1.4" fill="none" stroke="#f8fafc" strokeWidth="0.4" opacity="0.7" />
-                      <circle cx="5" cy="-3" r="1.4" fill="#1e293b" opacity="0.5" /><circle cx="5" cy="-3" r="1.1" fill="none" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
-                      {isCrescent && <path d="M 0 -13 A 13 13 0 0 1 0 13 A 6 13 0 0 0 0 -13 Z" fill="#0b131e" opacity="0.88" />}
-                      {isQuarter && <path d="M 0 -13 A 13 13 0 0 0 0 13 Z" fill="#0b131e" opacity="0.88" />}
-                    </g>
-                  );
-                })()}
+                <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
+                <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
+                <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
+                {effSolar.daylight ? (
+                  <g className="sun-group">
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="url(#sunOuterHalo)" className="sun-pulse-halo" />
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="9" fill="url(#sunCoreGlow)" />
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="4" fill="#ffffff" />
+                  </g>
+                ) : (
+                  <g className="moon-group">
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="url(#moonGlow)" />
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="6" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.4" />
+                    <circle cx={effSolar.markerX-2} cy={effSolar.markerY-2} r="3" fill="#0f172a" opacity="0.2" />
+                  </g>
+                )}
               </svg>
+            </div>
+            <div className="solar-subtitle">
+              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `NIGHT · ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
               <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · TODAY</small></div>
@@ -551,12 +494,15 @@ export default function Home() {
           </div>
         </article>
         <article className="weather-card panel">
-          <div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div>
+          <div className="panel-title">
+            <span>CURRENT WEATHER</span>
+            <b>KMEM METAR</b>
+          </div>
           <div className="weather-main">
             <div className="weather-left-block">
               <div className="weather-left-top">
-                <span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span>
-                <strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong>
+                <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
+                <strong>{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
               </div>
               <span className="humidity-under-glyph">HUMIDITY <strong>{weather.humidity}%</strong></span>
             </div>
@@ -591,7 +537,7 @@ export default function Home() {
             </div>
           </div>
         </article>
-        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><em>TAF HAZARD · {window.full} · {haz.text}</em></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined ? ` · ${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
+        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><em>TAF HAZARD · {window.full} · {haz.text}</em></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=>{ const d=new Date(f.iso); const timeLabel=Number.isFinite(d.getTime())?`${String(d.getUTCHours()).padStart(2,"0")}:00Z`:f.time; return <div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{timeLabel}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined ? ` · ${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>;}):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
