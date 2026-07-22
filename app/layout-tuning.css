@@ -579,6 +579,7 @@
   text-shadow: 0 0 16px rgba(248, 113, 113, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
 }
 
+/* ── TAF HAZARD BAND (MIMICKING KMEM OPS BOARD WX ALERT) ─── */
 .taf-hazard-band {
   padding: clamp(5px, 0.45vw, 8px) clamp(10px, 0.7vw, 14px);
   font-size: clamp(12px, 0.85vw, 16px);
@@ -586,7 +587,7 @@
   border-radius: 4px;
   margin-bottom: 6px;
   background: #000000 !important;
-  border: 1.5px solid #eab308;
+  border: 1.5px solid currentColor;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
@@ -606,52 +607,52 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  animation: opsAlertPulse 0.82s ease-in-out infinite !important;
 }
 
-/* RED SEVERE HAZARD */
+/* RED SEVERE HAZARD (#ff4444) */
 .taf-hazard-band[data-severity="red"] {
-  border-color: #ef4444;
+  border-color: #ff4444;
+  color: #ff4444;
 }
 .taf-hazard-band[data-severity="red"] em {
-  color: #f87171;
-  animation: hazardPulse 1.2s infinite ease-in-out;
+  color: #ff4444;
 }
 
-/* YELLOW / AMBER POSSIBLE HAZARD */
+/* YELLOW / AMBER POSSIBLE HAZARD (#ffcc00) */
 .taf-hazard-band[data-severity="yellow"] {
-  border-color: #eab308;
+  border-color: #ffcc00;
+  color: #ffcc00;
 }
 .taf-hazard-band[data-severity="yellow"] em {
-  color: #facc15;
-  animation: hazardPulse 1.6s infinite ease-in-out;
+  color: #ffcc00;
 }
 
-/* BLUE ROUTINE PRECIP HAZARD */
+/* BLUE PRE-HAZARD / ROUTINE (#35b7ff) */
 .taf-hazard-band[data-severity="blue"] {
-  border-color: #38bdf8;
+  border-color: #35b7ff;
+  color: #35b7ff;
 }
-.taf-hazard-band[data-severity="blue"] .taf-hazard-tag {
-  background: #0284c7;
-  color: #ffffff;
-  animation: hazardPulse 2.2s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="blue"] .taf-hazard-time {
-  color: #7dd3fc !important;
-  animation: hazardPulse 2.2s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="blue"] .taf-hazard-text {
-  color: #38bdf8;
-  animation: hazardPulse 2.2s infinite ease-in-out;
+.taf-hazard-band[data-severity="blue"] em {
+  color: #35b7ff;
 }
 
-@keyframes hazardPulse {
-  0%, 100% {
+/* KMEM Ops Board pulseStrong Keyframe */
+@keyframes opsAlertPulse {
+  0% {
     opacity: 1;
-    text-shadow: 0 0 10px currentColor;
+    transform: scale(1);
+    text-shadow: 0 0 0 currentColor;
   }
   50% {
-    opacity: 0.35;
-    text-shadow: 0 0 2px currentColor;
+    opacity: 0.72;
+    transform: scale(1.04);
+    text-shadow: 0 0 10px currentColor, 0 0 22px currentColor;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 0 currentColor;
   }
 }
 
