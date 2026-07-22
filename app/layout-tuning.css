@@ -40,14 +40,25 @@
   .forecast-card { flex: 0 0 clamp(320px, 50vw, 420px) !important; scroll-snap-align: start; }
 }
 
+/* ── HEADER & CLOCK BLACK OUTLINES ───────────────────────── */
+.brand strong,
+.brand small,
+.header-date small,
+.header-date strong,
+.clock-head span,
+.clock-head b,
+.clock-foot strong,
+.clock-foot span {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0.8px #000000;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1.5px 4px rgba(0,0,0,0.9);
+}
+
 /* ── HEADER / BRANDING */
 .brand strong {
   font-size: clamp(21px, 1.9vw, 34px);
   letter-spacing: 0.22em;
   font-weight: 800;
-  paint-order: stroke fill;
-  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.85);
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 4px rgba(0,0,0,0.9);
 }
 .brand small {
   font-size: clamp(11.5px, 0.95vw, 16.5px);
@@ -57,9 +68,6 @@
   word-break: break-word;
   line-height: 1.35;
   margin-top: 5px;
-  paint-order: stroke fill;
-  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.85);
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 4px rgba(0,0,0,0.9);
 }
 .header-date small {
   font-size: clamp(10px, 0.75vw, 13.5px);
