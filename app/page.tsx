@@ -326,7 +326,7 @@ export default function Home() {
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
   const {now,status:clock}=useSystemClock(clockDebug);
-  useEffect(()=>{ setFlybys(Array.from({length:3},(_,i)=>({top:11+Math.random()*25,cycle:96+i*23+Math.random()*19,delay:7+i*39+Math.random()*16,scale:.78+Math.random()*.25,tilt:-2+Math.random()*4,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
+  useEffect(()=>{ setFlybys(Array.from({length:2},(_,i)=>({top:10+Math.random()*8,cycle:85+i*25+Math.random()*15,delay:12+i*45+Math.random()*20,scale:.70+Math.random()*.12,tilt:-1.5+Math.random()*3,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
     if(q.has("debugWeather")||q.has("debugTime")||q.has("debugBwc")||q.has("debugMoonPhase")||q.has("sim")||q.has("demo")) setShowSim(true);
