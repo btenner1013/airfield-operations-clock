@@ -177,6 +177,16 @@
   transition: opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: opacity;
 }
+.solar-times-row {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+  width: 100% !important;
+  border-top: 1px solid rgba(180, 211, 221, 0.12);
+  padding-top: 6px;
+  margin-top: auto;
+}
 .solar-time {
   display: flex;
   flex-direction: column;

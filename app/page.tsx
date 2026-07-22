@@ -484,15 +484,16 @@ export default function Home() {
                   </g>
                 ) : (
                   <g className="moon-group">
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="url(#moonGlow)" />
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="6" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.4" />
-                    <circle cx={effSolar.markerX-2} cy={effSolar.markerY-2} r="3" fill="#0f172a" opacity="0.2" />
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="26" fill="url(#moonGlow)" />
+                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="14" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
+                    <circle cx={effSolar.markerX - 4} cy={effSolar.markerY - 4} r="7" fill="#0f172a" opacity="0.25" />
+                    <circle cx={effSolar.markerX + 3} cy={effSolar.markerY + 3} r="4" fill="#64748b" opacity="0.2" />
                   </g>
                 )}
               </svg>
             </div>
             <div className="solar-subtitle">
-              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : moonInfo.name}</strong>
+              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
               <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · TODAY</small></div>
