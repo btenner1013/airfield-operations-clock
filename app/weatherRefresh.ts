@@ -117,16 +117,20 @@ export function serializeWeatherCache(weather:Weather, savedAtIso:string):string
   return JSON.stringify({version:CACHE_VERSION,savedAtIso,weather});
 }
 
-export function restoreWeatherCache(raw:string|null):Weather|null {
+export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|null {
   if(!raw) return null;
   try {
     const parsed=JSON.parse(raw) as {version?:number;savedAtIso?:string;weather?:unknown};
     if(!validDate(parsed.savedAtIso)||!parsed.weather||typeof parsed.weather!=="object") return null;
     
     // Invalidate if date rolled over (which breaks solarWindow timezone logic)
+    // We use the authoritative displayNow (which respects debugExactTime) instead of an unrelated new Date().
     const w = parsed.weather as Weather;
-    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(displayNow).map(x => [x.type, x.value]));
     const today = `${p.year}-${p.month.padStart(2,"0")}-${p.day.padStart(2,"0")}`;
+    
+    // Keep both validations: TAF iso times must exist, and solarDays must match current authoritative date.
+    if (!w.tafValidStartIso || !w.tafValidEndIso) return null;
     if (w.solarDays && w.solarDays.length > 0 && w.solarDays[0].date !== today) return null;
     
     const candidate=parsed.version===1?{...(parsed.weather as Weather),operationalWeather:null,currentLightning:{...LEGACY_NO_LIGHTNING},tafHazards:[],forecast:Array.isArray((parsed.weather as Weather).forecast)?(parsed.weather as Weather).forecast.map(f=>({...f,operationalWeather:null})):[]}:parsed.version===2?{...(parsed.weather as Weather),currentLightning:{...LEGACY_NO_LIGHTNING}}:parsed.weather;

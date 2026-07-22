@@ -73,15 +73,17 @@ test("failed or partial refresh preserves independent last-valid METAR and TAF d
 });
 
 test("validated cache restores; malformed or partial cache cannot replace it",()=>{
-  const snapshot=weather(), raw=serializeWeatherCache(snapshot,"2026-07-20T06:02:00.000Z");
+  const snapshot=weather({ tafValidStartIso:"2026-07-20T00:00:00.000Z", tafValidEndIso:"2026-07-21T00:00:00.000Z", solarDays:[{date:"2026-07-20", sunriseLocal:"06:00", sunsetLocal:"20:00"}] });
+  const raw=serializeWeatherCache(snapshot,"2026-07-20T06:02:00.000Z");
   assert.ok(raw);
-  const restored=restoreWeatherCache(raw);
+  const displayNow = new Date("2026-07-20T06:02:00.000Z");
+  const restored=restoreWeatherCache(raw, displayNow);
   assert.equal(restored?.metarObsIso,snapshot.metarObsIso);
   assert.equal(restored?.feedStatus,"DEGRADED");
-  assert.equal(restoreWeatherCache("{bad"),null);
-  assert.equal(restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:{condition:"clear"}})),null);
+  assert.equal(restoreWeatherCache("{bad", displayNow),null);
+  assert.equal(restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:{condition:"clear", tafValidStartIso:"2026-07-20T00:00:00Z", tafValidEndIso:"2026-07-21T00:00:00Z", solarDays:[{date:"2026-07-20"}]}}), displayNow),null); // Still fails due to missing fields
   const legacy=JSON.parse(JSON.stringify(snapshot));delete legacy.operationalWeather;delete legacy.currentLightning;delete legacy.tafHazards;for(const f of legacy.forecast) delete f.operationalWeather;
-  const migrated=restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:legacy}));
+  const migrated=restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:legacy}), displayNow);
   assert.equal(migrated?.operationalWeather,null);assert.equal(migrated?.currentLightning.level,"none");assert.deepEqual(migrated?.tafHazards,[]);assert.equal(migrated?.forecast[0].operationalWeather,null);
 });
 
@@ -133,4 +135,24 @@ test("protected clock, scene, precipitation, and service-worker invariants remai
   assert.doesNotMatch(clock,/from\s+["'][^"']*weather/i);
   const weatherBranch=sw.slice(sw.indexOf("if(url.hostname"),sw.indexOf("e.respondWith(fetch(e.request)"));
   assert.match(weatherBranch,/weather\.json/);assert.match(weatherBranch,/cache:\s*"no-store"/);assert.doesNotMatch(weatherBranch,/caches\.match|caches\.open/);
+});
+
+test("solar phase properly assigns based on debugExactTime local boundaries", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /solarWindow\(now,local,weather\.solarDays/);
+  assert.match(page, /phase=debugPhase\|\|\(debug\?\(debug==="night".*?\):solar\.phase\)/);
+  assert.doesNotMatch(page, /solarPhase\(/);
+});
+
+test("debugExactTime activates without persisting to localStorage", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /exact=q\.get\("debugExactTime"\)/);
+  assert.match(page, /Number\(exact\)/);
+  assert.doesNotMatch(page, /localStorage\.setItem\("debugExactTime"/);
+});
+
+test("failed wallpaper load does not replace active scene", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /img\.decode\(\)\.then\(commit\)\.catch/);
+  assert.match(page, /img\.onerror = \(\) => {/);
 });

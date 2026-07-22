@@ -351,7 +351,7 @@ export default function Home() {
   useEffect(()=>{ if(typeof matchMedia==="undefined") return; const mq=matchMedia("(prefers-reduced-motion: reduce)"); const on=()=>setReduced(mq.matches); on(); mq.addEventListener?.("change",on); return()=>mq.removeEventListener?.("change",on); },[]);
   const [aScene,setAScene]=useState("clear-night"); const [bScene,setBScene]=useState("clear-night"); const [active,setActive]=useState<"a"|"b">("a");
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
-  const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
+  const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"), exact=q.get("debugExactTime"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, exact: exact!=null&&exact!==""?Number(exact):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
   const {now,status:clock}=useSystemClock(clockDebug);
   
   // Spawning controls for single C-17 photo flyby
@@ -412,7 +412,13 @@ export default function Home() {
   // request, timeout, interval, wake listeners, supersession, cache, and unmount cleanup.
   useEffect(()=>{
     const commit=(next:Weather)=>{weatherRef.current=next;setWeather(next);};
-    try{const cached=restoreWeatherCache(localStorage.getItem("kmem-weather"));if(cached) commit(cached);}catch{}
+    try{
+      const params = new URLSearchParams(window.location.search);
+      const exact = params.get("debugExactTime");
+      const displayNow = exact ? new Date(Number(exact)) : new Date();
+      const cached=restoreWeatherCache(localStorage.getItem("kmem-weather"), displayNow);
+      if(cached) commit(cached);
+    }catch{}
     const coordinator=createRefreshCoordinator<WeatherFetchResult>({
       fetcher:signal=>getWeather(signal),
       onAttempt:(_reason,atIso)=>commit({...weatherRef.current,requestStatus:"REFRESHING",lastRefreshAttemptIso:atIso,feedError:null}),
@@ -496,8 +502,17 @@ export default function Home() {
       }
     };
     
-    img.onload = commit;
-    img.onerror = commit; // If it fails, swap anyway to avoid getting permanently stuck
+    img.onload = () => {
+      if (cancelled) return;
+      if (img.decode) {
+        img.decode().then(commit).catch(() => { /* keep current on decode error */ });
+      } else {
+        commit();
+      }
+    };
+    img.onerror = () => {
+      // Failed to load, keep current scene visible and do nothing
+    };
     img.src = `${imageBase}/assets/backgrounds/${scene}.png`;
     
     return () => { cancelled = true; };

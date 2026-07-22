@@ -17,7 +17,11 @@ export type ClockStatus = {
   roundTripMs: number | null;
   state: ClockState;
 };
-export type ClockDebug = { offsetMs?: number; force?: "offline" | "stale" | "warning" };
+export type ClockDebug = { 
+  offsetMs?: number; 
+  exact?: number;
+  force?: "offline" | "stale" | "warning" 
+};
 
 const NETWORK_SOURCE = "GITHUB EDGE DATE";
 const VERIFY_INTERVAL_MS = 10 * 60 * 1000; // periodic re-check ~ every 10 min
@@ -61,11 +65,11 @@ async function sampleOffset(): Promise<{ offset: number; rtt: number } | null> {
 }
 
 export function useSystemClock(debug?: ClockDebug): { now: Date; status: ClockStatus } {
-  const [nowMs, setNowMs] = useState<number>(0); // 0 on first paint (SSR-safe); real time set on mount
+  const [nowMs, setNowMs] = useState<number>(() => debug?.exact ?? 0); // 0 on first paint (SSR-safe); real time set on mount
   const [status, setStatus] = useState<ClockStatus>({ source: "WINDOWS SYSTEM", networkSource: NETWORK_SOURCE, lastCheckedUtc: null, estimatedOffsetMs: null, roundTripMs: null, state: "CHECK" });
   const anchor = useRef<{ sys: number; mono: number }>({ sys: Date.now(), mono: nowMono() });
   const verifyRef = useRef<(reason: string) => void>(() => {});
-  const debugKey = `${debug?.offsetMs ?? ""}|${debug?.force ?? ""}`;
+  const debugKey = `${debug?.offsetMs ?? ""}|${debug?.exact ?? ""}|${debug?.force ?? ""}`;
 
   // Independent network verification — never mutates the clock, only the status badge.
   useEffect(() => {
@@ -74,7 +78,10 @@ export function useSystemClock(debug?: ClockDebug): { now: Date; status: ClockSt
       if (debug?.force === "offline") { setStatus(s => ({ ...s, state: "OFFLINE", estimatedOffsetMs: null })); return; }
       if (debug?.force === "warning") { setStatus(s => ({ ...s, state: "WARNING", estimatedOffsetMs: 2500, roundTripMs: 60, lastCheckedUtc: Date.now() })); return; }
       if (debug?.force === "stale") { setStatus(s => ({ ...s, state: "STALE" })); return; }
-      if (typeof debug?.offsetMs === "number") { setStatus(s => ({ ...s, estimatedOffsetMs: debug.offsetMs!, roundTripMs: 50, lastCheckedUtc: Date.now(), state: classifyState(debug.offsetMs!, 3, true) })); return; }
+      if (typeof debug?.offsetMs === "number" || typeof debug?.exact === "number") { 
+        setStatus(s => ({ ...s, estimatedOffsetMs: debug.offsetMs ?? null, roundTripMs: 50, lastCheckedUtc: Date.now(), state: classifyState(debug.offsetMs ?? null, 3, true) })); 
+        return; 
+      }
       if (inFlight) return; inFlight = true;
       const online = typeof navigator === "undefined" ? true : navigator.onLine;
       const samples: { offset: number; rtt: number }[] = [];
