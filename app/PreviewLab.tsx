@@ -86,6 +86,13 @@ const BWC:Preset[]=[
   ["BWC MODERATE","debugBwc=moderate"],
   ["BWC SEVERE","debugBwc=severe"],
 ];
+const FLYBY:Preset[]=[
+  ["DAY LTR","debugTime=day&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1"],
+  ["NIGHT RTL","debugTime=night&debugFlyby=on&debugFlybyDir=rtl&spawnFlyby=1"],
+  ["TWILIGHT LTR","debugTime=twilight&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1"],
+  ["SPAWN NOW","debugFlyby=on&spawnFlyby=1"],
+  ["FLYBY OFF","debugFlyby=off"],
+];
 
 export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boolean;paneDrops:boolean|null;onPaneToggle:(v:boolean|null)=>void}){
   const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(true);
@@ -122,6 +129,6 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
       <div><dt>WIND</dt><dd>{d.wind}</dd></div><div><dt>PERF / REDUCED</dt><dd>{d.perf} / {d.reduced}</dd></div>
       <div><dt>LIGHTNING</dt><dd>{d.lightning}</dd></div><div><dt>LTG DETAIL</dt><dd>{d.lightningDetail}</dd></div><div><dt>LTG VISUAL</dt><dd>{d.lightningVisual}</dd></div>
     </dl>}
-    <h4>SOLAR / TIME OF DAY</h4>{links(SOLAR)}<h4>FLIGHT CATEGORY</h4>{links(FLIGHT_CAT)}<h4>BIRD WATCH CONDITION</h4>{links(BWC)}<h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
+    <h4>C-17 FLYBY SIMULATOR</h4>{links(FLYBY)}<h4>SOLAR / TIME OF DAY</h4>{links(SOLAR)}<h4>FLIGHT CATEGORY</h4>{links(FLIGHT_CAT)}<h4>BIRD WATCH CONDITION</h4>{links(BWC)}<h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
   </div>}</aside>;
 }

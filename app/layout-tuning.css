@@ -829,7 +829,7 @@
   color: #fff !important;
 }
 
-/* ── C-17 GLOBEMASTER III FLYBY STYLING & ANIMATION ──────── */
+/* ── C-17 PHOTO FLYBY & LIGHTING OVERLAYS ──────────────── */
 .air-traffic {
   position: absolute;
   inset: 0;
@@ -845,58 +845,164 @@
 }
 
 .flyby-ltr {
-  left: -200px;
-  animation: flybyLtr linear infinite;
+  left: -220px;
+  animation: flybyLtr linear forwards;
 }
 
 .flyby-rtl {
-  right: -200px;
-  animation: flybyRtl linear infinite;
-}
-
-.flyby-rtl .c17-shape {
-  transform: scaleX(-1) !important;
+  right: -220px;
+  animation: flybyRtl linear forwards;
 }
 
 @keyframes flybyLtr {
   0% { transform: translateX(0); }
-  100% { transform: translateX(calc(100vw + 400px)); }
+  100% { transform: translateX(calc(100vw + 440px)); }
 }
 
 @keyframes flybyRtl {
   0% { transform: translateX(0); }
-  100% { transform: translateX(calc(-100vw - 400px)); }
+  100% { transform: translateX(calc(-100vw - 440px)); }
 }
 
-.c17-svg {
-  overflow: visible;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+.c17-photo-container {
+  position: relative;
+  display: inline-block;
+  width: clamp(85px, 6vw, 110px);
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
 }
 
-.beacon-red {
-  fill: #ef4444;
-  filter: drop-shadow(0 0 6px #ef4444);
-  animation: beaconPulse 1.2s ease-in-out infinite;
+.c17-photo-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
-.strobe-white {
-  fill: #ffffff;
-  filter: drop-shadow(0 0 8px #ffffff);
+/* Light Positioning for Right-to-Left (RTL - Left Facing) */
+.flyby-rtl .beacon-tail-red {
+  position: absolute;
+  top: 24%;
+  right: 5.5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff3333;
+  box-shadow: 0 0 8px #ff3333, 0 0 14px #ff3333;
+  animation: beaconPulse 1.1s ease-in-out infinite;
+}
+
+.flyby-rtl .beacon-belly-red {
+  position: absolute;
+  top: 67%;
+  left: 54%;
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  background: #ff3333;
+  box-shadow: 0 0 6px #ff3333, 0 0 12px #ff3333;
+  animation: beaconPulse 1.1s ease-in-out infinite 0.55s;
+}
+
+.flyby-rtl .strobe-wing-white {
+  position: absolute;
+  top: 48%;
+  right: 36%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff, 0 0 14px #ffffff;
   animation: strobeFlash 1.6s steps(1, end) infinite;
 }
 
-.phase-day .beacon-red,
-.phase-day .strobe-white {
-  opacity: 0.15;
-  animation: none;
+/* Light Positioning for Left-to-Right (LTR - Right Facing) */
+.flyby-ltr .beacon-tail-red {
+  position: absolute;
+  top: 24%;
+  left: 5.5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff3333;
+  box-shadow: 0 0 8px #ff3333, 0 0 14px #ff3333;
+  animation: beaconPulse 1.1s ease-in-out infinite;
+}
+
+.flyby-ltr .beacon-belly-red {
+  position: absolute;
+  top: 67%;
+  right: 54%;
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  background: #ff3333;
+  box-shadow: 0 0 6px #ff3333, 0 0 12px #ff3333;
+  animation: beaconPulse 1.1s ease-in-out infinite 0.55s;
+}
+
+.flyby-ltr .strobe-wing-white {
+  position: absolute;
+  top: 48%;
+  left: 36%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff, 0 0 14px #ffffff;
+  animation: strobeFlash 1.6s steps(1, end) infinite;
+}
+
+/* Day vs Night/Twilight Lighting Intensity */
+.phase-day .beacon-tail-red,
+.phase-day .beacon-belly-red,
+.phase-day .strobe-wing-white {
+  opacity: 0.35;
+  box-shadow: 0 0 4px currentColor;
 }
 
 @keyframes beaconPulse {
-  0%, 100% { opacity: 0.2; }
+  0%, 100% { opacity: 0.25; }
   50% { opacity: 1; }
 }
 
 @keyframes strobeFlash {
   0%, 90%, 100% { opacity: 0; }
   92%, 96% { opacity: 1; }
+}
+
+/* Engine Contrail Streams */
+.c17-photo-contrails {
+  position: absolute;
+  top: 42%;
+  height: 12px;
+  width: 140px;
+  pointer-events: none;
+}
+
+.flyby-rtl .c17-photo-contrails {
+  left: 88%;
+}
+
+.flyby-ltr .c17-photo-contrails {
+  right: 88%;
+}
+
+.contrail-line {
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(248,250,252,0.45), rgba(248,250,252,0));
+  border-radius: 1px;
+}
+
+.flyby-ltr .contrail-line {
+  background: linear-gradient(270deg, rgba(248,250,252,0.45), rgba(248,250,252,0));
+}
+
+.contrail-line.upper { margin-bottom: 4px; }
+
+.phase-twilight .contrail-line,
+.phase-night .contrail-line {
+  opacity: 0.35;
 }

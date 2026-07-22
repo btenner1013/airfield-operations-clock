@@ -314,8 +314,25 @@ function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObs
   return baseScene;
 }
 
+function isFlybyWeatherAllowed(weather: Weather, flightCat: { cat: string }): boolean {
+  if (flightCat.cat === "IFR" || flightCat.cat === "LIFR") return false;
+  if (weather.visibilitySm !== null && weather.visibilitySm < 3) return false;
+  if (weather.cloudBaseFt !== null && weather.cloudBaseFt < 1000 && ["BKN", "OVC", "VV"].includes(weather.cloudCoverage || "")) return false;
+  if (weather.currentLightning && weather.currentLightning.level !== "none") return false;
+  const rawMetar = (weather.rawMetar || "").toUpperCase();
+  const phen = (weather.phenomena || []).join(" ").toUpperCase();
+  const combined = `${rawMetar} ${phen}`;
+  if (/\b(?:\+RA|\+SHRA|TSRA|\+TSRA|TS|VCTS|TSGR|FZRA|FG|FZFG|MIFG|PRFG|BLSN|DS|SS|VA)\b/.test(combined)) {
+    return false;
+  }
+  return true;
+}
+
 export default function Home() {
-  const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [debugMoon,setDebugMoon]=useState<string|null>(null); const [flybys,setFlybys]=useState<Flyby[]>([]);
+  const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [debugMoon,setDebugMoon]=useState<string|null>(null);
+  const [activeFlyby, setActiveFlyby] = useState<{ id: number; top: number; direction: "ltr" | "rtl"; duration: number } | null>(null);
+  const [debugFlybyEnabled, setDebugFlybyEnabled] = useState<boolean | null>(null);
+  const [debugFlybyDir, setDebugFlybyDir] = useState<"ltr" | "rtl" | null>(null);
   const [debugCloud,setDebugCloud]=useState<CloudCoverage|null>(null); const [debugCloudBase,setDebugCloudBase]=useState<number|null>(null); const [debugWind,setDebugWind]=useState<number|null>(null); const [debugWindSpeed,setDebugWindSpeed]=useState<number|null>(null); const [perf,setPerf]=useState<"full"|"low">("full");
   const [debugPhenomena,setDebugPhenomena]=useState<string|null>(null); const [debugIntensity,setDebugIntensity]=useState<Intensity|null>(null); const [debugVisibility,setDebugVisibility]=useState<number|null>(null); const [debugGust,setDebugGust]=useState<number|null>(null); const [reduced,setReduced]=useState(false); const [paneDrops,setPaneDrops]=useState<boolean|null>(null);
   const [showPreview,setShowPreview]=useState(false); const [showSim,setShowSim]=useState(false); const [debugLightning,setDebugLightning]=useState<string|null>(null); const mainRef=useRef<HTMLElement|null>(null);
@@ -324,7 +341,37 @@ export default function Home() {
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
   const {now,status:clock}=useSystemClock(clockDebug);
-  useEffect(()=>{ setFlybys(Array.from({length:2},(_,i)=>({top:10+Math.random()*8,cycle:85+i*25+Math.random()*15,delay:12+i*45+Math.random()*20,scale:.70+Math.random()*.12,tilt:-1.5+Math.random()*3,direction:Math.random()>.5?"ltr":"rtl"}))); },[]);
+  
+  // Spawning controls for single C-17 photo flyby
+  const triggerSpawn = (forcedDir?: "ltr" | "rtl") => {
+    const dir = forcedDir || debugFlybyDir || (Math.random() > 0.5 ? "ltr" : "rtl");
+    const top = 9 + Math.random() * 7; // constrained to upper sky/header 9%-16%
+    const duration = 65 + Math.random() * 15; // slow 65s-80s transit
+    const newId = Date.now();
+    setActiveFlyby({ id: newId, top, direction: dir, duration });
+    window.setTimeout(() => {
+      setActiveFlyby(curr => (curr?.id === newId ? null : curr));
+    }, duration * 1000);
+  };
+
+  useEffect(() => {
+    if (debugFlybyEnabled === false) {
+      setActiveFlyby(null);
+      return;
+    }
+    const scheduleNext = () => {
+      const delayMs = 15000 + Math.random() * 15000; // 15s - 30s interval
+      return window.setTimeout(() => {
+        if (!activeFlyby) {
+          triggerSpawn();
+        }
+        timerId = scheduleNext();
+      }, delayMs);
+    };
+    let timerId = scheduleNext();
+    return () => clearTimeout(timerId);
+  }, [activeFlyby, debugFlybyEnabled, debugFlybyDir]);
+
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
     if(q.has("debugWeather")||q.has("debugTime")||q.has("debugBwc")||q.has("debugMoonPhase")||q.has("sim")||q.has("demo")) setShowSim(true);
@@ -341,6 +388,9 @@ export default function Home() {
     if(q.get("previewWeatherFx")==="1") setShowPreview(true);
     const pd=q.get("debugPaneDrops"); if(pd==="on") setPaneDrops(true); else if(pd==="off") setPaneDrops(false);
     const ltg=q.get("debugLightning"); if(ltg) setDebugLightning(ltg);
+    const fb=q.get("debugFlyby"); if(fb==="off") setDebugFlybyEnabled(false); else if(fb==="on") setDebugFlybyEnabled(true);
+    const fbd=q.get("debugFlybyDir"); if(fbd==="ltr"||fbd==="rtl") setDebugFlybyDir(fbd);
+    if(q.get("spawnFlyby")==="1") triggerSpawn();
     navigator.serviceWorker?.register("./service-worker.js").catch(()=>{});
   },[]);
   // Weather refresh lifecycle — deliberately separate from the clock. One coordinator owns the
@@ -447,41 +497,7 @@ export default function Home() {
   }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="c17-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale})`}}>
-      <svg className="c17-svg" viewBox="0 0 180 80" width="90" height="45" aria-hidden="true">
-        {/* Dual Engine Contrails */}
-        <g className="c17-contrails">
-          <line x1="10" y1="35" x2="-80" y2="35" stroke="rgba(248, 250, 252, 0.45)" strokeWidth="2.2" strokeLinecap="round" />
-          <line x1="10" y1="45" x2="-80" y2="45" stroke="rgba(248, 250, 252, 0.45)" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-        {/* C-17 Globemaster III Airframe Silhouette */}
-        <g className="c17-body">
-          {/* T-Tail Horizontal Stabilizer Top */}
-          <path d="M 12 10 L 34 10 L 28 18 L 8 18 Z" fill="#475569" />
-          {/* Vertical Tail Fin */}
-          <path d="M 22 18 L 38 38 L 26 38 Z" fill="#334155" />
-          {/* Heavy Cargo Fuselage */}
-          <path d="M 155 40 C 145 32, 115 30, 50 33 L 22 38 L 10 40 L 22 42 L 50 47 C 115 50, 145 48, 155 40 Z" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
-          {/* High Swept Wings with Winglets */}
-          <path d="M 90 33 L 64 10 L 68 8 L 100 33 Z" fill="#334155" />
-          <path d="M 90 47 L 64 70 L 68 72 L 100 47 Z" fill="#334155" />
-          {/* Winglets */}
-          <path d="M 64 10 L 60 4 L 64 6 L 68 8 Z" fill="#64748b" />
-          <path d="M 64 70 L 60 76 L 64 74 L 68 72 Z" fill="#64748b" />
-          {/* 4 Engine Nacelles */}
-          <rect x="78" y="18" width="12" height="4" rx="2" fill="#64748b" />
-          <rect x="68" y="11" width="12" height="4" rx="2" fill="#64748b" />
-          <rect x="78" y="58" width="12" height="4" rx="2" fill="#64748b" />
-          <rect x="68" y="65" width="12" height="4" rx="2" fill="#64748b" />
-        </g>
-        {/* Operational Night/Twilight Strobes & Beacon */}
-        <g className="c17-lights">
-          <circle cx="85" cy="32" r="2.5" className="beacon-red" />
-          <circle cx="60" cy="4" r="2" className="strobe-white" />
-          <circle cx="60" cy="76" r="2" className="strobe-white" />
-        </g>
-      </svg>
-    </span></span>)}</i><i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{isFlybyWeatherAllowed(weather, flightCat) && debugFlybyEnabled !== false && activeFlyby && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><span className="c17-photo-contrails"><b className="contrail-line upper"/><b className="contrail-line lower"/></span><img src={`${imageBase}/assets/c17-${activeFlyby.direction === "rtl" ? "left" : "right"}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="strobe-wing-white"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
