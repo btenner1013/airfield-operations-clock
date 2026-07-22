@@ -40,26 +40,19 @@
   .forecast-card { flex: 0 0 clamp(320px, 50vw, 420px) !important; scroll-snap-align: start; }
 }
 
-/* ── HEADER / BRANDING ────────────────────────────────────── */
-.brand-logo {
-  height: clamp(52px, 6.2vh, 88px);
-  width: auto;
-  object-fit: contain;
-  border-radius: 4px;
-}
-.brand strong {
-  font-size: clamp(18px, 1.6vw, 30px);
-  letter-spacing: 0.22em;
-  font-weight: 800;
-}
-.brand small {
-  font-size: clamp(10px, 0.8vw, 15px);
-  color: #c8d0d3;
-  letter-spacing: 0.18em;
-  white-space: normal;
-  word-break: break-word;
-  line-height: 1.35;
-  margin-top: 5px;
+/* ── HEADER / BRANDING */
+.brand strong,
+.brand small,
+.date-badge,
+.date-badge span,
+.date-badge strong,
+.clock-label,
+.clock-sub,
+.clock-foot span,
+.station-tag {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.85);
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 4px rgba(0,0,0,0.9);
 }
 
 /* ── CLOCK & DATE COLORS & BLACK OUTLINE ─────────────────── */
@@ -508,39 +501,39 @@
 }
 /* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
 .metar-health {
-  font-size: clamp(16px, 1.25vw, 22px);
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-size: clamp(22px, 1.8vw, 32px) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.18em !important;
+  margin-top: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
 }
 .metar-health span {
-  font-size: 1em;
-  font-weight: 900;
-  text-transform: uppercase;
+  font-size: 1em !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
 }
 .metar-health.health-ok span {
-  color: #4ade80;
-  text-shadow: 0 0 12px rgba(74, 222, 128, 0.75);
+  color: #4ade80 !important;
+  text-shadow: 0 0 16px rgba(74, 222, 128, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
 }
 .metar-health.health-stale span {
-  color: #facc15;
-  text-shadow: 0 0 12px rgba(250, 204, 21, 0.75);
+  color: #facc15 !important;
+  text-shadow: 0 0 16px rgba(250, 204, 21, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
 }
 .metar-health.health-unavailable span {
-  color: #f87171;
-  text-shadow: 0 0 12px rgba(248, 113, 113, 0.75);
+  color: #f87171 !important;
+  text-shadow: 0 0 16px rgba(248, 113, 113, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
 }
 
 .taf-hazard-band {
-  padding: clamp(4px, 0.4vw, 7px) clamp(8px, 0.6vw, 12px);
-  font-size: clamp(11px, 0.75vw, 14px);
+  padding: clamp(5px, 0.45vw, 8px) clamp(10px, 0.7vw, 14px);
+  font-size: clamp(12px, 0.85vw, 16px);
   line-height: 1.25;
   border-radius: 4px;
   margin-bottom: 6px;
@@ -551,56 +544,27 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: clamp(8px, 0.8vw, 14px);
   white-space: nowrap;
   overflow: hidden;
 }
 
-.taf-hazard-tag {
-  font-size: clamp(10.5px, 0.7vw, 13px);
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  color: #ffffff;
-  padding: 2px 7px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.taf-hazard-time {
-  font-size: clamp(11.5px, 0.75vw, 14.5px);
-  font-weight: 700;
-  color: #e2e8f0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  flex-shrink: 0;
-  letter-spacing: 0.06em;
-}
-
-.taf-hazard-text {
-  font-size: clamp(12px, 0.8vw, 15.5px);
+.taf-hazard-band em {
+  font-style: normal;
   font-weight: 900;
   letter-spacing: 0.1em;
-  font-style: normal;
+  font-family: Consolas, monospace;
+  font-size: clamp(12.5px, 0.85vw, 16px);
   text-transform: uppercase;
-  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* RED SEVERE HAZARD */
 .taf-hazard-band[data-severity="red"] {
   border-color: #ef4444;
 }
-.taf-hazard-band[data-severity="red"] .taf-hazard-tag {
-  background: #dc2626;
-  color: #ffffff;
-  animation: hazardPulse 1.2s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="red"] .taf-hazard-time {
-  color: #fca5a5 !important;
-  animation: hazardPulse 1.2s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="red"] .taf-hazard-text {
+.taf-hazard-band[data-severity="red"] em {
   color: #f87171;
   animation: hazardPulse 1.2s infinite ease-in-out;
 }
@@ -609,16 +573,7 @@
 .taf-hazard-band[data-severity="yellow"] {
   border-color: #eab308;
 }
-.taf-hazard-band[data-severity="yellow"] .taf-hazard-tag {
-  background: #ca8a04;
-  color: #ffffff;
-  animation: hazardPulse 1.6s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="yellow"] .taf-hazard-time {
-  color: #fde047 !important;
-  animation: hazardPulse 1.6s infinite ease-in-out;
-}
-.taf-hazard-band[data-severity="yellow"] .taf-hazard-text {
+.taf-hazard-band[data-severity="yellow"] em {
   color: #facc15;
   animation: hazardPulse 1.6s infinite ease-in-out;
 }
