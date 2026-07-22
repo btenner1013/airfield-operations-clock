@@ -390,11 +390,11 @@ export default function Home() {
   const fxSpec=buildFxSpec(fx,cloudVec.nx,effWindSpd,perf,phase==="night",reduced,paneDrops,effVisibility);
   const obscuration=buildObscurationSpec(fx,effVisibility,cloudVec.nx,effWindSpd,perf,reduced);
   
-  // High-ceiling visual sanity correction (per reference photos):
-  // High broken/overcast ceilings (effBase >= 5,000 FT or null) MUST NOT use the dark low-overcast wallpaper.
-  // Reserve gloomy solid-overcast wallpapers strictly for genuinely low BKN/OVC ceilings (< 5,000 FT).
+  // Solar phase (day, sunset, night, sunrise) strictly controls solar lighting.
+  // High broken/overcast thin cirrus ceilings (effBase >= 12,000 FT) use the phase-appropriate
+  // bright high-cloud / hazy night scene, reserving dark gloomy overcast scenes for genuinely low ceilings (< 5,000 FT).
   let visualBaseScene = sceneModel.baseScene;
-  const isHighCeiling = (effCoverage === "BKN" || effCoverage === "OVC") && (effBase === null || effBase >= 5000);
+  const isHighCeiling = (effCoverage === "BKN" || effCoverage === "OVC") && (effBase === null || effBase >= 12000);
   const isSevereWx = ["rain", "heavy-rain", "thunderstorm", "fog", "snow"].includes(condition);
   if (isHighCeiling && !isSevereWx && visualBaseScene.startsWith("overcast-")) {
     visualBaseScene = sceneFor("partly-cloudy", phase, effCoverage);
