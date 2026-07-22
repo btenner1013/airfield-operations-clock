@@ -200,12 +200,26 @@ function WeatherIcon({condition,night=false}:{condition:Theme;night?:boolean}) {
 }
 function isNightAt(time:string,sunrise:string,sunset:string) { const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}; const clock=parse(time),rise=parse(sunrise),set=parse(sunset); return Number.isFinite(clock)&&Number.isFinite(rise)&&Number.isFinite(set)&&(clock<rise||clock>set); }
 function tafQualifier(weather:OperationalWeather|null):string {
-  if(!weather) return "MODEL";
-  return ({TAF_BASE:"PREVAILING",TAF_FM:"FM",TAF_TEMPO:"TEMPO",TAF_PROB30:"PROB30",TAF_PROB40:"PROB40",TAF_PROB30_TEMPO:"PROB30 TEMPO",TAF_PROB40_TEMPO:"PROB40 TEMPO",METAR:"METAR",MODEL:"MODEL"} as const)[weather.sourceKind];
+  if(!weather) return "—";
+  if(weather.sourceKind === "TAF_FM" || weather.sourceKind === "TAF_BASE") return "—";
+  return ({TAF_BASE:"—",TAF_FM:"—",TAF_TEMPO:"TEMPO",TAF_PROB30:"PROB30",TAF_PROB40:"PROB40",TAF_PROB30_TEMPO:"PROB30 TEMPO",TAF_PROB40_TEMPO:"PROB40 TEMPO",METAR:"METAR",MODEL:"—"} as const)[weather.sourceKind] || "—";
 }
 function tafCardCondition(weather:OperationalWeather|null,fallback:string):string {
   if(!weather) return fallback;
   return weather.label;
+}
+function parseAhasTimestampIso(raw: string | undefined | null, now: Date): string | null {
+  if (!raw || raw === "—") return null;
+  if (!isNaN(Date.parse(raw))) return raw;
+  const m = raw.match(/(?:(\d{2})\/)?(\d{2})(\d{2})Z?/i);
+  if (m) {
+    const day = m[1] ? Number(m[1]) : now.getUTCDate();
+    const hour = Number(m[2]);
+    const min = Number(m[3]);
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day, hour, min));
+    if (Number.isFinite(d.getTime())) return d.toISOString();
+  }
+  return null;
 }
 function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
   const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
@@ -557,7 +571,12 @@ export default function Home() {
               <strong className="bird-severity">{birdRisk}</strong>
             </div>
             <div className="bird-card-meta">
-              {birdStamp || "1730Z"}{weather.birdUpdated && Date.parse(weather.birdUpdated) ? ` · ${Math.max(0, Math.floor((now.getTime() - Date.parse(weather.birdUpdated)) / 60000))} MIN AGO` : ""}
+              {(() => {
+                const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
+                const bwcMs = bwcIso ? Date.parse(bwcIso) : NaN;
+                const ageMin = Number.isFinite(bwcMs) ? Math.max(0, Math.floor((now.getTime() - bwcMs) / 60000)) : null;
+                return `${birdStamp || "1730Z"}${ageMin !== null ? ` · ${ageMin < 60 ? `${ageMin} MIN AGO` : `${Math.floor(ageMin / 60)}H ${ageMin % 60}M AGO`}` : ""}`;
+              })()}
             </div>
           </div>
         </article>

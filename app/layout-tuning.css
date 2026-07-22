@@ -41,18 +41,31 @@
 }
 
 /* ── HEADER / BRANDING */
-.brand strong,
-.brand small,
-.date-badge,
-.date-badge span,
-.date-badge strong,
-.clock-label,
-.clock-sub,
-.clock-foot span,
-.station-tag {
+.brand strong {
+  font-size: clamp(21px, 1.9vw, 34px);
+  letter-spacing: 0.22em;
+  font-weight: 800;
   paint-order: stroke fill;
   -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.85);
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 4px rgba(0,0,0,0.9);
+}
+.brand small {
+  font-size: clamp(11.5px, 0.95vw, 16.5px);
+  color: #c8d0d3;
+  letter-spacing: 0.18em;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  margin-top: 5px;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.85);
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 4px rgba(0,0,0,0.9);
+}
+.header-date small {
+  font-size: clamp(10px, 0.75vw, 13.5px);
+  color: #aebbc0;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
 }
 
 /* ── CLOCK & DATE COLORS & BLACK OUTLINE ─────────────────── */
@@ -101,17 +114,16 @@
 }
 .panel-title b {
   font-size: 0.9em;
-  color: #77878d;
-  font-weight: 600;
 }
 
 /* ── SOLAR WINDOW (GRAPHIC TOP AREA, TIMES BOTTOM ROW) ────── */
-.solar-layout {
+.sun-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   height: calc(100% - 28px);
-  gap: 4px;
+  padding-top: 4px;
 }
 .solar-graphic-wrap {
   flex: 1 1 0%;
@@ -138,38 +150,32 @@
 }
 .solar-times-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(180, 211, 221, 0.12);
   padding-top: 6px;
-  border-top: 1px solid var(--line);
+  margin-top: auto;
 }
 .solar-time {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
-.solar-rise {
-  align-items: flex-start;
-  text-align: left;
-}
-.solar-set {
-  align-items: flex-end;
-  text-align: right;
+.solar-time span {
+  font-size: clamp(9px, 0.55vw, 11px);
+  color: #aebbc0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .solar-time strong {
-  font: 600 clamp(14px, 1.2vw, 22px) / 1 Consolas, monospace;
-  letter-spacing: -0.02em;
-}
-.solar-time span {
-  font-size: clamp(7.5px, 0.55vw, 10px);
-  color: #9eacb1;
-  letter-spacing: 0.14em;
+  font: 700 clamp(13px, 0.95vw, 20px) / 1.1 Consolas, monospace;
+  color: #f4b45b;
 }
 .solar-time small {
-  font-size: clamp(6.5px, 0.48vw, 9px);
-  color: #708087;
-  white-space: nowrap;
+  font-size: clamp(8.5px, 0.5vw, 10.5px);
+  color: #8899a0;
+  letter-spacing: 0.06em;
 }
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
@@ -331,7 +337,6 @@
   font-size: clamp(9px, 0.6vw, 12px);
   color: #aebbc0;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 .wind-flight-meta {
   display: flex;
@@ -479,11 +484,14 @@
 .forecast-item-sub {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: clamp(9px, 0.55vw, 12px);
-  color: #9eb1b7;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  font-size: clamp(10.5px, 0.72vw, 13.5px);
+  font-weight: 600;
+  color: #aebbc0;
   line-height: 1.25;
-  padding-left: 2px;
+  margin-top: 2px;
 }
 .forecast-badge {
   background: rgba(244, 180, 91, 0.15);
@@ -498,16 +506,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
+  width: 100%;
 }
 /* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
 .metar-health {
-  font-size: clamp(22px, 1.8vw, 32px) !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.18em !important;
-  margin-top: 10px !important;
+  font-size: clamp(14px, 0.95vw, 18px) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.15em !important;
+  margin-top: 6px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 10px !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -515,7 +525,7 @@
 }
 .metar-health span {
   font-size: 1em !important;
-  font-weight: 900 !important;
+  font-weight: 800 !important;
   text-transform: uppercase !important;
 }
 .metar-health.health-ok span {
