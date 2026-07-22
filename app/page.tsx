@@ -270,14 +270,16 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   const todaySet=parseTimeMinutes(todaySolar.sunsetLocal), afterSunset=current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
   const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal), selectedIsToday=selected.date===today, daylight=selectedIsToday&&current>=rise&&current<=set;
   const progress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
-  let markerX=8+progress*.84, markerY=76-Math.sin((progress/100)*Math.PI)*59;
+  const dayAngle = Math.PI - (progress / 100) * Math.PI;
+  let markerX=100+Math.cos(dayAngle)*88, markerY=76-Math.sin(dayAngle)*56;
   if(!daylight) {
     const nightStart = parseTimeMinutes(todaySolar.sunsetLocal);
     const nightEnd = 1440 + parseTimeMinutes(selected.sunriseLocal);
     const nightClock = current < rise ? current + 1440 : current;
     const nightProgress = Math.max(0, Math.min(1, (nightClock - nightStart) / (nightEnd - nightStart)));
-    markerX = 180 - nightProgress * 160;
-    markerY = 105 - Math.sin(nightProgress * Math.PI) * 45;
+    const nightAngle = nightProgress * Math.PI;
+    markerX = 100 + Math.cos(nightAngle) * 88;
+    markerY = 76 + Math.sin(nightAngle) * 18;
   }
   const safeX = Number.isFinite(markerX) ? markerX : 100;
   const safeY = Number.isFinite(markerY) ? markerY : 40;
@@ -475,10 +477,22 @@ export default function Home() {
   },[scene,imageBase]);
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
   let effSolar = { ...solar };
-  if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, progress: 5 };
-  else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, progress: 95 };
-  else if (debugPhase === "day") effSolar = { ...solar, daylight: true, progress: 50 };
-  else if (debugPhase === "night") effSolar = { ...solar, daylight: false, progress: 50 };
+  if (debugPhase) {
+    if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, progress: 5 };
+    else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, progress: 95 };
+    else if (debugPhase === "day") effSolar = { ...solar, daylight: true, progress: 50 };
+    else if (debugPhase === "night") effSolar = { ...solar, daylight: false, progress: 50 };
+
+    if (effSolar.daylight) {
+      const dayAngle = Math.PI - (effSolar.progress / 100) * Math.PI;
+      effSolar.markerX = 100 + Math.cos(dayAngle) * 88;
+      effSolar.markerY = 76 - Math.sin(dayAngle) * 56;
+    } else {
+      const nightAngle = (effSolar.progress / 100) * Math.PI;
+      effSolar.markerX = 100 + Math.cos(nightAngle) * 88;
+      effSolar.markerY = 76 + Math.sin(nightAngle) * 18;
+    }
+  }
   // Observation freshness (from actual METAR obs time) is tracked separately from feed-fetch health.
   const metarFreshness=classifyMetarFreshness(weather.metarObsIso,now.getTime()), metarState=metarFreshness.state, metarAgeMin=metarFreshness.ageMinutes;
   const tafState=classifyTafFreshness({issueIso:weather.tafIssueIso,validStartIso:weather.tafValidStartIso,validEndIso:weather.tafValidEndIso},now.getTime());
@@ -507,7 +521,7 @@ export default function Home() {
   }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{(isFlybyWeatherAllowed(weather, flightCat) || debugFlybyEnabled === true) && activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><span className="c17-photo-contrails"><b className="contrail-line upper"/><b className="contrail-line lower"/></span><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="strobe-wing-white"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{(isFlybyWeatherAllowed(weather, flightCat) || debugFlybyEnabled === true) && activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><span className="c17-photo-contrails"><b className="contrail-line"/></span><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
@@ -531,13 +545,16 @@ export default function Home() {
                 <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
                 <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
-                {effSolar.daylight ? (
-                  <g className="sun-group">
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="url(#sunOuterHalo)" className="sun-pulse-halo" />
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="9" fill="url(#sunCoreGlow)" />
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="4" fill="#ffffff" />
-                  </g>
-                ) : (() => {
+                {effSolar.daylight ? (() => {
+                  const sunIntensity = 1 - Math.abs(effSolar.progress - 50) / 50;
+                  return (
+                    <g className="sun-group">
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={10 + 14 * sunIntensity} fill="url(#sunOuterHalo)" className="sun-pulse-halo" opacity={sunIntensity} />
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={5 + 6 * sunIntensity} fill="url(#sunCoreGlow)" opacity={0.6 + 0.4 * sunIntensity} />
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={3 + 1 * sunIntensity} fill="#ffffff" />
+                    </g>
+                  );
+                })() : (() => {
                   const p = moonInfo.phase; // 0..1 (0=New, 0.25=First Qtr, 0.3=Waxing Gibbous, 0.5=Full)
                   const isWaxing = p <= 0.5;
                   const isWaning = p > 0.5;
