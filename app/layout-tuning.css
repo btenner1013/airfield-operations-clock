@@ -607,33 +607,38 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.taf-hazard-band.alert-pulse em {
   animation: opsAlertPulse 0.82s ease-in-out infinite !important;
+}
+.taf-hazard-band.alert-flash em {
+  animation: opsAlertFlash 0.5s steps(2, end) infinite !important;
 }
 
 /* RED SEVERE HAZARD (#ff4444) */
-.taf-hazard-band[data-severity="red"] {
+.taf-hazard-band[data-tone="red"] {
   border-color: #ff4444;
   color: #ff4444;
 }
-.taf-hazard-band[data-severity="red"] em {
+.taf-hazard-band[data-tone="red"] em {
   color: #ff4444;
 }
 
 /* YELLOW / AMBER POSSIBLE HAZARD (#ffcc00) */
-.taf-hazard-band[data-severity="yellow"] {
+.taf-hazard-band[data-tone="yellow"] {
   border-color: #ffcc00;
   color: #ffcc00;
 }
-.taf-hazard-band[data-severity="yellow"] em {
+.taf-hazard-band[data-tone="yellow"] em {
   color: #ffcc00;
 }
 
 /* BLUE PRE-HAZARD / ROUTINE (#35b7ff) */
-.taf-hazard-band[data-severity="blue"] {
+.taf-hazard-band[data-tone="blue"] {
   border-color: #35b7ff;
   color: #35b7ff;
 }
-.taf-hazard-band[data-severity="blue"] em {
+.taf-hazard-band[data-tone="blue"] em {
   color: #35b7ff;
 }
 
@@ -654,6 +659,12 @@
     transform: scale(1);
     text-shadow: 0 0 0 currentColor;
   }
+}
+
+@keyframes opsAlertFlash {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 /* ── 4K & LARGE DISPLAY FLUID SCALING (≥ 2560px width or ≥ 1440px height) ── */

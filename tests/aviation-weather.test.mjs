@@ -9,6 +9,7 @@ import {
   parseStructuredTaf,
   qualifiesForTafHazardBand,
   resolveOperationalWeather,
+  parseAviationSky
 } from "../app/aviationWeatherPriority.ts";
 
 const metar=value=>resolveOperationalWeather({text:value,sourceKind:"METAR"});
@@ -71,6 +72,7 @@ test("forecast slots use active overlays, severity, and exclusive TAF end times"
     ["11:00","2026-08-01T11:00:00.000Z"],
   ].map(([time,iso])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitation:10,source:"MODEL",operationalWeather:null}));
   const result=applyStructuredTaf(slots,timeline,new Date("2026-08-01T03:00:00Z"));
+  assert.deepEqual(result.forecast.map(f=>f.time),["NOW","04:00Z","07:00Z","08:00Z","11:00Z"]);
   assert.deepEqual(result.forecast.map(f=>f.operationalWeather?.sourceKind),["TAF_FM","TAF_TEMPO","TAF_PROB30","TAF_PROB40_TEMPO","TAF_FM"]);
   assert.deepEqual(result.forecast.map(f=>f.description),["BROKEN CEILING","THUNDERSTORMS WITH RAIN","HEAVY SNOW","HEAVY FREEZING RAIN","CLEAR"]);
   assert.equal(result.forecast[2].operationalWeather?.sourceKind,"TAF_PROB30");
@@ -307,3 +309,61 @@ test("Consistent current and future naming shared resolver and authority test", 
 });
 
 
+
+test("BKN160 selected below OVC250",()=>{
+  const sky=parseAviationSky("METAR KMEM 212353Z 00000KT 10SM FEW080 BKN160 OVC250 30/23 A2992");
+  assert.equal(sky.cloudCoverage,"BKN");
+  assert.equal(sky.cloudBaseFt,16000);
+});
+
+test("PROB30 -TSRA outranks base VCTS",()=>{
+  const base=metar("VCTS");
+  const prob=resolveOperationalWeather({text:"-TSRA",sourceKind:"TAF_PROB30"});
+  const chosen=choosePrimaryOperationalWeather([base,prob]);
+  assert.ok(chosen);
+  assert.equal(chosen.sourceKind,"TAF_PROB30");
+  assert.equal(chosen.category,"thunderstorm");
+});
+
+test("NOW-05Z rollover formatting",()=>{
+  const now = new Date("2026-07-31T23:30:00Z");
+  const formatted = formatTafWindow("2026-07-31T23:30:00Z","2026-08-01T05:00:00Z",now);
+  assert.equal(formatted.compact,"NOW–05Z");
+});
+
+test("transition rows include exact times and conditions instead of fixed slots",()=>{
+  const taf="TAF KMEM 212330Z 2200/2306 18010KT P6SM VCTS SCT050CB PROB30 2201/2205 3SM -TSRA BKN020CB FM220500 20008KT P6SM VCSH SCT050 BKN200 FM220600 22005KT P6SM FEW250 FM221300 18010KT P6SM SCT035";
+  // The TAF was issued at 212330Z. Valid from 2200 to 2306.
+  const timeline=parseStructuredTaf(taf,new Date("2026-07-21T23:30:00Z"));
+  
+  // Dummy model slots
+  const slots=[
+    ["05:00","2026-07-22T05:00:00Z"],
+    ["08:00","2026-07-22T08:00:00Z"],
+    ["11:00","2026-07-22T11:00:00Z"],
+  ].map(([time,iso])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitation:10,source:"MODEL",operationalWeather:null}));
+  
+  // Current time is 04:37Z
+  const result=applyStructuredTaf(slots,timeline,new Date("2026-07-22T04:37:00Z"));
+  
+  const times = result.forecast.map(f=>f.time);
+  assert.deepEqual(times, ["NOW", "05:00Z", "06:00Z", "13:00Z"]);
+  
+  // 04Z (base window): PROB30 -TSRA BKN020CB
+  assert.equal(result.forecast[0].operationalWeather.shortLabel, "LT TSTMS WITH RAIN");
+  assert.equal(result.forecast[0].operationalWeather.cloudCoverage, "BKN");
+  assert.equal(result.forecast[0].operationalWeather.cloudBaseFt, 2000);
+  
+  // 05Z: VCSH / SCT050 BKN200 (BKN200 is the ceiling)
+  assert.equal(result.forecast[1].operationalWeather.shortLabel, "VICINITY SHOWERS");
+  assert.equal(result.forecast[1].operationalWeather.cloudCoverage, "BKN");
+  assert.equal(result.forecast[1].operationalWeather.cloudBaseFt, 20000);
+  
+  // 06Z: FEW250
+  assert.equal(result.forecast[2].operationalWeather.cloudCoverage, "FEW");
+  assert.equal(result.forecast[2].operationalWeather.cloudBaseFt, 25000);
+  
+  // 13Z: SCT035
+  assert.equal(result.forecast[3].operationalWeather.cloudCoverage, "SCT");
+  assert.equal(result.forecast[3].operationalWeather.cloudBaseFt, 3500);
+});

@@ -27,8 +27,12 @@ export function parseAviationSky(text:string):{cloudCoverage:CloudCoverage|null;
   const layer=/\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b/g; let match:RegExpExecArray|null;
   while((match=layer.exec(core))) layers.push({coverage:match[1] as CloudCoverage,base:Number(match[2])*100,summary:match[0]});
   const vv=core.match(/\bVV(\d{3}|\/{3})\b/); if(vv) layers.push({coverage:"VV",base:vv[1]==="///"?null:Number(vv[1])*100,summary:vv[0]});
-  layers.sort((a,b)=>COVERAGE_RANK[b.coverage]-COVERAGE_RANK[a.coverage]||(a.base??Infinity)-(b.base??Infinity));
-  const clear=/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/.test(core), best=layers[0];
+  const ceilings = layers.filter(l => ["BKN", "OVC", "VV"].includes(l.coverage));
+  ceilings.sort((a,b) => (a.base??Infinity) - (b.base??Infinity));
+  const nonCeilings = layers.filter(l => !["BKN", "OVC", "VV"].includes(l.coverage));
+  nonCeilings.sort((a,b)=>COVERAGE_RANK[b.coverage]-COVERAGE_RANK[a.coverage]||(a.base??Infinity)-(b.base??Infinity));
+  
+  const clear=/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/.test(core), best=ceilings[0] || nonCeilings[0];
   const vis=core.match(/(?:^|\s)(P|M)?(?:(\d+)\s+)?(\d+)(?:\/(\d+))?SM(?:\s|$)/); let visibilitySm:number|null=null;
   if(vis){visibilitySm=vis[4]?(Number(vis[2]||0)+Number(vis[3])/Number(vis[4])):Number(vis[3]);if(vis[1]==="M") visibilitySm=Math.max(0,visibilitySm);}
   else if(/\bCAVOK\b/.test(core)) visibilitySm=10;
@@ -48,6 +52,7 @@ function categoryFor(code:string):WeatherCategory {
 
 function intensityFor(code:string,category:WeatherCategory):"light"|"moderate"|"heavy"|null {
   if(!["severe-convection","thunderstorm","freezing-precipitation","winter-precipitation","liquid-precipitation"].includes(category)) return null;
+  if(code.startsWith("VC")) return null;
   return code.startsWith("+")?"heavy":code.startsWith("-")?"light":"moderate";
 }
 
@@ -307,6 +312,12 @@ export function formatTafWindow(fromIso:string,toIso:string,displayDate:Date):Ta
   const hour=(d:Date)=>`${String(d.getUTCHours()).padStart(2,"0")}${d.getUTCMinutes()?`:${String(d.getUTCMinutes()).padStart(2,"0")}`:""}`;
   const day=(d:Date)=>String(d.getUTCDate()).padStart(2,"0");
   const month=(d:Date)=>["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getUTCMonth()];
+  
+  if (displayDate.getTime() >= from.getTime() && displayDate.getTime() < to.getTime()) {
+    const range = `NOW–${hour(to)}Z`;
+    return { full: range, compact: range };
+  }
+
   if(dateKey(from)===dateKey(to)) {
     const range=`${hour(from)}–${hour(to)}Z`;
     return dateKey(from)===dateKey(displayDate)?{full:range,compact:range}:{full:`${day(from)} ${month(from)} · ${range}`,compact:`${day(from)}/${range}`};
@@ -334,7 +345,61 @@ export function parseStructuredTaf(raw:string,reference:Date):TafTimeline|null {
 
 export function isTafPeriodActive(period:Pick<TafTimelinePeriod,"fromIso"|"toIso">,time:number):boolean { return Date.parse(period.fromIso)<=time&&time<Date.parse(period.toIso); }
 export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowStart:Date):{forecast:Forecast[];hazards:TafHazard[]} {
-  const windowStartMs=windowStart.getTime(),forecast=model.map(slot=>{const time=Date.parse(slot.iso),prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather),overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather),primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);return primary?{...slot,condition:primary.condition,description:primary.label,source:"TAF" as const,operationalWeather:primary}:slot;});
-  const windowEnd=windowStartMs+9*3600000,hazards=[...timeline.prevailing,...timeline.overlays].filter(p=>Date.parse(p.fromIso)<windowEnd&&Date.parse(p.toIso)>windowStartMs&&qualifiesForTafHazardBand(p.weather)).map(p=>({id:p.id,fromIso:p.fromIso,toIso:p.toIso,weather:p.weather})).sort((a,b)=>score(b.weather)-score(a.weather)||Number(isTafPeriodActive(b,windowStartMs))-Number(isTafPeriodActive(a,windowStartMs))||Date.parse(a.fromIso)-Date.parse(b.fromIso));
+  const windowStartMs=windowStart.getTime();
+  const windowEnd=windowStartMs+9*3600000;
+  
+  const transitionTimes = new Set<number>();
+  transitionTimes.add(windowStartMs);
+  for (const p of [...timeline.prevailing, ...timeline.overlays]) {
+    const fromMs = Date.parse(p.fromIso);
+    if (fromMs > windowStartMs && fromMs <= windowEnd) {
+      transitionTimes.add(fromMs);
+    }
+  }
+
+  const sortedTransitions = Array.from(transitionTimes).sort((a,b) => a - b);
+  const forecast:Forecast[] = [];
+  
+  for (const time of sortedTransitions) {
+    const closestSlot = [...model].sort((a,b) => Math.abs(Date.parse(a.iso) - time) - Math.abs(Date.parse(b.iso) - time))[0];
+    const prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
+    const overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
+    const primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+    const timeDate = new Date(time);
+    const hourLabel = time === windowStartMs ? "NOW" : `${String(timeDate.getUTCHours()).padStart(2,"0")}:00Z`;
+
+    forecast.push({
+      ...(closestSlot || model[0]),
+      time: hourLabel,
+      iso: timeDate.toISOString(),
+      condition: primary ? primary.condition : (closestSlot?.condition || "neutral"),
+      description: primary ? primary.label : (closestSlot?.description || "Weather unavailable"),
+      source: "TAF" as const,
+      operationalWeather: primary || null
+    });
+  }
+
+  let modelIndex = 0;
+  while (forecast.length < 3 && modelIndex < model.length) {
+     const candidate = model[modelIndex];
+     if (!forecast.find(f => Math.abs(Date.parse(f.iso) - Date.parse(candidate.iso)) < 300000)) {
+         const time = Date.parse(candidate.iso);
+         const prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
+         const overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
+         const primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+         forecast.push({
+             ...candidate,
+             condition: primary ? primary.condition : candidate.condition,
+             description: primary ? primary.label : candidate.description,
+             source: "TAF" as const,
+             operationalWeather: primary || null
+         });
+     }
+     modelIndex++;
+  }
+
+  forecast.sort((a,b) => Date.parse(a.iso) - Date.parse(b.iso));
+
+  const hazards=[...timeline.prevailing,...timeline.overlays].filter(p=>Date.parse(p.fromIso)<windowEnd&&Date.parse(p.toIso)>windowStartMs&&qualifiesForTafHazardBand(p.weather)).map(p=>({id:p.id,fromIso:p.fromIso,toIso:p.toIso,weather:p.weather})).sort((a,b)=>score(b.weather)-score(a.weather)||Number(isTafPeriodActive(b,windowStartMs))-Number(isTafPeriodActive(a,windowStartMs))||Date.parse(a.fromIso)-Date.parse(b.fromIso));
   return {forecast,hazards};
 }
