@@ -15,9 +15,11 @@ import {
 
 const iso="2026-07-20T06:00:00.000Z";
 function weather(overrides={}) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  const today = `${p.year}-${p.month.padStart(2,"0")}-${p.day.padStart(2,"0")}`;
   return {
     temperatureF:80,feelsLikeF:84,condition:"clear",description:"Clear",windSpeedKt:6,windDirection:"S",windDegrees:180,windGustKt:null,humidity:55,
-    sunriseLocal:"06:00",sunsetLocal:"20:10",solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:10"}],observationTime:iso,
+    sunriseLocal:"06:00",sunsetLocal:"20:10",solarDays:[{date:today,sunriseLocal:"06:00",sunsetLocal:"20:10"}],observationTime:iso,
     forecast:[{time:"09:00",iso:"2026-07-20T14:00:00.000Z",temperatureF:82,condition:"clear",description:"Clear",precipitation:0,source:"TAF",operationalWeather:null}],operationalWeather:null,currentLightning:{level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null},tafHazards:[],
     birdRisk:"LOW",birdBasis:"AHAS",birdUpdated:iso,source:"METAR",cloudCoverage:"CLR",cloudBaseFt:null,visibilitySm:10,phenomena:[],
     metarObsIso:iso,tafIssueIso:"2026-07-20T05:00:00.000Z",tafValidStartIso:"2026-07-20T06:00:00.000Z",tafValidEndIso:"2026-07-21T12:00:00.000Z",

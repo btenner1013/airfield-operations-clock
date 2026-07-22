@@ -263,17 +263,18 @@ function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:strin
   if (clock >= set - 60 && clock <= set + 20) return "sunset";
   return clock < rise - 30 || clock > set + 20 ? "night" : "day";
 }
-function dateKey(date:Date,zone:string) { const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value])); return `${p.year}-${p.month}-${p.day}`; }
+function dateKey(date:Date,zone:string) { const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value])); return `${p.year}-${p.month.padStart(2,"0")}-${p.day.padStart(2,"0")}`; }
 function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fallbackRise:string,fallbackSet:string) {
   const today=dateKey(now,CONFIG.timeZone), current=Number(nowParts.hour)*60+Number(nowParts.minute)+Number(nowParts.second||0)/60;
   const todayIndex=Math.max(0,days.findIndex(d=>d.date===today)), todaySolar=days[todayIndex]||{date:today,sunriseLocal:fallbackRise,sunsetLocal:fallbackSet};
   const todaySet=parseTimeMinutes(todaySolar.sunsetLocal), afterSunset=current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
   const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal), selectedIsToday=selected.date===today, daylight=selectedIsToday&&current>=rise&&current<=set;
-  const progress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
-  const dayAngle = Math.PI - (progress / 100) * Math.PI;
+  const dayProgress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
+  let progress = dayProgress;
+  const dayAngle = Math.PI - (dayProgress / 100) * Math.PI;
   let markerX=100+Math.cos(dayAngle)*88, markerY=76-Math.sin(dayAngle)*56;
   if(!daylight) {
-    const nightStart = parseTimeMinutes(todaySolar.sunsetLocal);
+    const nightStart = parseTimeMinutes((current < rise ? days[Math.max(0, todayIndex - 1)] : todaySolar)?.sunsetLocal || todaySolar.sunsetLocal);
     const nightEnd = 1440 + parseTimeMinutes(selected.sunriseLocal);
     const nightClock = current < rise ? current + 1440 : current;
     const nightProgress = Math.max(0, Math.min(1, (nightClock - nightStart) / (nightEnd - nightStart)));
@@ -477,6 +478,16 @@ export default function Home() {
   },[scene,imageBase]);
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
   let effSolar = { ...solar };
+  if (effSolar.daylight) {
+    const dayAngle = Math.PI - (effSolar.progress / 100) * Math.PI;
+    effSolar.markerX = 100 + Math.cos(dayAngle) * 88;
+    effSolar.markerY = 76 - Math.sin(dayAngle) * 56;
+  } else {
+    const nightAngle = (effSolar.progress / 100) * Math.PI;
+    effSolar.markerX = 100 + Math.cos(nightAngle) * 88;
+    effSolar.markerY = 76 + Math.sin(nightAngle) * 18;
+  }
+
   if (debugPhase) {
     if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, progress: 5 };
     else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, progress: 95 };
@@ -546,12 +557,13 @@ export default function Home() {
                 <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
                 {effSolar.daylight ? (() => {
-                  const sunIntensity = 1 - Math.abs(effSolar.progress - 50) / 50;
+                  const sunIntensity = Math.max(0, 1 - Math.abs(effSolar.progress - 50) / 50);
+                  const sunRadius = 6 + 4 * sunIntensity;
                   return (
                     <g className="sun-group">
                       <circle cx={effSolar.markerX} cy={effSolar.markerY} r={10 + 14 * sunIntensity} fill="url(#sunOuterHalo)" className="sun-pulse-halo" opacity={sunIntensity} />
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={5 + 6 * sunIntensity} fill="url(#sunCoreGlow)" opacity={0.6 + 0.4 * sunIntensity} />
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={3 + 1 * sunIntensity} fill="#ffffff" />
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={14 + 10 * sunIntensity} fill="url(#sunGlow)" opacity={0.3 + 0.7 * sunIntensity} />
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={sunRadius} fill="#ffffff" opacity={0.8 + 0.2 * sunIntensity} />
                     </g>
                   );
                 })() : (() => {
