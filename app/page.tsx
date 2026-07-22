@@ -552,12 +552,12 @@ export default function Home() {
         <article className={`bird-card panel risk-${birdClass}`}>
           <div className="panel-title"><span>BIRD WATCH CONDITION</span><b>AHAS</b></div>
           <div className="bird-main">
-            <span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span>
-            <div className="bird-info">
+            <div className="bird-center-row">
+              <span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span>
               <strong className="bird-severity">{birdRisk}</strong>
-              <small className="bird-card-meta">
-                UPDATED {birdStamp || "1730Z"}{weather.birdUpdated && Date.parse(weather.birdUpdated) ? ` · ${Math.max(0, Math.floor((now.getTime() - Date.parse(weather.birdUpdated)) / 60000))} MIN AGO` : ""}
-              </small>
+            </div>
+            <div className="bird-card-meta">
+              {birdStamp || "1730Z"}{weather.birdUpdated && Date.parse(weather.birdUpdated) ? ` · ${Math.max(0, Math.floor((now.getTime() - Date.parse(weather.birdUpdated)) / 60000))} MIN AGO` : ""}
             </div>
           </div>
         </article>

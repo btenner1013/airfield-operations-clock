@@ -361,9 +361,21 @@
 /* ── BWC CARD ─────────────────────────────────────────────── */
 .bird-main {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: clamp(10px, 1vw, 18px);
+  justify-content: space-between;
   height: calc(100% - 32px);
+  padding: 2px 0;
+  text-align: center;
+}
+.bird-center-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.2vw, 18px);
+  flex: 1 1 0%;
+  min-width: 0;
+  width: 100%;
 }
 .bird-icon-symbol {
   flex-shrink: 0;
@@ -373,20 +385,10 @@
   font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans Egyptian Hieroglyphs", sans-serif;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
 }
-.bird-info {
-  flex: 1 1 0%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
-  padding: 2px 0;
-}
 .bird-severity {
-  font: 800 clamp(20px, 1.8vw, 32px) / 1.1 Consolas, monospace;
+  font: 800 clamp(22px, 2vw, 36px) / 1.1 Consolas, monospace;
   letter-spacing: 0.08em;
   white-space: nowrap;
-  margin-top: 2px;
 }
 .risk-severe   .bird-severity, .risk-severe   .bird-icon-symbol { color: #ff4d4d; animation: bwcPulse 1.2s infinite ease-in-out; }
 .risk-moderate .bird-severity, .risk-moderate .bird-icon-symbol { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
@@ -410,6 +412,8 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
+  text-align: center;
+  width: 100%;
   margin-top: auto;
 }
 
@@ -494,7 +498,7 @@
 }
 /* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
 .metar-health {
-  font-size: clamp(12px, 0.85vw, 16px);
+  font-size: clamp(14px, 0.95vw, 18px);
   font-weight: 800;
   letter-spacing: 0.14em;
   margin-top: 6px;
@@ -541,6 +545,18 @@
   overflow: hidden;
 }
 
+.taf-hazard-time {
+  font-size: clamp(11.5px, 0.75vw, 14.5px);
+  font-weight: 700;
+  color: #e2e8f0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  letter-spacing: 0.06em;
+}
+
 /* RED SEVERE HAZARD */
 .taf-hazard-band[data-severity="red"] {
   border-color: #ef4444;
@@ -548,9 +564,6 @@
 .taf-hazard-band[data-severity="red"] > span {
   background: #dc2626;
   color: #ffffff;
-}
-.taf-hazard-band[data-severity="red"] .taf-hazard-time {
-  color: #fca5a5;
 }
 .taf-hazard-band[data-severity="red"] em {
   color: #f87171;
@@ -567,9 +580,6 @@
   background: #ca8a04;
   color: #ffffff;
 }
-.taf-hazard-band[data-severity="yellow"] .taf-hazard-time {
-  color: #fde047;
-}
 .taf-hazard-band[data-severity="yellow"] em {
   color: #facc15;
   font-style: normal;
@@ -584,9 +594,6 @@
 .taf-hazard-band[data-severity="blue"] > span {
   background: #0284c7;
   color: #ffffff;
-}
-.taf-hazard-band[data-severity="blue"] .taf-hazard-time {
-  color: #7dd3fc;
 }
 .taf-hazard-band[data-severity="blue"] em {
   color: #38bdf8;
