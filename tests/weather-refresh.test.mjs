@@ -126,7 +126,7 @@ test("protected clock, scene, precipitation, and service-worker invariants remai
   assert.equal((page.match(/className="sky-base"/g)||[]).length,2);
   assert.equal((page.match(/<PrecipCanvas\b/g)||[]).length,1);
   assert.equal((page.match(/className="cloud-field"/g)||[]).length,1);
-  assert.match(page,/const forecast:Forecast\[\]=\[2,5,8\]/);
+  assert.match(page,/const forecast:Forecast\[\]=\[0,3,6\]/);
   assert.match(page,/condition:metar\?\.condition\?\?model\.condition/);
   assert.doesNotMatch(clock,/from\s+["'][^"']*weather/i);
   const weatherBranch=sw.slice(sw.indexOf("if(url.hostname"),sw.indexOf("e.respondWith(fetch(e.request)"));
