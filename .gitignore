@@ -41,5 +41,7 @@ next-env.d.ts
 /outputs/
 /work/
 
-# verification
+# verification & scratch
 /verification/
+/scratch/
+tsconfig.tsbuildinfo
