@@ -449,7 +449,41 @@ export default function Home() {
   }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="flight-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale}) ${flight.direction==="rtl"?"scaleX(-1)":""}`}}><span className="contrails"><b/><b/></span><span className="aircraft"><b className="airframe"/><i className="wing-strobe strobe-port"/><i className="wing-strobe strobe-starboard"/><i className="anti-collision"/></span></span></span>)}</i><i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i><i className="air-traffic">{flybys.map((flight,i)=><span className={`flyby flyby-${flight.direction}`} key={i} style={{top:`${flight.top}%`,animationDuration:`${flight.cycle}s`,animationDelay:`${flight.delay}s`}}><span className="c17-shape" style={{transform:`rotate(${flight.tilt}deg) scale(${flight.scale})`}}>
+      <svg className="c17-svg" viewBox="0 0 180 80" width="90" height="45" aria-hidden="true">
+        {/* Dual Engine Contrails */}
+        <g className="c17-contrails">
+          <line x1="10" y1="35" x2="-80" y2="35" stroke="rgba(248, 250, 252, 0.45)" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="10" y1="45" x2="-80" y2="45" stroke="rgba(248, 250, 252, 0.45)" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+        {/* C-17 Globemaster III Airframe Silhouette */}
+        <g className="c17-body">
+          {/* T-Tail Horizontal Stabilizer Top */}
+          <path d="M 12 10 L 34 10 L 28 18 L 8 18 Z" fill="#475569" />
+          {/* Vertical Tail Fin */}
+          <path d="M 22 18 L 38 38 L 26 38 Z" fill="#334155" />
+          {/* Heavy Cargo Fuselage */}
+          <path d="M 155 40 C 145 32, 115 30, 50 33 L 22 38 L 10 40 L 22 42 L 50 47 C 115 50, 145 48, 155 40 Z" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
+          {/* High Swept Wings with Winglets */}
+          <path d="M 90 33 L 64 10 L 68 8 L 100 33 Z" fill="#334155" />
+          <path d="M 90 47 L 64 70 L 68 72 L 100 47 Z" fill="#334155" />
+          {/* Winglets */}
+          <path d="M 64 10 L 60 4 L 64 6 L 68 8 Z" fill="#64748b" />
+          <path d="M 64 70 L 60 76 L 64 74 L 68 72 Z" fill="#64748b" />
+          {/* 4 Engine Nacelles */}
+          <rect x="78" y="18" width="12" height="4" rx="2" fill="#64748b" />
+          <rect x="68" y="11" width="12" height="4" rx="2" fill="#64748b" />
+          <rect x="78" y="58" width="12" height="4" rx="2" fill="#64748b" />
+          <rect x="68" y="65" width="12" height="4" rx="2" fill="#64748b" />
+        </g>
+        {/* Operational Night/Twilight Strobes & Beacon */}
+        <g className="c17-lights">
+          <circle cx="85" cy="32" r="2.5" className="beacon-red" />
+          <circle cx="60" cy="4" r="2" className="strobe-white" />
+          <circle cx="60" cy="76" r="2" className="strobe-white" />
+        </g>
+      </svg>
+    </span></span>)}</i><i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">

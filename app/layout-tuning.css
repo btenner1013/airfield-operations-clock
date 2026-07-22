@@ -827,3 +827,75 @@
   background: #ef4444 !important;
   color: #fff !important;
 }
+
+/* ── C-17 GLOBEMASTER III FLYBY STYLING & ANIMATION ──────── */
+.air-traffic {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.flyby {
+  position: absolute;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.flyby-ltr {
+  left: -200px;
+  animation: flybyLtr linear infinite;
+}
+
+.flyby-rtl {
+  right: -200px;
+  animation: flybyRtl linear infinite;
+}
+
+.flyby-rtl .c17-shape {
+  transform: scaleX(-1) !important;
+}
+
+@keyframes flybyLtr {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(100vw + 400px)); }
+}
+
+@keyframes flybyRtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-100vw - 400px)); }
+}
+
+.c17-svg {
+  overflow: visible;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.beacon-red {
+  fill: #ef4444;
+  filter: drop-shadow(0 0 6px #ef4444);
+  animation: beaconPulse 1.2s ease-in-out infinite;
+}
+
+.strobe-white {
+  fill: #ffffff;
+  filter: drop-shadow(0 0 8px #ffffff);
+  animation: strobeFlash 1.6s steps(1, end) infinite;
+}
+
+.phase-day .beacon-red,
+.phase-day .strobe-white {
+  opacity: 0.15;
+  animation: none;
+}
+
+@keyframes beaconPulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@keyframes strobeFlash {
+  0%, 90%, 100% { opacity: 0; }
+  92%, 96% { opacity: 1; }
+}
