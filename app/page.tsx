@@ -205,9 +205,7 @@ function tafQualifier(weather:OperationalWeather|null):string {
 }
 function tafCardCondition(weather:OperationalWeather|null,fallback:string):string {
   if(!weather) return fallback;
-  const qualifier=tafQualifier(weather),qualified=!['PREVAILING','FM','MODEL','METAR'].includes(qualifier);
-  const condition=weather.label;
-  return qualified?`${qualifier} ${condition}`:condition;
+  return weather.label;
 }
 function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
   const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
@@ -529,10 +527,41 @@ export default function Home() {
             </div>
           </div>
         </article>
-        <article className="weather-card panel"><div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div><div className="weather-main"><span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span><strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong><div className="weather-copy"><b>{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b><div className="feels-like-container"><span className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span><span className="ceiling-line">CEILING <strong>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNL"}</strong></span><span className="humidity-line">HUMIDITY <strong>{weather.humidity}%</strong></span></div>{lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}</div></div><div className={`metar-health health-${metarState.toLowerCase()}`}><span>METAR {metarState}</span>{feed!=="OK"&&<span className={`feed-${feed.toLowerCase()}`}>FEED {feed}</span>}</div></article>
+        <article className="weather-card panel">
+          <div className="panel-title"><span>CURRENT WEATHER</span><b>{weather.source==="METAR"?"KMEM METAR":CONFIG.locationName.toUpperCase()}</b></div>
+          <div className="weather-main">
+            <div className="weather-left-block">
+              <div className="weather-left-top">
+                <span className="weather-glyph"><WeatherIcon condition={displayTheme} night={phase==="night"}/></span>
+                <strong>{weather.temperatureF}<span className="temp-unit">°F</span></strong>
+              </div>
+              <span className="humidity-under-glyph">HUMIDITY <strong>{weather.humidity}%</strong></span>
+            </div>
+            <div className="weather-copy">
+              <b>{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+              <div className="feels-like-container">
+                <span className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>
+                <span className="ceiling-line">CEILING <strong>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNL"}</strong></span>
+              </div>
+              {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
+            </div>
+          </div>
+          <div className={`metar-health health-${metarState.toLowerCase()}`}><span>METAR {metarState}</span>{feed!=="OK"&&<span className={`feed-${feed.toLowerCase()}`}>FEED {feed}</span>}</div>
+        </article>
         <article className="wind-card panel"><div className="panel-title"><span>WIND & FLIGHT CAT</span></div><div className="wind-main"><div className="compass-wrap"><div className="compass-dial"><svg className="compass-ticks" viewBox="0 0 100 100" fill="none" stroke="currentColor"><circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="1.2" opacity="0.4" /><circle cx="50" cy="50" r="42" stroke="var(--line)" strokeWidth="0.5" strokeDasharray="1.5, 3" /><line x1="50" y1="2" x2="50" y2="8" stroke="var(--cyan)" strokeWidth="2" /><line x1="50" y1="92" x2="50" y2="98" stroke="var(--muted)" strokeWidth="1.2" /><line x1="2" y1="50" x2="8" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><line x1="92" y1="50" x2="98" y2="50" stroke="var(--muted)" strokeWidth="1.2" /><circle cx="50" cy="50" r="4" fill="var(--cyan)" box-shadow="0 0 6px var(--cyan)" /></svg><span className="compass-label compass-n">N</span><span className="compass-label compass-e">E</span><span className="compass-label compass-s">S</span><span className="compass-label compass-w">W</span><div className="compass-arrow" style={effWindDir !== null ? { transform: `rotate(${effWindDir + 180}deg)` } : undefined}>{effWindDir !== null ? <svg viewBox="0 0 100 100" className="compass-arrow-svg" fill="none" stroke="currentColor"><path d="M50 10 L60 38 L50 32 L40 38 Z" fill="var(--cyan)" stroke="var(--cyan)" strokeWidth="1.5" strokeLinejoin="round" /><line x1="50" y1="32" x2="50" y2="78" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round" /><circle cx="50" cy="78" r="2.5" fill="var(--cyan)" /></svg> : <div className="compass-calm-indicator">↻</div>}</div></div></div><div className="wind-info"><strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G ${effGust}` : ""}`}</strong>{effWindDir !== null && effWindSpd > 0 && <small className="wind-from">FROM {bearingToCardinal(effWindDir)}</small>}<div className="wind-flight-meta"><span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{flightCat.cat}</span><span className="wind-vis-tag">VIS <strong>{effVisibility ?? 10} SM</strong></span></div></div></div></article>
-        <article className={`bird-card panel risk-${birdClass}`}><div className="panel-title"><span>BIRD WATCH CONDITION</span><b>USAF AHAS</b></div><div className="bird-main"><span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span><div className="bird-info"><strong className="bird-severity">{birdRisk}</strong><small className="bird-card-meta">AHAS · UPDATED {birdStamp || "1730Z"}</small></div></div></article>
-        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><span>TAF HAZARD</span><b key={h.id} data-category={h.weather.category}><span className="taf-hazard-time">{window.full}</span><em>{haz.text}</em></b></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudCoverage && ["BKN","OVC","VV"].includes(f.operationalWeather.cloudCoverage) && f.operationalWeather.cloudBaseFt !== null ? ` · CIG ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
+        <article className={`bird-card panel risk-${birdClass}`}>
+          <div className="panel-title"><span>BIRD WATCH CONDITION</span><b>AHAS</b></div>
+          <div className="bird-main">
+            <span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span>
+            <div className="bird-info">
+              <strong className="bird-severity">{birdRisk}</strong>
+              <small className="bird-card-meta">
+                UPDATED {birdStamp || "1730Z"}{weather.birdUpdated && Date.parse(weather.birdUpdated) ? ` · ${Math.max(0, Math.floor((now.getTime() - Date.parse(weather.birdUpdated)) / 60000))} MIN AGO` : ""}
+              </small>
+            </div>
+          </div>
+        </article>
+        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><span className="taf-hazard-tag">TAF HAZARD</span><span className="taf-hazard-time">{window.full}</span><em className="taf-hazard-text">{haz.text}</em></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudCoverage && ["BKN","OVC","VV"].includes(f.operationalWeather.cloudCoverage) && f.operationalWeather.cloudBaseFt !== null ? ` · CIG ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
