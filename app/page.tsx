@@ -221,12 +221,26 @@ function parseAhasTimestampIso(raw: string | undefined | null, now: Date): strin
   }
   return null;
 }
+function parseTimeMinutes(v: string | undefined): number {
+  if (!v || v === "--:--") return 1211;
+  const pm = /pm/i.test(v);
+  const am = /am/i.test(v);
+  const clean = v.replace(/(?:AM|PM|\s)/gi, "");
+  const [hStr, mStr] = clean.split(":");
+  let h = Number(hStr), m = Number(mStr || 0);
+  if (!Number.isFinite(h)) return 1211;
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  if (!pm && !am && h < 7) h += 12;
+  return h * 60 + m;
+}
 function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
-  const clock=Number(nowParts.hour)*60+Number(nowParts.minute), parse=(value:string)=>{const [h,m]=value.split(":").map(Number);return h*60+m};
-  const rise=parse(sunrise), set=parse(sunset); if(!Number.isFinite(rise)||!Number.isFinite(set)) return clock<360||clock>1200?"night":"day";
-  if(clock>=rise-30&&clock<=rise+60) return "sunrise";
-  if(clock>=set-60&&clock<=set+20) return "sunset";
-  return clock<rise-30||clock>set+20?"night":"day";
+  const clock = Number(nowParts.hour)*60 + Number(nowParts.minute);
+  const rise = parseTimeMinutes(sunrise);
+  const set = parseTimeMinutes(sunset);
+  if (clock >= rise - 30 && clock <= rise + 60) return "sunrise";
+  if (clock >= set - 60 && clock <= set + 20) return "sunset";
+  return clock < rise - 30 || clock > set + 20 ? "night" : "day";
 }
 function dateKey(date:Date,zone:string) { const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value])); return `${p.year}-${p.month}-${p.day}`; }
 function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fallbackRise:string,fallbackSet:string) {
@@ -580,7 +594,7 @@ export default function Home() {
             </div>
           </div>
         </article>
-        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><em>TAF HAZARD · {window.full} · {haz.text}</em></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudCoverage && ["BKN","OVC","VV"].includes(f.operationalWeather.cloudCoverage) && f.operationalWeather.cloudBaseFt !== null ? ` · CIG ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
+        <article className={`forecast-card panel ${weather.tafHazards.length?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.tafHazards.length>0&&(() => { const h = weather.tafHazards[0]; const window = formatTafWindow(h.fromIso, h.toIso, now); const haz = getTafHazardDetails(h); return <div className="taf-hazard-band" data-severity={haz.severity}><em>TAF HAZARD · {window.full} · {haz.text}</em></div>; })()}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=><div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{f.time}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined ? ` · ${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>

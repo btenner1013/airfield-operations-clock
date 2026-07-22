@@ -117,8 +117,7 @@
 }
 
 /* ── SOLAR WINDOW (GRAPHIC TOP AREA, TIMES BOTTOM ROW) ────── */
-.sun-main {
-  position: relative;
+.solar-layout {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -152,7 +151,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  width: 100%;
   border-top: 1px solid rgba(180, 211, 221, 0.12);
   padding-top: 6px;
   margin-top: auto;
@@ -162,20 +161,28 @@
   flex-direction: column;
   gap: 1px;
 }
+.solar-rise {
+  align-items: flex-start;
+  text-align: left;
+}
+.solar-set {
+  align-items: flex-end;
+  text-align: right;
+}
 .solar-time span {
-  font-size: clamp(9px, 0.55vw, 11px);
-  color: #aebbc0;
-  letter-spacing: 0.1em;
+  font-size: clamp(8px, 0.55vw, 10px);
+  color: #9eacb1;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .solar-time strong {
-  font: 700 clamp(13px, 0.95vw, 20px) / 1.1 Consolas, monospace;
+  font: 600 clamp(14px, 1.2vw, 22px) / 1 Consolas, monospace;
   color: #f4b45b;
 }
 .solar-time small {
-  font-size: clamp(8.5px, 0.5vw, 10.5px);
-  color: #8899a0;
-  letter-spacing: 0.06em;
+  font-size: clamp(6.5px, 0.48vw, 9px);
+  color: #708087;
+  white-space: nowrap;
 }
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
