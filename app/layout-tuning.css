@@ -995,8 +995,8 @@
 .flyby-ltr .nav-starboard-green,
 .flyby-ltr .strobe-wing-white.starboard {
   position: absolute;
-  top: 60%;
-  left: 56%;
+  top: 73.73%;
+  left: 60.74%;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -1020,7 +1020,7 @@
 /* Strobe Lights Base Styles */
 .strobe-wing-white {
   background: #ffffff;
-  box-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;
+  box-shadow: 0 0 16px #ffffff, 0 0 32px #ffffff, 0 0 48px #ffffff;
   animation: strobeCycle var(--light-cycle-duration) linear infinite;
   z-index: 3; /* Ensure strobe renders above the steady nav light */
 }
@@ -1055,13 +1055,19 @@
 
 /* Cycle Interleaving - Red vs White never overlap */
 @keyframes beaconCycle {
-  0%, 15%, 100% { opacity: 0.1; }
-  5%, 10% { opacity: 1; }
+  0% { opacity: 1; }
+  22% { opacity: 1; }
+  23% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 @keyframes strobeCycle {
-  0%, 49.9%, 53.1%, 100% { opacity: 0; }
-  50%, 53% { opacity: 1; }
+  0% { opacity: 0; }
+  49.9% { opacity: 0; }
+  50% { opacity: 1; }
+  55% { opacity: 1; }
+  55.1% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 /* Engine Contrail Streams */

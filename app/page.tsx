@@ -255,20 +255,22 @@ function parseTimeMinutes(v: string | undefined): number {
   if (!pm && !am && h < 7) h += 12;
   return h * 60 + m;
 }
-function solarPhase(nowParts:Record<string,string>, sunrise:string, sunset:string):"day"|"night"|"sunrise"|"sunset" {
-  const clock = Number(nowParts.hour)*60 + Number(nowParts.minute);
-  const rise = parseTimeMinutes(sunrise);
-  const set = parseTimeMinutes(sunset);
-  if (clock >= rise - 30 && clock <= rise + 60) return "sunrise";
-  if (clock >= set - 60 && clock <= set + 20) return "sunset";
-  return clock < rise - 30 || clock > set + 20 ? "night" : "day";
-}
+
 function dateKey(date:Date,zone:string) { const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value])); return `${p.year}-${p.month.padStart(2,"0")}-${p.day.padStart(2,"0")}`; }
 function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fallbackRise:string,fallbackSet:string) {
   const today=dateKey(now,CONFIG.timeZone), current=Number(nowParts.hour)*60+Number(nowParts.minute)+Number(nowParts.second||0)/60;
   const todayIndex=Math.max(0,days.findIndex(d=>d.date===today)), todaySolar=days[todayIndex]||{date:today,sunriseLocal:fallbackRise,sunsetLocal:fallbackSet};
   const todaySet=parseTimeMinutes(todaySolar.sunsetLocal), afterSunset=current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
-  const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal), selectedIsToday=selected.date===today, daylight=selectedIsToday&&current>=rise&&current<=set;
+  const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal);
+  
+  const daylight = current >= rise && current <= set;
+  const activeObject = daylight ? "sun" : "moon";
+  
+  let phase: "day" | "night" | "sunrise" | "sunset" = "day";
+  if (current >= rise - 30 && current < rise + 60) phase = "sunrise";
+  else if (current >= set - 60 && current < set + 30) phase = "sunset";
+  else if (current < rise - 30 || current >= set + 30) phase = "night";
+  
   const dayProgress=daylight&&set>rise?Math.max(0,Math.min(100,((current-rise)/(set-rise))*100)):0;
   let progress = dayProgress;
   const dayAngle = Math.PI - (dayProgress / 100) * Math.PI;
@@ -284,7 +286,7 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   }
   const safeX = Number.isFinite(markerX) ? markerX : 100;
   const safeY = Number.isFinite(markerY) ? markerY : 40;
-  return {sunrise:selected.sunriseLocal,sunset:selected.sunsetLocal,label:selectedIsToday?"TODAY":"TOMORROW",daylight,progress,markerX:safeX,markerY:safeY};
+  return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress, markerX:safeX, markerY:safeY};
 }
 function zStamp(value:string) { const match=(value||"").match(/\d{4}-\d{2}-(\d{2})[ T](\d{2}):(\d{2})/); return match?`${match[1]}/${match[2]}${match[3]}Z`:"—"; }
 function aviationStamp(value:string|null) { const time=value?Date.parse(value):NaN; if(!Number.isFinite(time)) return "—"; const d=new Date(time); return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`; }
@@ -429,12 +431,16 @@ export default function Home() {
   },[]);
   const local=parts(now,CONFIG.timeZone), utc=parts(now,"UTC");
   const localTime=`${local.hour}:${local.minute}:${local.second}`, utcTime=`${utc.hour}:${utc.minute}:${utc.second}`;
+  
+  // Phase 1 - Unify solar calculations
+  const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
+  const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solar.phase);
+  
   const displayTheme=debug||weather.condition;
-  const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solarPhase(local,weather.sunriseLocal,weather.sunsetLocal));
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const sceneModel=buildScene(weather,condition,phase,!!debug);
-  // Phase 2B — effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
+  // Phase 2B - effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
   const effCoverage=debugCloud||sceneModel.cloudCoverage;
   const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
   const effWindDir=debugWind!=null?debugWind:sceneModel.windDirectionDeg;
@@ -466,17 +472,37 @@ export default function Home() {
   const lightning=debugLightningReport(debugLightning)??weather.currentLightning??NO_LIGHTNING, lightningPoint=lightningPlacement(lightning), flashTest=debugLightning==="flash-test";
   useLightningScheduler(mainRef,lightning,reduced,flashTest);
   const sceneStyle={...cloudStyle,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction,"--lightning-x":`${lightningPoint.x}%`,"--lightning-y":`${lightningPoint.y}%`} as unknown as CSSProperties;
-  // Crossfade the wallpaper between two ping-pong layers: preload the incoming image, then flip the
-  // active slot so CSS transitions opacity. Exactly two layers ever exist, so rapid scene changes
-  // (live METAR or debug) can never accumulate stale layers or timers.
-  useEffect(()=>{
-    const {active:ac,a,b}=cfRef.current, shown=ac==="a"?a:b; if(shown===scene) return;
-    let cancelled=false; const img=new Image(); img.decoding="async";
-    const commit=()=>{ if(cancelled) return; if(cfRef.current.active==="a"){setBScene(scene);setActive("b");} else {setAScene(scene);setActive("a");} };
-    img.onload=commit; img.onerror=commit; img.src=`${imageBase}/assets/backgrounds/${scene}.png`;
-    return ()=>{ cancelled=true; };
-  },[scene,imageBase]);
-  const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
+  
+  // Crossfade the wallpaper between two ping-pong layers using a race-safe state machine.
+  // We preload the incoming image and ONLY swap `active` when it successfully decodes,
+  // ensuring no stale load callbacks supersede newer scene requests.
+  useEffect(() => {
+    const { active: ac, a, b } = cfRef.current;
+    const currentScene = ac === "a" ? a : b;
+    if (currentScene === scene) return;
+    
+    let cancelled = false;
+    const img = new Image();
+    img.decoding = "async";
+    
+    const commit = () => {
+      if (cancelled) return;
+      if (cfRef.current.active === "a") {
+        setBScene(scene);
+        setActive("b");
+      } else {
+        setAScene(scene);
+        setActive("a");
+      }
+    };
+    
+    img.onload = commit;
+    img.onerror = commit; // If it fails, swap anyway to avoid getting permanently stuck
+    img.src = `${imageBase}/assets/backgrounds/${scene}.png`;
+    
+    return () => { cancelled = true; };
+  }, [scene, imageBase]);
+  
   let effSolar = { ...solar };
   if (effSolar.daylight) {
     const dayAngle = Math.PI - (effSolar.progress / 100) * Math.PI;
@@ -556,7 +582,7 @@ export default function Home() {
                 <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
                 <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
-                {effSolar.daylight ? (() => {
+                {effSolar.activeObject === "sun" ? (() => {
                   const sunIntensity = Math.max(0, 1 - Math.abs(effSolar.progress - 50) / 50);
                   const sunRadius = 6 + 4 * sunIntensity;
                   return (
@@ -607,7 +633,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="solar-subtitle">
-              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `MOON - ${moonInfo.name}`}</strong>
+              <strong>{effSolar.activeObject === "sun" ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
               <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div>
