@@ -209,6 +209,21 @@ function tafCardCondition(weather:OperationalWeather|null,fallback:string):strin
   if(!weather) return fallback;
   return weather.label;
 }
+function getTafHazardDetails(h: any): { severity: "red" | "yellow" | "blue"; text: string } {
+  if (!h || !h.weather) return { severity: "yellow", text: "TS PSBL" };
+  const w = h.weather;
+  const q = tafQualifier(w);
+  const rawCode = w.code || (w.codes && w.codes.length ? w.codes[0] : "");
+  const psbl = (q.includes("PROB") || w.temporary) ? " PSBL" : "";
+  const codeText = rawCode ? `${rawCode}${psbl}` : `${w.shortLabel || w.label || "TS"}${psbl}`;
+  let severity: "red" | "yellow" | "blue" = "yellow";
+  if (w.category === "severe-convection" || w.category === "thunderstorm" || w.category === "freezing-precipitation") {
+    severity = (q.includes("PROB30") || w.temporary) ? "yellow" : "red";
+  } else if (w.category === "liquid-precipitation" || w.category === "winter-precipitation") {
+    severity = "blue";
+  }
+  return { severity, text: codeText };
+}
 function parseAhasTimestampIso(raw: string | undefined | null, now: Date): string | null {
   if (!raw || raw === "—") return null;
   if (!isNaN(Date.parse(raw))) return raw;
@@ -297,23 +312,6 @@ function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObs
   if(obscuration==="smoke"||obscuration==="volcanic-ash") return `overcast-${light}`;
   if(["dust","blowing-dust","drifting-dust","sand","blowing-sand","drifting-sand","dust-storm","sandstorm","dust-whirl"].includes(obscuration)) return sceneFor("partly-cloudy",phase,"SCT");
   return baseScene;
-}
-
-function getTafHazardDetails(h: any): { severity: "red" | "yellow" | "blue"; text: string } {
-  if (!h || !h.weather) return { severity: "yellow", text: "TS POSSIBLE" };
-  const cat = h.weather.category || "";
-  const src = h.weather.sourceKind || "";
-  const label = (h.weather.label || "").toUpperCase();
-  if (cat === "thunderstorm" && (src.includes("PROB") || label.includes("POSSIBLE"))) {
-    return { severity: "yellow", text: "TS POSSIBLE" };
-  }
-  if (cat === "thunderstorm" || label.includes("+") || label.includes("HEAVY")) {
-    return { severity: "red", text: label || "THUNDERSTORMS" };
-  }
-  if (src.includes("PROB") || src.includes("TEMPO")) {
-    return { severity: "yellow", text: label.includes("POSSIBLE") ? label : `${label} POSSIBLE` };
-  }
-  return { severity: "blue", text: label || "RESTRICTIVE WX" };
 }
 
 export default function Home() {
