@@ -58,19 +58,20 @@ function getFlightCategory(visSm: number | null, cloudBaseFt: number | null, clo
   return { cat: "VFR", color: "#4ade80", label: "VFR" };
 }
 function getMoonPhase(date: Date): { phase: number; name: string } {
-  const knownNewMoon = new Date(Date.UTC(2024, 0, 11, 11, 57));
+  // Calibrated to July 14, 2026 05:57 UTC New Moon (timeanddate.com Memphis baseline)
+  const knownNewMoon = new Date(Date.UTC(2026, 6, 14, 5, 57));
   const synodicMonth = 29.53058867;
   const diffDays = (date.getTime() - knownNewMoon.getTime()) / 86400000;
   const phase = ((diffDays % synodicMonth) + synodicMonth) % synodicMonth;
   const norm = phase / synodicMonth;
   let name = "NEW MOON";
-  if (norm > 0.03 && norm < 0.22) name = "WAXING CRESCENT";
-  else if (norm >= 0.22 && norm <= 0.28) name = "FIRST QUARTER";
-  else if (norm > 0.28 && norm < 0.47) name = "WAXING GIBBOUS";
-  else if (norm >= 0.47 && norm <= 0.53) name = "FULL MOON";
-  else if (norm > 0.53 && norm < 0.72) name = "WANING GIBBOUS";
-  else if (norm >= 0.72 && norm <= 0.78) name = "LAST QUARTER";
-  else if (norm > 0.78 && norm < 0.97) name = "WANING CRESCENT";
+  if (norm >= 0.015 && norm < 0.235) name = "WAXING CRESCENT";
+  else if (norm >= 0.235 && norm <= 0.255) name = "FIRST QUARTER";
+  else if (norm > 0.255 && norm < 0.485) name = "WAXING GIBBOUS";
+  else if (norm >= 0.485 && norm <= 0.515) name = "FULL MOON";
+  else if (norm > 0.515 && norm < 0.735) name = "WANING GIBBOUS";
+  else if (norm >= 0.735 && norm <= 0.755) name = "LAST QUARTER";
+  else if (norm > 0.755 && norm < 0.985) name = "WANING CRESCENT";
   return { phase: norm, name };
 }
 function simplifyLightningRemark(raw: string): string {
@@ -471,14 +472,44 @@ export default function Home() {
                     <circle cx={effSolar.markerX} cy={effSolar.markerY} r="9" fill="url(#sunCoreGlow)" />
                     <circle cx={effSolar.markerX} cy={effSolar.markerY} r="4" fill="#ffffff" />
                   </g>
-                ) : (
-                  <g className="moon-group">
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="26" fill="url(#moonGlow)" />
-                    <circle cx={effSolar.markerX} cy={effSolar.markerY} r="14" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
-                    <circle cx={effSolar.markerX - 4} cy={effSolar.markerY - 4} r="7" fill="#0f172a" opacity="0.25" />
-                    <circle cx={effSolar.markerX + 3} cy={effSolar.markerY + 3} r="4" fill="#64748b" opacity="0.2" />
-                  </g>
-                )}
+                ) : (() => {
+                  const p = moonInfo.phase; // 0..1 (0=New, 0.25=First Qtr, 0.3=Waxing Gibbous, 0.5=Full)
+                  const isWaxing = p <= 0.5;
+                  const isWaning = p > 0.5;
+                  const isFull = p >= 0.485 && p <= 0.515;
+                  const isNew = p < 0.015 || p > 0.985;
+                  // Calculate shadow rx sweep for elliptical shadow overlay
+                  const shadowRatio = isWaxing ? Math.abs(0.25 - p) / 0.25 : Math.abs(0.75 - p) / 0.25;
+                  const shadowRx = Math.round(14 * shadowRatio);
+                  const isGibbous = (p > 0.255 && p < 0.485) || (p > 0.515 && p < 0.735);
+                  const sweep = (isWaxing && p < 0.25) || (isWaning && p > 0.75) ? 0 : 1;
+
+                  return (
+                    <g transform={`translate(${effSolar.markerX.toFixed(1)}, ${effSolar.markerY.toFixed(1)})`}>
+                      <circle r="26" fill="url(#moonGlow)" />
+                      <circle r="14" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
+                      <circle cx="-3" cy="-3" r="3.5" fill="#475569" opacity="0.3" />
+                      <circle cx="4" cy="4" r="2.5" fill="#475569" opacity="0.25" />
+                      <circle cx="2" cy="-5" r="2" fill="#475569" opacity="0.2" />
+                      {isNew && <circle r="14" fill="#0b131e" opacity="0.94" />}
+                      {!isFull && !isNew && (
+                        isWaxing ? (
+                          p <= 0.25 ? (
+                            <path d={`M 0 -14 A 14 14 0 0 0 0 14 A ${shadowRx} 14 0 0 ${sweep} 0 -14 Z`} fill="#0b131e" opacity="0.9" />
+                          ) : (
+                            <path d={`M 0 -14 A 14 14 0 0 0 0 14 A ${shadowRx} 14 0 0 1 0 -14 Z`} fill="#0b131e" opacity="0.9" />
+                          )
+                        ) : (
+                          p <= 0.75 ? (
+                            <path d={`M 0 -14 A 14 14 0 0 1 0 14 A ${shadowRx} 14 0 0 1 0 -14 Z`} fill="#0b131e" opacity="0.9" />
+                          ) : (
+                            <path d={`M 0 -14 A 14 14 0 0 1 0 14 A ${shadowRx} 14 0 0 0 0 -14 Z`} fill="#0b131e" opacity="0.9" />
+                          )
+                        )
+                      )}
+                    </g>
+                  );
+                })()}
               </svg>
             </div>
             <div className="solar-subtitle">
