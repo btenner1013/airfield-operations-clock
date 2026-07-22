@@ -21,6 +21,8 @@ The status panel uses the common aviation `YDDD` form: the final digit of the lo
 
 ## Debug and display controls
 
+For complete details on supported query parameters, presets, and interactive testing controls, see the **[Preview Lab & Simulator Guide](docs/PREVIEW-LAB.md)**.
+
 Append one of these query strings to simulate a theme:
 
 `?debugWeather=clear`, `partly-cloudy`, `overcast`, `rain`, `heavy-rain`, `thunderstorm`, `snow`, `fog`, `night`, `sunrise`, or `sunset`.
