@@ -315,14 +315,16 @@ function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObs
 }
 
 function isFlybyWeatherAllowed(weather: Weather, flightCat: { cat: string }): boolean {
-  if (flightCat.cat === "IFR" || flightCat.cat === "LIFR") return false;
-  if (weather.visibilitySm !== null && weather.visibilitySm < 3) return false;
-  if (weather.cloudBaseFt !== null && weather.cloudBaseFt < 1000 && ["BKN", "OVC", "VV"].includes(weather.cloudCoverage || "")) return false;
+  if (flightCat.cat !== "VFR") return false;
+  if (weather.visibilitySm !== null && weather.visibilitySm < 5) return false;
+  const coverage = weather.cloudCoverage || "CLR";
+  if (["BKN", "OVC", "VV"].includes(coverage)) return false;
+  if (!["CLR", "SKC", "FEW", "SCT"].includes(coverage)) return false;
   if (weather.currentLightning && weather.currentLightning.level !== "none") return false;
   const rawMetar = (weather.rawMetar || "").toUpperCase();
   const phen = (weather.phenomena || []).join(" ").toUpperCase();
   const combined = `${rawMetar} ${phen}`;
-  if (/\b(?:\+RA|\+SHRA|TSRA|\+TSRA|TS|VCTS|TSGR|FZRA|FG|FZFG|MIFG|PRFG|BLSN|DS|SS|VA)\b/.test(combined)) {
+  if (/\b(?:RA|SN|DZ|SG|PL|GR|GS|UP|SH|TS|VCTS|FG|FZFG|BR|HZ|FU|DU|SA|VA|BLSN|BLSA|BLDU|PO|SQ|FC)\b/.test(combined)) {
     return false;
   }
   return true;
@@ -346,7 +348,7 @@ export default function Home() {
   const triggerSpawn = (forcedDir?: "ltr" | "rtl") => {
     const dir = forcedDir || debugFlybyDir || (Math.random() > 0.5 ? "ltr" : "rtl");
     const top = 9 + Math.random() * 7; // constrained to upper sky/header 9%-16%
-    const duration = 65 + Math.random() * 15; // slow 65s-80s transit
+    const duration = 12 + Math.random() * 6; // fast 12s-18s transit
     const newId = Date.now();
     setActiveFlyby({ id: newId, top, direction: dir, duration });
     window.setTimeout(() => {

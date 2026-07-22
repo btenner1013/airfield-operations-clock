@@ -880,6 +880,21 @@
   object-fit: contain;
 }
 
+/* Day/Twilight/Night Image Treatment */
+.phase-day .c17-photo-img {
+  filter: none;
+}
+
+.phase-twilight .c17-photo-img {
+  /* slightly darken and warm the aircraft */
+  filter: brightness(0.65) sepia(0.3) hue-rotate(345deg) saturate(1.2);
+}
+
+.phase-night .c17-photo-img {
+  /* substantially darken/desaturate so it blends naturally into the night scene */
+  filter: brightness(0.2) saturate(0.1) contrast(0.85);
+}
+
 /* Light Positioning for Right-to-Left (RTL - Left Facing) */
 .flyby-rtl .beacon-tail-red {
   position: absolute;
