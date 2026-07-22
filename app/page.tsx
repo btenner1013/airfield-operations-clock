@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
 import { buildFxSpec, buildObscurationSpec, classifyEffect, type Intensity } from "./weatherFx";
 import PrecipCanvas from "./PrecipCanvas";
@@ -350,34 +350,37 @@ export default function Home() {
   const {now,status:clock}=useSystemClock(clockDebug);
   
   // Spawning controls for single C-17 photo flyby
-  const triggerSpawn = (forcedDir?: "ltr" | "rtl") => {
+  const activeFlybyRemovalRef = useRef<number | null>(null);
+  
+  const triggerSpawn = useCallback((forcedDir?: "ltr" | "rtl") => {
+    if (activeFlybyRemovalRef.current) window.clearTimeout(activeFlybyRemovalRef.current);
     const dir = forcedDir || debugFlybyDir || (Math.random() > 0.5 ? "ltr" : "rtl");
     const top = 9 + Math.random() * 7; // constrained to upper sky/header 9%-16%
     const duration = 12 + Math.random() * 6; // fast 12s-18s transit
     const newId = Date.now();
-    setActiveFlyby({ id: newId, top, direction: dir, duration });
-    window.setTimeout(() => {
+    setActiveFlyby({ id: newId, top, direction: dir, duration, forced: true } as any);
+    activeFlybyRemovalRef.current = window.setTimeout(() => {
       setActiveFlyby(curr => (curr?.id === newId ? null : curr));
     }, duration * 1000);
-  };
+  }, [debugFlybyDir]);
 
   useEffect(() => {
     if (debugFlybyEnabled === false) {
       setActiveFlyby(null);
       return;
     }
+    // Restart the normal random schedule only after the forced pass exits (activeFlyby is null)
+    if (activeFlyby) return;
+
     const scheduleNext = () => {
       const delayMs = 15000 + Math.random() * 15000; // 15s - 30s interval
       return window.setTimeout(() => {
-        if (!activeFlyby) {
-          triggerSpawn();
-        }
-        timerId = scheduleNext();
+        triggerSpawn();
       }, delayMs);
     };
-    let timerId = scheduleNext();
+    const timerId = scheduleNext();
     return () => clearTimeout(timerId);
-  }, [activeFlyby, debugFlybyEnabled, debugFlybyDir]);
+  }, [activeFlyby, debugFlybyEnabled, triggerSpawn]);
 
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
@@ -504,7 +507,7 @@ export default function Home() {
   }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{isFlybyWeatherAllowed(weather, flightCat) && debugFlybyEnabled !== false && activeFlyby && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><span className="c17-photo-contrails"><b className="contrail-line upper"/><b className="contrail-line lower"/></span><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="strobe-wing-white"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{(isFlybyWeatherAllowed(weather, flightCat) || debugFlybyEnabled === true) && activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><span className="c17-photo-contrails"><b className="contrail-line upper"/><b className="contrail-line lower"/></span><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="strobe-wing-white"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
