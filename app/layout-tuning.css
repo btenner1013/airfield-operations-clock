@@ -302,9 +302,10 @@
 }
 .wind-flight-meta {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  margin-top: 5px;
 }
 .flight-cat-pill {
   padding: 3px 8px;
@@ -316,9 +317,10 @@
   box-shadow: 0 0 8px currentColor;
 }
 .wind-vis-tag {
-  font-size: 0.9em;
+  font-size: 0.88em;
   color: #c0d0d5;
   letter-spacing: 0.06em;
+  margin-top: 2px;
 }
 .wind-vis-tag strong {
   font-size: 1.12em;
@@ -353,9 +355,20 @@
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
-.risk-severe   .bird-severity, .risk-severe   .bird-icon-symbol { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.3); }
+.risk-severe   .bird-severity, .risk-severe   .bird-icon-symbol { color: #ff4d4d; animation: bwcPulse 1.2s infinite ease-in-out; }
 .risk-moderate .bird-severity, .risk-moderate .bird-icon-symbol { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
 .risk-low      .bird-severity, .risk-low      .bird-icon-symbol { color: #72dbbd; text-shadow: 0 0 12px rgba(114,219,189,0.3); }
+
+@keyframes bwcPulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 16px rgba(255, 77, 77, 0.95);
+  }
+  50% {
+    opacity: 0.4;
+    text-shadow: 0 0 4px rgba(255, 77, 77, 0.3);
+  }
+}
 
 .bird-card-meta {
   font-size: clamp(9px, 0.6vw, 12px);
@@ -481,50 +494,79 @@
   line-height: 1.25;
   border-radius: 4px;
   margin-bottom: 6px;
-  background: rgba(234, 88, 12, 0.22);
-  border: 1px solid rgba(249, 115, 22, 0.6);
-  box-shadow: 0 0 10px rgba(234, 88, 12, 0.25);
+  background: #000000 !important;
+  border: 1.5px solid #eab308;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
   overflow: hidden;
 }
-.taf-hazard-band > span {
-  font-size: clamp(10px, 0.65vw, 12px);
-  font-weight: 800;
-  letter-spacing: 0.14em;
+
+/* RED SEVERE HAZARD */
+.taf-hazard-band[data-severity="red"] {
+  border-color: #ef4444;
+}
+.taf-hazard-band[data-severity="red"] > span {
+  background: #dc2626;
   color: #ffffff;
-  background: #c2410c;
-  padding: 2px 6px;
-  border-radius: 3px;
-  flex-shrink: 0;
 }
-.taf-hazard-band b {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 0%;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
+.taf-hazard-band[data-severity="red"] .taf-hazard-time {
+  color: #fca5a5;
 }
-.taf-hazard-time {
-  font-size: clamp(11px, 0.72vw, 14px);
-  font-weight: 700;
-  color: #fdba74;
-  flex-shrink: 0;
-}
-.taf-hazard-band em {
-  font-size: clamp(11.5px, 0.75vw, 14.5px);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #ffffff;
+.taf-hazard-band[data-severity="red"] em {
+  color: #f87171;
   font-style: normal;
-  text-shadow: 0 0 8px rgba(251, 146, 60, 0.5);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 800;
+  animation: hazardPulse 1.2s infinite ease-in-out;
+}
+
+/* YELLOW / AMBER POSSIBLE HAZARD */
+.taf-hazard-band[data-severity="yellow"] {
+  border-color: #eab308;
+}
+.taf-hazard-band[data-severity="yellow"] > span {
+  background: #ca8a04;
+  color: #ffffff;
+}
+.taf-hazard-band[data-severity="yellow"] .taf-hazard-time {
+  color: #fde047;
+}
+.taf-hazard-band[data-severity="yellow"] em {
+  color: #facc15;
+  font-style: normal;
+  font-weight: 800;
+  animation: hazardPulse 1.6s infinite ease-in-out;
+}
+
+/* BLUE ROUTINE PRECIP HAZARD */
+.taf-hazard-band[data-severity="blue"] {
+  border-color: #38bdf8;
+}
+.taf-hazard-band[data-severity="blue"] > span {
+  background: #0284c7;
+  color: #ffffff;
+}
+.taf-hazard-band[data-severity="blue"] .taf-hazard-time {
+  color: #7dd3fc;
+}
+.taf-hazard-band[data-severity="blue"] em {
+  color: #38bdf8;
+  font-style: normal;
+  font-weight: 800;
+  animation: hazardPulse 2.2s infinite ease-in-out;
+}
+
+@keyframes hazardPulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 10px currentColor;
+  }
+  50% {
+    opacity: 0.35;
+    text-shadow: 0 0 2px currentColor;
+  }
 }
 
 /* ── 4K & LARGE DISPLAY FLUID SCALING (≥ 2560px width or ≥ 1440px height) ── */
