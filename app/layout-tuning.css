@@ -62,7 +62,17 @@
   margin-top: 5px;
 }
 
-/* ── CLOCK & DATE COLORS ──────────────────────────────────── */
+/* ── CLOCK & DATE COLORS & BLACK OUTLINE ─────────────────── */
+.clock time {
+  paint-order: stroke fill;
+  -webkit-text-stroke: clamp(1.2px, 0.12vw, 2.5px) #000000;
+  text-shadow: 
+    -1.5px -1.5px 0 #000000,
+     1.5px -1.5px 0 #000000,
+    -1.5px  1.5px 0 #000000,
+     1.5px  1.5px 0 #000000,
+     0px    3px   10px rgba(0, 0, 0, 0.95);
+}
 .clock.local time {
   color: #ffffff;
 }
@@ -498,13 +508,13 @@
 }
 /* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
 .metar-health {
-  font-size: clamp(14px, 0.95vw, 18px);
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  margin-top: 6px;
+  font-size: clamp(16px, 1.25vw, 22px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  margin-top: 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -512,19 +522,20 @@
 }
 .metar-health span {
   font-size: 1em;
-  font-weight: 800;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 .metar-health.health-ok span {
   color: #4ade80;
-  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+  text-shadow: 0 0 12px rgba(74, 222, 128, 0.75);
 }
 .metar-health.health-stale span {
   color: #facc15;
-  text-shadow: 0 0 8px rgba(250, 204, 21, 0.4);
+  text-shadow: 0 0 12px rgba(250, 204, 21, 0.75);
 }
 .metar-health.health-unavailable span {
   color: #f87171;
-  text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+  text-shadow: 0 0 12px rgba(248, 113, 113, 0.75);
 }
 
 .taf-hazard-band {
@@ -545,6 +556,16 @@
   overflow: hidden;
 }
 
+.taf-hazard-tag {
+  font-size: clamp(10.5px, 0.7vw, 13px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 .taf-hazard-time {
   font-size: clamp(11.5px, 0.75vw, 14.5px);
   font-weight: 700;
@@ -557,18 +578,30 @@
   letter-spacing: 0.06em;
 }
 
+.taf-hazard-text {
+  font-size: clamp(12px, 0.8vw, 15.5px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  font-style: normal;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
 /* RED SEVERE HAZARD */
 .taf-hazard-band[data-severity="red"] {
   border-color: #ef4444;
 }
-.taf-hazard-band[data-severity="red"] > span {
+.taf-hazard-band[data-severity="red"] .taf-hazard-tag {
   background: #dc2626;
   color: #ffffff;
+  animation: hazardPulse 1.2s infinite ease-in-out;
 }
-.taf-hazard-band[data-severity="red"] em {
+.taf-hazard-band[data-severity="red"] .taf-hazard-time {
+  color: #fca5a5 !important;
+  animation: hazardPulse 1.2s infinite ease-in-out;
+}
+.taf-hazard-band[data-severity="red"] .taf-hazard-text {
   color: #f87171;
-  font-style: normal;
-  font-weight: 800;
   animation: hazardPulse 1.2s infinite ease-in-out;
 }
 
@@ -576,14 +609,17 @@
 .taf-hazard-band[data-severity="yellow"] {
   border-color: #eab308;
 }
-.taf-hazard-band[data-severity="yellow"] > span {
+.taf-hazard-band[data-severity="yellow"] .taf-hazard-tag {
   background: #ca8a04;
   color: #ffffff;
+  animation: hazardPulse 1.6s infinite ease-in-out;
 }
-.taf-hazard-band[data-severity="yellow"] em {
+.taf-hazard-band[data-severity="yellow"] .taf-hazard-time {
+  color: #fde047 !important;
+  animation: hazardPulse 1.6s infinite ease-in-out;
+}
+.taf-hazard-band[data-severity="yellow"] .taf-hazard-text {
   color: #facc15;
-  font-style: normal;
-  font-weight: 800;
   animation: hazardPulse 1.6s infinite ease-in-out;
 }
 
@@ -591,14 +627,17 @@
 .taf-hazard-band[data-severity="blue"] {
   border-color: #38bdf8;
 }
-.taf-hazard-band[data-severity="blue"] > span {
+.taf-hazard-band[data-severity="blue"] .taf-hazard-tag {
   background: #0284c7;
   color: #ffffff;
+  animation: hazardPulse 2.2s infinite ease-in-out;
 }
-.taf-hazard-band[data-severity="blue"] em {
+.taf-hazard-band[data-severity="blue"] .taf-hazard-time {
+  color: #7dd3fc !important;
+  animation: hazardPulse 2.2s infinite ease-in-out;
+}
+.taf-hazard-band[data-severity="blue"] .taf-hazard-text {
   color: #38bdf8;
-  font-style: normal;
-  font-weight: 800;
   animation: hazardPulse 2.2s infinite ease-in-out;
 }
 
