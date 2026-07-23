@@ -594,13 +594,61 @@ export default function Home() {
                 <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
                 {effSolar.daylight ? (() => {
+                  const isSunrise = effSolar.progress <= 15;
+                  const isSunset = effSolar.progress >= 85;
                   const sunIntensity = Math.max(0, 1 - Math.abs(effSolar.progress - 50) / 50);
-                  const sunRadius = 6 + 4 * sunIntensity;
+
+                  if (isSunrise) {
+                    return (
+                      <g className="sun-group-sunrise">
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="rgba(255, 140, 0, 0.35)" />
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="rgba(255, 165, 0, 0.55)" />
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="8" fill="#ff8c00" stroke="#ffaa00" strokeWidth="1.2" />
+                      </g>
+                    );
+                  }
+
+                  if (isSunset) {
+                    return (
+                      <g className="sun-group-sunset">
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="rgba(255, 51, 51, 0.35)" />
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="rgba(239, 68, 68, 0.55)" />
+                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="8" fill="#ff3333" stroke="#ff6666" strokeWidth="1.2" />
+                      </g>
+                    );
+                  }
+
+                  // Midday Sun with radiating solar rays
+                  const rayAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+                  const sunRadius = 7 + 3 * sunIntensity;
+
                   return (
-                    <g className="sun-group">
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={10 + 14 * sunIntensity} fill="url(#sunOuterHalo)" className="sun-pulse-halo" opacity={sunIntensity} />
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={14 + 10 * sunIntensity} fill="url(#sunGlow)" opacity={0.3 + 0.7 * sunIntensity} />
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={sunRadius} fill="#ffffff" opacity={0.8 + 0.2 * sunIntensity} />
+                    <g className="sun-group-midday">
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={14 + 10 * sunIntensity} fill="url(#sunOuterHalo)" className="sun-pulse-halo" opacity={sunIntensity} />
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={16 + 8 * sunIntensity} fill="url(#sunGlow)" opacity={0.4 + 0.6 * sunIntensity} />
+                      {rayAngles.map((angle) => {
+                        const rad = (angle * Math.PI) / 180;
+                        const r1 = sunRadius + 4;
+                        const r2 = sunRadius + 10;
+                        const x1 = effSolar.markerX + Math.cos(rad) * r1;
+                        const y1 = effSolar.markerY + Math.sin(rad) * r1;
+                        const x2 = effSolar.markerX + Math.cos(rad) * r2;
+                        const y2 = effSolar.markerY + Math.sin(rad) * r2;
+                        return (
+                          <line
+                            key={angle}
+                            x1={x1.toFixed(1)}
+                            y1={y1.toFixed(1)}
+                            x2={x2.toFixed(1)}
+                            y2={y2.toFixed(1)}
+                            stroke="#ffd700"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            opacity="0.85"
+                          />
+                        );
+                      })}
+                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={sunRadius} fill="#ffffff" stroke="#ffea79" strokeWidth="1.2" opacity="0.95" />
                     </g>
                   );
                 })() : (() => {
