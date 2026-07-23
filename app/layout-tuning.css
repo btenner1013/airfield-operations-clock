@@ -332,7 +332,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 10px;
+  padding: 5px 12px;
   background: rgba(13, 25, 31, 0.75);
   border: 1px solid rgba(88, 215, 245, 0.3);
   border-left: 3px solid var(--cyan);
@@ -341,14 +341,14 @@
   width: 100%;
 }
 .ceiling-label {
-  font-size: clamp(9.5px, 0.65vw, 12px);
+  font-size: clamp(11px, 0.75vw, 13.5px);
   color: #94a3b8;
   letter-spacing: 0.14em;
   font-weight: 800;
   text-transform: uppercase;
 }
 .ceiling-value {
-  font: 800 clamp(12px, 0.82vw, 15px) Consolas, monospace;
+  font: 800 clamp(15px, 1.15vw, 20px) Consolas, monospace !important;
   color: #ffffff;
   letter-spacing: 0.08em;
   text-transform: uppercase;
