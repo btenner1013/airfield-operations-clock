@@ -613,36 +613,24 @@
   text-align: center;
   width: 100%;
 }
-/* ── METAR HEALTH & VERBIAGE IN CURRENT WEATHER CARD ───────── */
-.metar-health {
-  font-size: clamp(14px, 0.95vw, 18px) !important;
+/* ── METAR HEALTH IN PANEL TITLE ───────────────────────────── */
+.metar-title-badge {
+  font-size: 0.9em !important;
   font-weight: 800 !important;
-  letter-spacing: 0.15em !important;
-  margin-top: 6px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-.metar-health span {
-  font-size: 1em !important;
-  font-weight: 800 !important;
+  letter-spacing: 0.14em !important;
   text-transform: uppercase !important;
 }
-.metar-health.health-ok span {
+.metar-title-badge.health-ok {
   color: #4ade80 !important;
-  text-shadow: 0 0 16px rgba(74, 222, 128, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.6) !important;
 }
-.metar-health.health-stale span {
+.metar-title-badge.health-stale {
   color: #facc15 !important;
-  text-shadow: 0 0 16px rgba(250, 204, 21, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.6) !important;
 }
-.metar-health.health-unavailable span {
+.metar-title-badge.health-unavailable {
   color: #f87171 !important;
-  text-shadow: 0 0 16px rgba(248, 113, 113, 0.95), 0 0 4px rgba(0, 0, 0, 0.9) !important;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.6) !important;
 }
 
 /* ── TAF HAZARD BAND (MIMICKING KMEM OPS BOARD WX ALERT) ─── */

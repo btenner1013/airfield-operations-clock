@@ -704,7 +704,9 @@ export default function Home() {
         <article className="weather-card panel">
           <div className="panel-title">
             <span>CURRENT WEATHER</span>
-            <b>KMEM METAR</b>
+            <b className={`metar-title-badge health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : metarState.toLowerCase()}`}>
+              {feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
+            </b>
           </div>
           <div className="weather-main">
             <div className="weather-left-block">
@@ -722,9 +724,6 @@ export default function Home() {
               </div>
               {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
             </div>
-          </div>
-          <div className={`metar-health health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : metarState.toLowerCase()}`}>
-            <span>{feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}</span>
           </div>
         </article>
         <article className="wind-card panel">
