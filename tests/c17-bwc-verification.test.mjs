@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { parseAhasTimestampIso, calculateBirdObservationAge } from "../app/birdWatch.ts";
 
 test("AHAS BWC timestamp parser and age calculator - required cases", () => {
+  // 0. Live regression test: 23/0142Z at 23/0150Z = 8 MIN AGO
+  const now0 = new Date("2026-07-23T01:50:00Z");
+  const iso0 = parseAhasTimestampIso("23/0142Z", now0);
+  assert.equal(iso0, "2026-07-23T01:42:00.000Z");
+  assert.equal(calculateBirdObservationAge(iso0, now0), "8 MIN AGO");
+
   // 1. 23/0018Z at 23/0035Z = 17 MIN AGO
   const now1 = new Date("2026-07-23T00:35:00Z");
   const iso1 = parseAhasTimestampIso("23/0018Z", now1);
