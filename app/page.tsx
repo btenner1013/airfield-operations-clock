@@ -267,8 +267,9 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
     const nightStart = parseTimeMinutes((current < rise ? days[Math.max(0, todayIndex - 1)] : todaySolar)?.sunsetLocal || todaySolar.sunsetLocal);
     const nightEnd = 1440 + parseTimeMinutes(selected.sunriseLocal);
     const nightClock = current < rise ? current + 1440 : current;
-    const nightProgress = Math.max(0, Math.min(1, (nightClock - nightStart) / (nightEnd - nightStart)));
-    const nightAngle = nightProgress * Math.PI;
+    const nightRatio = Math.max(0, Math.min(1, (nightClock - nightStart) / (nightEnd - nightStart)));
+    progress = Math.round(nightRatio * 100);
+    const nightAngle = nightRatio * Math.PI;
     markerX = 100 + Math.cos(nightAngle) * 88;
     markerY = 76 + Math.sin(nightAngle) * 18;
   }
