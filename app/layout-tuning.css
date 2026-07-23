@@ -334,7 +334,7 @@
   margin: auto 0;
   padding: 0;
   text-align: center;
-  gap: clamp(10px, 1.2vh, 16px);
+  gap: clamp(14px, 1.6vh, 22px);
 }
 .wind-speed-row {
   width: 100%;
@@ -1010,7 +1010,7 @@
 }
 
 .phase-night .c17-photo-img {
-  filter: brightness(0.34) contrast(1.5) saturate(1.15);
+  filter: brightness(0.51) contrast(1.35) saturate(1.18);
 }
 
 /* Light Positioning for Right-to-Left (RTL - Left Facing) */
