@@ -841,8 +841,10 @@ export default function Home() {
                 const timeLabel = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
                 const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
                 const precipText = `${f.precipitation}% PRECIP`;
+                const isCeiling = ["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "");
+                const covLabel = f.operationalWeather?.cloudCoverage || (isCeiling ? "BKN" : "SCT");
                 const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
-                  ? `${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
+                  ? `${covLabel} ${isCeiling ? "CIG" : "CLDS"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
                   : "CIG UNLIMITED";
 
                 return (
