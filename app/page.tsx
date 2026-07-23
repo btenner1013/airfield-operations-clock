@@ -822,9 +822,10 @@ export default function Home() {
             {(() => {
               if (!weather.forecast?.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
               
-              // Filter out NOW slots so Future Weather strictly displays upcoming future forecast hours (e.g. 06:00Z, 12:00Z, 18:00Z)
-              const futureSlots = weather.forecast.filter(f => f.time !== "NOW" && new Date(f.iso).getTime() > now.getTime() - 10 * 60000);
-              const displayList = futureSlots.length >= 3 ? futureSlots : weather.forecast.filter(f => new Date(f.iso).getTime() > now.getTime() - 10 * 60000);
+              // Strictly filter Future Weather to upcoming future hours (e.g. 06:00Z, 12:00Z, 18:00Z) after current Zulu time
+              const cutoffMs = now.getTime() + 10 * 60000;
+              const futureSlots = weather.forecast.filter(f => f.time !== "NOW" && new Date(f.iso).getTime() > cutoffMs);
+              const displayList = futureSlots.length >= 3 ? futureSlots : weather.forecast.filter(f => new Date(f.iso).getTime() > now.getTime());
 
               const seenLabels = new Set<string>();
               const uniqueList = displayList.filter(f => {
