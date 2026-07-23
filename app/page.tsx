@@ -822,10 +822,11 @@ export default function Home() {
             {(() => {
               if (!weather.forecast?.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
               
-              // Strictly filter Future Weather to upcoming future hours (e.g. 06:00Z, 12:00Z, 18:00Z) after current Zulu time
-              const cutoffMs = now.getTime() - 10 * 60000;
-              const futureSlots = weather.forecast.filter(f => f.time !== "NOW" && new Date(f.iso).getTime() > cutoffMs);
-              const displayList = futureSlots.length >= 3 ? futureSlots : weather.forecast;
+              // Strictly filter Future Weather to upcoming future hours (iso > now). Only display pure future blocks (1, 2, or 3).
+              const displayList = weather.forecast.filter(f => {
+                const t = new Date(f.iso).getTime();
+                return f.time !== "NOW" && Number.isFinite(t) && t > now.getTime();
+              });
 
               const seenLabels = new Set<string>();
               const uniqueList = displayList.filter(f => {
@@ -836,7 +837,9 @@ export default function Home() {
                 return true;
               });
 
-              return (uniqueList.length ? uniqueList : weather.forecast).slice(0, 3).map((f, i) => {
+              if (!uniqueList.length) return <div className="forecast-empty">NO UPCOMING FORECAST SLOTS</div>;
+
+              return uniqueList.slice(0, 3).map((f, i) => {
                 const d = new Date(f.iso);
                 const timeLabel = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
                 const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
