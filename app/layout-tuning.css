@@ -891,18 +891,18 @@
 }
 
 .bird-timestamp {
+  color: #94a3b8;
+  font-size: 0.95em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.bird-age {
   color: #ffffff;
   font-size: 1.25em;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
-}
-
-.bird-age {
-  color: #94a3b8;
-  font-size: 0.95em;
-  font-weight: 700;
-  letter-spacing: 0.08em;
 }
 
 .c17-photo-container {
