@@ -708,18 +708,17 @@ export default function Home() {
               {feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
             </b>
           </div>
-          <div className="weather-ops-layout">
-            <div className="weather-ops-top">
-              <div className="weather-ops-left">
-                <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
-                <strong className="weather-ops-temp">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
-              </div>
-              <b className="weather-ops-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+          <div className="weather-user-spec-layout">
+            <div className="weather-spec-temp-row">
+              <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
+              <strong className="weather-spec-temp">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
             </div>
-            <div className="weather-ops-mid">
-              <span>FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>
-              <em className="ops-dot">·</em>
-              <span>HUMIDITY <strong>{weather.humidity}%</strong></span>
+            <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+            <div className="weather-spec-feels">
+              FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong>
+            </div>
+            <div className="weather-spec-humidity">
+              HUMIDITY <strong>{weather.humidity}%</strong>
             </div>
             <div className="weather-ceiling-badge">
               <span className="ceiling-label">CEILING</span>

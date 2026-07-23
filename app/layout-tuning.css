@@ -240,74 +240,82 @@
   text-align: center;
 }
 
-/* ── CURRENT WEATHER (PROMINENT AIRFIELD OPS LAYOUT) ──────── */
-.weather-ops-layout {
+/* ── CURRENT WEATHER (USER CUSTOM SPECIFICATION) ──────────── */
+.weather-user-spec-layout {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: space-between;
   height: calc(100% - 28px);
   margin: auto 0;
   width: 100%;
   padding-top: 2px;
+  text-align: center;
 }
-.weather-ops-top {
+
+/* Row 1: Temp & Glyph */
+.weather-spec-temp-row {
   display: flex;
   align-items: center;
-  gap: clamp(10px, 1.2vw, 18px);
-  width: 100%;
-}
-.weather-ops-left {
-  display: flex;
-  align-items: center;
-  gap: clamp(6px, 0.6vw, 10px);
-  flex-shrink: 0;
+  justify-content: center;
+  gap: clamp(8px, 0.8vw, 14px);
 }
 .weather-glyph {
   flex-shrink: 0;
-  font-size: clamp(34px, 2.8vw, 48px);
+  font-size: clamp(32px, 2.6vw, 44px);
   display: flex;
   align-items: center;
 }
-.weather-ops-temp {
-  font: 800 clamp(32px, 2.8vw, 48px) / 1 Consolas, monospace;
+.weather-spec-temp {
+  font: 800 clamp(30px, 2.6vw, 44px) / 1 Consolas, monospace;
   color: #ffffff;
   white-space: nowrap;
 }
-.weather-ops-cond {
-  font-size: clamp(13px, 0.9vw, 17px);
-  letter-spacing: 0.1em;
+
+/* Row 2: WX Condition (larger font, centered) */
+.weather-spec-cond {
+  font-size: clamp(15px, 1.1vw, 21px);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #ffffff;
   font-weight: 800;
-  line-height: 1.2;
-  white-space: normal;
-  overflow-wrap: break-word;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-align: center;
 }
-.weather-ops-mid {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: clamp(11px, 0.72vw, 13.5px);
+
+/* Row 3: FEELS LIKE (step or two up in font size) */
+.weather-spec-feels {
+  font-size: clamp(13px, 0.88vw, 16px);
   color: #cbd5e1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
-.weather-ops-mid strong {
+.weather-spec-feels strong {
   color: #ffffff;
   font-weight: 800;
 }
-.ops-dot {
-  color: #64748b;
-  font-style: normal;
-  font-weight: 700;
+
+/* Row 4: HUMIDITY (current font size) */
+.weather-spec-humidity {
+  font-size: clamp(11px, 0.72vw, 13.5px);
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.weather-spec-humidity strong {
+  color: #ffffff;
+  font-weight: 800;
 }
 
-/* Dedicated Prominent Ceiling Badge */
+/* Row 5: Ceiling Badge */
 .weather-ceiling-badge {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
+  padding: 4px 10px;
   background: rgba(13, 25, 31, 0.75);
   border: 1px solid rgba(88, 215, 245, 0.3);
   border-left: 3px solid var(--cyan);
@@ -316,14 +324,14 @@
   width: 100%;
 }
 .ceiling-label {
-  font-size: clamp(10px, 0.68vw, 12.5px);
+  font-size: clamp(9.5px, 0.65vw, 12px);
   color: #94a3b8;
   letter-spacing: 0.14em;
   font-weight: 800;
   text-transform: uppercase;
 }
 .ceiling-value {
-  font: 800 clamp(12.5px, 0.88vw, 16px) Consolas, monospace;
+  font: 800 clamp(12px, 0.82vw, 15px) Consolas, monospace;
   color: #ffffff;
   letter-spacing: 0.08em;
   text-transform: uppercase;
