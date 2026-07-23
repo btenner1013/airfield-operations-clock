@@ -205,7 +205,26 @@ function WeatherIcon({condition,night=false}:{condition:Theme;night?:boolean}) {
   const theme=condition==="clear"&&night?"night":condition;
   return <i className={`wx-pictogram wxp-${theme} ${night?"wxp-nighttime":""}`} aria-hidden="true"><span className="wxp-sun"/><span className="wxp-moon"/><span className="wxp-cloud"/><span className="wxp-precip"><b/><b/><b/></span><span className="wxp-flakes"><b>✦</b><b>✦</b><b>✦</b></span><span className="wxp-bolt"/><span className="wxp-fog-lines"><b/><b/><b/></span></i>;
 }
-function isNightAt(time:string,sunrise:string,sunset:string) { const parse=(v:string)=>{const [h,m]=v.split(":").map(Number);return h*60+m}; const clock=parse(time),rise=parse(sunrise),set=parse(sunset); return Number.isFinite(clock)&&Number.isFinite(rise)&&Number.isFinite(set)&&(clock<rise||clock>set); }
+function isNightAt(time:string,sunrise:string,sunset:string) {
+  const parse=(v:string)=>{
+    const clean = v.replace(/[^0-9:]/g, "");
+    const [h,m]=clean.split(":").map(Number);
+    return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:NaN;
+  };
+  let clock = NaN;
+  if (time.includes("T") || time.includes("-")) {
+    const d = new Date(time);
+    if (Number.isFinite(d.getTime())) {
+      const p = parts(d, CONFIG.timeZone);
+      clock = Number(p.hour) * 60 + Number(p.minute);
+    }
+  }
+  if (!Number.isFinite(clock)) {
+    clock = parse(time);
+  }
+  const rise=parse(sunrise), set=parse(sunset);
+  return Number.isFinite(clock) && Number.isFinite(rise) && Number.isFinite(set) && (clock < rise || clock > set);
+}
 function tafQualifier(weather:OperationalWeather|null):string {
   if(!weather) return "—";
   if(weather.sourceKind === "TAF_FM" || weather.sourceKind === "TAF_BASE") return "—";
@@ -709,7 +728,7 @@ export default function Home() {
             </b>
           </div>
           <div className="weather-user-spec-layout">
-            <span className="weather-glyph-top-left"><WeatherIcon condition={condition} night={phase === "night"} /></span>
+            <span className="weather-glyph-top-left"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
             <div className="weather-spec-center-block">
               <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
               <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
@@ -812,7 +831,7 @@ export default function Home() {
               return (
                 <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
                   <time className="forecast-time">{timeLabel}</time>
-                  <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time, solar.sunrise, solar.sunset)} /></span>
+                  <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.iso || f.time, solar.sunrise, solar.sunset)} /></span>
                   <div className="forecast-content-col">
                     <b className="forecast-condition">{conditionLabel}</b>
                     <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
