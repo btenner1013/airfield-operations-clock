@@ -843,7 +843,7 @@ export default function Home() {
                 const precipText = `${f.precipitation}% PRECIP`;
                 const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
                   ? `${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
-                  : null;
+                  : "CIG UNLIMITED";
 
                 return (
                   <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
