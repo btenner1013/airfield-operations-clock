@@ -841,11 +841,20 @@ export default function Home() {
                 const timeLabel = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
                 const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
                 const precipText = `${f.precipitation}% PRECIP`;
-                const isCeiling = ["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "");
-                const covLabel = f.operationalWeather?.cloudCoverage || (isCeiling ? "BKN" : "SCT");
-                const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
-                  ? `${covLabel} ${isCeiling ? "CIG" : "CLDS"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
-                  : "CIG UNLIMITED";
+                const cov = f.operationalWeather?.cloudCoverage || coverageFromCondition(f.condition);
+                const isCeiling = ["BKN","OVC","VV"].includes(cov);
+                const baseFt = f.operationalWeather?.cloudBaseFt ?? null;
+
+                let cigText = "";
+                if (baseFt !== null && baseFt !== undefined) {
+                  cigText = `${cov} ${isCeiling ? "CIG" : "CLDS"} ${baseFt.toLocaleString()} FT`;
+                } else if (isCeiling) {
+                  cigText = `${cov} CIG`;
+                } else if (cov === "CLR" || (cov as string) === "SKC") {
+                  cigText = "CIG UNLIMITED";
+                } else {
+                  cigText = `${cov} CLDS`;
+                }
 
                 return (
                   <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
