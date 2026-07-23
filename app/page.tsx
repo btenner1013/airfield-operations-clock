@@ -344,8 +344,9 @@ function isFlybyWeatherAllowed(weather: Weather, flightCat: { cat: string }): bo
   if (flightCat.cat !== "VFR") return false;
   if (weather.visibilitySm !== null && weather.visibilitySm < 5) return false;
   const coverage = weather.cloudCoverage || "CLR";
-  if (["BKN", "OVC", "VV"].includes(coverage)) return false;
-  if (!["CLR", "SKC", "FEW", "SCT"].includes(coverage)) return false;
+  const base = weather.cloudBaseFt;
+  // Low overcast/broken ceilings (< 10,000 FT) restrict flybys. High thin cirrus (>= 10,000 FT) in VFR permit flybys.
+  if (["BKN", "OVC", "VV"].includes(coverage) && (base !== null && base < 10000)) return false;
   if (weather.currentLightning && weather.currentLightning.level !== "none") return false;
   const rawMetar = (weather.rawMetar || "").toUpperCase();
   const phen = (weather.phenomena || []).join(" ").toUpperCase();
