@@ -248,54 +248,82 @@
   text-align: center;
 }
 
-/* ── CURRENT WEATHER (USER CUSTOM SPECIFICATION) ──────────── */
+/* ── CURRENT WEATHER (2-COLUMN INVISIBLE TABLE LAYOUT AS MOCKED) ──── */
 .weather-user-spec-layout {
-  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: space-between;
   height: calc(100% - 28px);
-  margin: auto 0;
   width: 100%;
-  padding-top: 4px;
-  text-align: center;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  gap: 8px;
 }
 
-/* Weather Glyph in Top-Left Corner (Commanding Scale) */
-.weather-glyph-top-left {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  font-size: clamp(84px, 6.2vw, 115px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-/* Centered Temperature & Condition Block */
-.weather-spec-center-block {
+.weather-table-left {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  margin-top: 2px;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
+
+.weather-table-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+
+.weather-row-temp {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .weather-spec-temp-centered {
   position: relative;
   font: 800 clamp(34px, 3.0vw, 50px) / 1 Consolas, monospace;
   color: #ffffff;
   white-space: nowrap;
-  text-align: center;
-  padding-left: 0.3em;
+  text-align: left;
+  padding-left: 0;
 }
 .temp-unit-f {
   font-size: 0.4em;
   color: #8899a0;
   vertical-align: top;
   margin-left: 2px;
+}
+
+.weather-spec-cond {
+  font-size: clamp(15px, 1.1vw, 21px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.weather-table-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 35%;
+  height: 100%;
+}
+
+.weather-glyph-right {
+  font-size: clamp(76px, 5.8vw, 110px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 /* Row 2: WX Condition (larger font, centered) */

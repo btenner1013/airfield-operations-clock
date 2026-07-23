@@ -728,29 +728,37 @@ export default function Home() {
             </b>
           </div>
           <div className="weather-user-spec-layout">
-            <span className="weather-glyph-top-left"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
-            <div className="weather-spec-center-block">
-              <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
-              <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+            <div className="weather-table-left">
+              <div className="weather-table-row weather-row-temp">
+                <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
+                <span className="weather-spec-feels">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>
+              </div>
+              <div className="weather-table-row weather-row-cond">
+                <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+              </div>
+              <div className="weather-table-row weather-row-humidity">
+                <div className="weather-spec-humidity">
+                  HUMIDITY <strong>{weather.humidity}%</strong>
+                </div>
+              </div>
+              <div className="weather-table-row weather-row-ceiling">
+                <div className="weather-ceiling-badge">
+                  <span className="ceiling-label">CEILING</span>
+                  <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
+                </div>
+              </div>
+              {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
             </div>
-            <div className="weather-spec-feels">
-              FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong>
+            <div className="weather-table-right">
+              <span className="weather-glyph-right"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
             </div>
-            <div className="weather-spec-humidity">
-              HUMIDITY <strong>{weather.humidity}%</strong>
-            </div>
-            <div className="weather-ceiling-badge">
-              <span className="ceiling-label">CEILING</span>
-              <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
-            </div>
-            {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
           </div>
         </article>
         <article className="wind-card panel">
           <div className="panel-title"><span>WIND & FLIGHT CAT</span></div>
           <div className="wind-main-stacked">
             <div className="wind-speed-row">
-              <strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G ${effGust}` : ""}`}</strong>
+              <strong>{effWindSpd === 0 ? "CALM" : `${effWindDir !== null ? String(effWindDir).padStart(3,"0") : "VRB"} @ ${String(effWindSpd).padStart(2,"0")}${effGust ? ` G${String(effGust).padStart(2,"0")}` : ""}`}</strong>
             </div>
             <div className="compass-wrap-centered">
               <div className="compass-dial">
