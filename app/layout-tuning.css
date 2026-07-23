@@ -876,6 +876,7 @@
 }
 
 .c17-photo-container {
+  position: relative;
   display: inline-block;
   width: clamp(85px, 6vw, 110px);
   height: auto;
@@ -885,15 +886,6 @@
 
   /* C-17 Lighting Animation Tuning Constants */
   --light-cycle-duration: 1.8s;
-  /* 
-    CYCLE TIMING:
-    RED_FLASH_START: 0%
-    RED_FLASH_END:   15%
-    (Dark Interval)
-    WHITE_FLASH_START: 50%
-    WHITE_FLASH_END:   60%
-    (Dark Interval)
-  */
 }
 
 .c17-photo-img {
@@ -930,8 +922,9 @@
 /* Light Positioning for Right-to-Left (RTL - Left Facing) */
 .flyby-rtl .beacon-tail-red {
   position: absolute;
-  top: 29%;
-  left: 83%;
+  top: 26.2577%;
+  left: 83.1575%;
+  transform: translate(-50%, -50%);
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -942,8 +935,9 @@
 
 .flyby-rtl .beacon-belly-red {
   position: absolute;
-  top: 61%;
-  left: 45%;
+  top: 60.5324%;
+  left: 34.5922%;
+  transform: translate(-50%, -50%);
   width: 4.5px;
   height: 4.5px;
   border-radius: 50%;
@@ -955,8 +949,9 @@
 .flyby-rtl .nav-port-red,
 .flyby-rtl .strobe-wing-white.port {
   position: absolute;
-  top: 53%;
-  left: 56%;
+  top: 53.8561%;
+  left: 55.0094%;
+  transform: translate(-50%, -50%);
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -964,14 +959,15 @@
 
 .flyby-rtl .nav-starboard-green,
 .flyby-rtl .strobe-wing-white.starboard {
-  display: none;
+  display: none !important;
 }
 
 /* Light Positioning for Left-to-Right (LTR - Right Facing) */
 .flyby-ltr .beacon-tail-red {
   position: absolute;
-  top: 32%;
-  left: 10%;
+  top: 31.7604%;
+  left: 17.3048%;
+  transform: translate(-50%, -50%);
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -982,8 +978,9 @@
 
 .flyby-ltr .beacon-belly-red {
   position: absolute;
-  top: 61%;
-  left: 50%;
+  top: 56.2735%;
+  left: 75.7391%;
+  transform: translate(-50%, -50%);
   width: 4.5px;
   height: 4.5px;
   border-radius: 50%;
@@ -995,8 +992,9 @@
 .flyby-ltr .nav-starboard-green,
 .flyby-ltr .strobe-wing-white.starboard {
   position: absolute;
-  top: 73.73%;
-  left: 60.74%;
+  top: 35.0180%;
+  left: 39.7262%;
+  transform: translate(-50%, -50%);
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -1004,7 +1002,7 @@
 
 .flyby-ltr .nav-port-red,
 .flyby-ltr .strobe-wing-white.port {
-  display: none;
+  display: none !important;
 }
 
 /* Nav Lights Base Styles */
@@ -1017,12 +1015,13 @@
   box-shadow: 0 0 6px #33ff33, 0 0 10px #33ff33;
 }
 
-/* Strobe Lights Base Styles */
+/* Strobe Lights Base Styles (Camera Flash-Bulb Effect) */
 .strobe-wing-white {
   background: #ffffff;
-  box-shadow: 0 0 16px #ffffff, 0 0 32px #ffffff, 0 0 48px #ffffff;
+  box-shadow: 0 0 4px #ffffff, 0 0 12px #ffffff, 0 0 24px #ffffff, 0 0 40px rgba(255, 255, 255, 0.9);
   animation: strobeCycle var(--light-cycle-duration) linear infinite;
   z-index: 3; /* Ensure strobe renders above the steady nav light */
+  transform: translate(-50%, -50%);
 }
 
 /* Day vs Night/Twilight Lighting Intensity */
@@ -1032,7 +1031,6 @@
 .phase-day .nav-starboard-green,
 .phase-day .strobe-wing-white {
   opacity: 0.35;
-  box-shadow: 0 0 3px currentColor;
 }
 
 .phase-twilight .beacon-tail-red,
@@ -1040,8 +1038,7 @@
 .phase-twilight .nav-port-red,
 .phase-twilight .nav-starboard-green,
 .phase-twilight .strobe-wing-white {
-  opacity: 0.7;
-  box-shadow: 0 0 6px currentColor, 0 0 10px currentColor;
+  opacity: 0.75;
 }
 
 .phase-night .beacon-tail-red,
@@ -1050,7 +1047,6 @@
 .phase-night .nav-starboard-green,
 .phase-night .strobe-wing-white {
   opacity: 1;
-  box-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
 }
 
 /* Cycle Interleaving - Red vs White never overlap */
@@ -1063,10 +1059,10 @@
 
 @keyframes strobeCycle {
   0% { opacity: 0; }
-  49.9% { opacity: 0; }
-  50% { opacity: 1; }
-  55% { opacity: 1; }
-  55.1% { opacity: 0; }
+  50% { opacity: 0; }
+  50.1% { opacity: 1; transform: translate(-50%, -50%) scale(1.6); }
+  54% { opacity: 1; transform: translate(-50%, -50%) scale(1.6); }
+  54.1% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0; }
 }
 
