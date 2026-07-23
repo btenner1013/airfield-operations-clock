@@ -843,7 +843,7 @@ export default function Home() {
                 const precipText = `${f.precipitation}% PRECIP`;
                 const cov = f.operationalWeather?.cloudCoverage || coverageFromCondition(f.condition);
                 const isCeiling = ["BKN","OVC","VV"].includes(cov);
-                const baseFt = f.operationalWeather?.cloudBaseFt ?? null;
+                const baseFt = f.operationalWeather?.cloudBaseFt ?? weather.cloudBaseFt ?? null;
 
                 let cigText = "";
                 if (baseFt !== null && baseFt !== undefined) {
