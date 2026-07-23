@@ -526,10 +526,10 @@ export default function Home() {
   }
 
   if (debugPhase) {
-    if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, progress: 5 };
-    else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, progress: 95 };
-    else if (debugPhase === "day") effSolar = { ...solar, daylight: true, progress: 50 };
-    else if (debugPhase === "night") effSolar = { ...solar, daylight: false, progress: 50 };
+    if (debugPhase === "sunrise") effSolar = { ...solar, daylight: true, activeObject: "sun", progress: 5 };
+    else if (debugPhase === "sunset") effSolar = { ...solar, daylight: true, activeObject: "sun", progress: 95 };
+    else if (debugPhase === "day") effSolar = { ...solar, daylight: true, activeObject: "sun", progress: 50 };
+    else if (debugPhase === "night") effSolar = { ...solar, daylight: false, activeObject: "moon", progress: 50 };
 
     if (effSolar.daylight) {
       const dayAngle = Math.PI - (effSolar.progress / 100) * Math.PI;
@@ -593,7 +593,7 @@ export default function Home() {
                 <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
                 <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
-                {effSolar.activeObject === "sun" ? (() => {
+                {effSolar.daylight ? (() => {
                   const sunIntensity = Math.max(0, 1 - Math.abs(effSolar.progress - 50) / 50);
                   const sunRadius = 6 + 4 * sunIntensity;
                   return (
@@ -644,7 +644,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="solar-subtitle">
-              <strong>{effSolar.activeObject === "sun" ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
+              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
               <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise.endsWith("L") ? solar.sunrise : `${solar.sunrise}L`}</strong><small>LOCAL</small></div>
