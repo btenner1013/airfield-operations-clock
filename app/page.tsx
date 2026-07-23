@@ -768,24 +768,24 @@ export default function Home() {
         </article>
         <article className={`bird-card panel risk-${birdClass}`}>
           <div className="panel-title"><span>BIRD WATCH CONDITION</span><b>AHAS</b></div>
-          <div className="bird-main">
-            <div className="bird-center-row">
+          <div className="bird-main-stacked">
+            <div className="bird-glyph-row">
               <span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span>
+            </div>
+            <div className="bird-severity-row">
               <strong className="bird-severity">{birdRisk}</strong>
             </div>
-            <div className="bird-card-meta">
-              {(() => {
-                const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
-                const calendarStampStr = formatBwcCalendarStamp(bwcIso, birdStamp);
-                const ageStr = bwcIso ? calculateBirdObservationAge(bwcIso, now) : "";
-                return (
-                  <>
-                    {bwcIso && ageStr && <div className="bird-age">{ageStr}</div>}
-                    <div className="bird-timestamp">{calendarStampStr}</div>
-                  </>
-                );
-              })()}
-            </div>
+            {(() => {
+              const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
+              const calendarStampStr = formatBwcCalendarStamp(bwcIso, birdStamp);
+              const ageStr = bwcIso ? calculateBirdObservationAge(bwcIso, now) : "";
+              return (
+                <>
+                  {bwcIso && ageStr && <div className="bird-age">{ageStr}</div>}
+                  <div className="bird-timestamp">{calendarStampStr}</div>
+                </>
+              );
+            })()}
           </div>
         </article>
         <article className={`forecast-card panel ${weather.wxAlertVisible?"has-taf-hazard":""}`}><div className="panel-title"><span>FUTURE WEATHER · NEXT 9 HOURS</span><b>TAF · JULIAN {julian4(now)}</b></div>{weather.wxAlertVisible && ( <div className={`taf-hazard-band ${weather.wxAlertPulse ? "alert-pulse" : ""} ${weather.wxAlertFlash ? "alert-flash" : ""}`} data-tone={weather.wxAlertTone}><em>{weather.wxAlertText}</em></div> )}<div className="forecast-list">{weather.forecast?.length?weather.forecast.map((f,i)=>{ const d=new Date(f.iso); const timeLabel=Number.isFinite(d.getTime())?`${String(d.getUTCHours()).padStart(2,"0")}:00Z`:f.time; return <div key={`${f.time}-${i}`} className="forecast-item" data-category={f.operationalWeather?.category||"unknown"}><div className="forecast-item-top"><time>{timeLabel}</time><span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time,solar.sunrise,solar.sunset)}/></span>{tafQualifier(f.operationalWeather) !== "—" && <span className="forecast-badge">{tafQualifier(f.operationalWeather)}</span>}<b className="forecast-condition">{tafCardCondition(f.operationalWeather,f.description)}</b><strong className="forecast-temp">{f.temperatureF}°</strong></div><div className="forecast-item-sub"><span className="forecast-meta-detail">{f.precipitation}% PRECIP{f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined ? ` · ${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` : ""}</span></div></div>;}):<div className="forecast-empty">FORECAST UNAVAILABLE</div>}</div></article>

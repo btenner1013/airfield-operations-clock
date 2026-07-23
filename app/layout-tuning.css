@@ -334,7 +334,7 @@
   margin: auto 0;
   padding: 0;
   text-align: center;
-  gap: clamp(4px, 0.6vh, 8px);
+  gap: clamp(10px, 1.2vh, 16px);
 }
 .wind-speed-row {
   width: 100%;
@@ -348,8 +348,8 @@
 }
 .compass-wrap-centered {
   flex: 0 0 auto;
-  width: clamp(52px, 4.8vw, 76px);
-  height: clamp(52px, 4.8vw, 76px);
+  width: clamp(54px, 5.0vw, 80px);
+  height: clamp(54px, 5.0vw, 80px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -358,120 +358,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-}
-.wind-main {
-  display: flex;
-  align-items: center;
-  gap: clamp(12px, 1.4vw, 20px);
-  height: calc(100% - 28px);
-  margin: auto 0;
-}
-.compass-wrap {
-  flex: 0 0 auto;
-  width: clamp(68px, 6.5vw, 96px);
-  height: clamp(68px, 6.5vw, 96px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.compass-dial {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border: 1.5px solid rgba(88, 215, 245, 0.28);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(6,16,21,0.75) 0%, rgba(2,6,8,0.95) 100%);
-  box-shadow: inset 0 2px 10px rgba(0,0,0,0.7), 0 0 10px rgba(88,215,245,0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-.compass-ticks {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.compass-label {
-  position: absolute;
-  font: 800 clamp(8px, 0.6vw, 11px) Consolas, monospace;
-  color: #c0d0d5;
-  line-height: 1;
-}
-.compass-n { top: 4px;    left: 50%; transform: translateX(-50%); color: var(--cyan); text-shadow: 0 0 6px rgba(88,215,245,0.4); }
-.compass-s { bottom: 4px; left: 50%; transform: translateX(-50%); }
-.compass-e { right: 5px;  top: 50%;  transform: translateY(-50%); }
-.compass-w { left: 5px;   top: 50%;  transform: translateY(-50%); }
-
-.compass-arrow {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.compass-arrow-svg {
-  width: 65%;
-  height: 65%;
-  filter: drop-shadow(0 0 6px rgba(88, 215, 245, 0.65));
-}
-.compass-calm-indicator {
-  font: 700 clamp(14px, 1.4vw, 22px) Consolas, monospace;
-  color: var(--muted);
-}
-.wind-info {
-  flex: 1 1 0%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  justify-content: center;
-}
-.wind-info strong {
-  font: 800 clamp(22px, 1.8vw, 32px) / 1 Consolas, monospace;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  color: #ffffff;
-}
-.wind-from {
-  font-size: clamp(10.5px, 0.7vw, 13.5px);
-  color: #94a3b8;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-}
-.wind-flight-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
 }
 .flight-cat-pill {
-  padding: 3px 8px;
+  padding: 4px 10px;
   border: 1.5px solid currentColor;
   border-radius: 4px;
-  font: 800 0.9em Consolas, monospace;
+  font: 800 clamp(13px, 0.95vw, 17px) Consolas, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   box-shadow: 0 0 8px currentColor;
 }
 .wind-vis-tag {
-  font-size: clamp(11px, 0.72vw, 14px);
-  color: #94a3b8;
+  font-size: clamp(12.5px, 0.85vw, 16px);
+  color: #cbd5e1;
   letter-spacing: 0.08em;
+  font-weight: 700;
 }
 .wind-vis-tag strong {
-  font-size: clamp(13px, 0.95vw, 18px);
+  font-size: clamp(14px, 1.05vw, 19px);
   color: #ffffff;
   font-weight: 800;
 }
 
 /* ── BWC CARD ─────────────────────────────────────────────── */
-.bird-main {
+.bird-main-stacked {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -480,29 +392,48 @@
   margin: auto 0;
   padding: 0;
   text-align: center;
-  gap: 12px;
+  gap: clamp(4px, 0.6vh, 8px);
+  width: 100%;
 }
-.bird-center-row {
+.bird-glyph-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(10px, 1.2vw, 18px);
-  flex: 0 0 auto;
-  min-width: 0;
+  width: 100%;
+}
+.bird-severity-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
 }
 .bird-icon-symbol {
   flex-shrink: 0;
-  font-size: clamp(34px, 3.2vw, 48px);
+  font-size: clamp(28px, 2.4vw, 40px);
   line-height: 1;
   display: inline-block;
   font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans Egyptian Hieroglyphs", sans-serif;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
 }
 .bird-severity {
-  font: 800 clamp(22px, 2vw, 36px) / 1.1 Consolas, monospace;
-  letter-spacing: 0.08em;
+  font: 800 clamp(22px, 1.8vw, 32px) / 1.1 Consolas, monospace;
+  letter-spacing: 0.12em;
   white-space: nowrap;
+}
+.bird-age {
+  font-size: clamp(15px, 1.2vw, 20px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+.bird-timestamp {
+  font-size: clamp(12px, 0.9vw, 15px);
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .risk-severe   .bird-severity, .risk-severe   .bird-icon-symbol { color: #ff4d4d; animation: bwcPulse 1.2s infinite ease-in-out; }
 .risk-moderate .bird-severity, .risk-moderate .bird-icon-symbol { color: #f3ae5a; text-shadow: 0 0 12px rgba(243,174,90,0.3); }
