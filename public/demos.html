@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airfield Operations Clock — Demo & Debugger Directory</title>
+  <style>
+    :root {
+      --bg: #070e17;
+      --card-bg: #0d1926;
+      --border: rgba(56, 189, 248, 0.25);
+      --cyan: #38bdf8;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+    header {
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    p { color: var(--muted); font-size: 0.95rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+    }
+    ul { list-style: none; }
+    li { margin-bottom: 0.6rem; }
+    a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: inline-block;
+      padding: 0.3rem 0.6rem;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      word-break: break-all;
+    }
+    a:hover {
+      background: var(--cyan);
+      color: #070e17;
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+    .btn-reset {
+      background: rgba(248, 113, 113, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: var(--red);
+      font-weight: bold;
+    }
+    .btn-reset:hover {
+      background: var(--red);
+      color: #fff;
+    }
+    .btn-lab {
+      background: rgba(74, 222, 128, 0.15);
+      border-color: rgba(74, 222, 128, 0.4);
+      color: var(--green);
+      font-weight: bold;
+    }
+    .btn-lab:hover {
+      background: var(--green);
+      color: #070e17;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>164AW Airfield Operations Clock — Demo Directory</h1>
+    <p>Select any preset below to launch the dashboard with specific weather, time of day, BWC, or aircraft flyby state.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- MASTER & CONTROLS -->
+    <div class="card">
+      <h2>1. Main & Interactive Controls</h2>
+      <ul>
+        <li><a class="btn-reset" href="./">Reset to Live Feed Data</a></li>
+        <li><a class="btn-lab" href="./?previewWeatherFx=1">Launch Interactive On-Screen Demo Panel</a></li>
+      </ul>
+    </div>
+
+    <!-- TIME OF DAY & SOLAR -->
+    <div class="card">
+      <h2>2. Time of Day & Solar / Lunar</h2>
+      <ul>
+        <li><a href="./?debugTime=day&previewWeatherFx=1">Daytime (Noon Sun)</a></li>
+        <li><a href="./?debugTime=sunrise&previewWeatherFx=1">Sunrise (Golden Sun Orb)</a></li>
+        <li><a href="./?debugTime=sunset&previewWeatherFx=1">Sunset (Golden Sun Orb)</a></li>
+        <li><a href="./?debugTime=night&debugMoonPhase=crescent&previewWeatherFx=1">Night + Crescent Moon</a></li>
+        <li><a href="./?debugTime=night&debugMoonPhase=quarter&previewWeatherFx=1">Night + Quarter Moon</a></li>
+        <li><a href="./?debugTime=night&debugMoonPhase=full&previewWeatherFx=1">Night + Full Moon</a></li>
+      </ul>
+    </div>
+
+    <!-- FLIGHT CATEGORIES -->
+    <div class="card">
+      <h2>3. Flight Categories & Minimums</h2>
+      <ul>
+        <li><a href="./?debugVisibility=10&debugCloudBase=8000&debugCloud=FEW&previewWeatherFx=1">VFR (10 SM Vis / 8,000 FT Cld)</a></li>
+        <li><a href="./?debugVisibility=4&debugCloudBase=2000&debugCloud=BKN&previewWeatherFx=1">MVFR (4 SM Vis / 2,000 FT Cig)</a></li>
+        <li><a href="./?debugVisibility=2&debugCloudBase=800&debugCloud=OVC&previewWeatherFx=1">IFR (2 SM Vis / 800 FT Cig)</a></li>
+        <li><a href="./?debugVisibility=.5&debugCloudBase=200&debugCloud=VV&previewWeatherFx=1">LIFR (0.5 SM Vis / 200 FT Cig)</a></li>
+      </ul>
+    </div>
+
+    <!-- BIRD WATCH CONDITION -->
+    <div class="card">
+      <h2>4. Bird Watch Condition (BWC)</h2>
+      <ul>
+        <li><a href="./?debugBwc=low&previewWeatherFx=1">BWC LOW (Green Indicator)</a></li>
+        <li><a href="./?debugBwc=moderate&previewWeatherFx=1">BWC MODERATE (Yellow Warning)</a></li>
+        <li><a href="./?debugBwc=severe&previewWeatherFx=1">BWC SEVERE (Red Pulsing Alert)</a></li>
+      </ul>
+    </div>
+
+    <!-- C-17 FLYBY & LIGHTING -->
+    <div class="card">
+      <h2>5. C-17 Aircraft Flyby & Strobe Lights</h2>
+      <ul>
+        <li><a href="./?debugTime=day&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1&previewWeatherFx=1">Day Flyby (Left-to-Right)</a></li>
+        <li><a href="./?debugTime=night&debugFlyby=on&debugFlybyDir=rtl&spawnFlyby=1&previewWeatherFx=1">Night Flyby + Strobes (Right-to-Left)</a></li>
+        <li><a href="./?debugTime=twilight&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1&previewWeatherFx=1">Twilight Flyby (Left-to-Right)</a></li>
+        <li><a href="./?debugFlyby=off&previewWeatherFx=1">Flyby Off</a></li>
+      </ul>
+    </div>
+
+    <!-- RAIN & LIQUID PRECIP -->
+    <div class="card">
+      <h2>6. Rain & Liquid Precipitation</h2>
+      <ul>
+        <li><a href="./?debugWeather=rain&debugPhenomena=-DZ&debugIntensity=light&debugTime=day&previewWeatherFx=1">Light Drizzle (-DZ)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=DZ&debugIntensity=moderate&debugTime=day&previewWeatherFx=1">Moderate Drizzle (DZ)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=-RA&debugIntensity=light&debugTime=day&previewWeatherFx=1">Light Rain (-RA)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=RA&debugIntensity=moderate&debugTime=day&previewWeatherFx=1">Moderate Rain (RA)</a></li>
+        <li><a href="./?debugWeather=heavy-rain&debugPhenomena=%2BRA&debugIntensity=heavy&debugVisibility=1.5&debugTime=night&previewWeatherFx=1">Heavy Rain (+RA)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=SHRA&debugTime=day&previewWeatherFx=1">Rain Showers (SHRA)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=VCSH&debugTime=day&previewWeatherFx=1">Rain in Vicinity (VCSH)</a></li>
+        <li><a href="./?debugWeather=rain&debugPhenomena=FZRA&debugTime=night&previewWeatherFx=1">Freezing Rain (FZRA)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=RASN&debugTime=day&previewWeatherFx=1">Rain & Snow Mix (RASN)</a></li>
+      </ul>
+    </div>
+
+    <!-- SNOW & WINTER PRECIP -->
+    <div class="card">
+      <h2>7. Snow & Winter Weather</h2>
+      <ul>
+        <li><a href="./?debugWeather=snow&debugPhenomena=-SN&debugIntensity=light&debugTime=day&previewWeatherFx=1">Light Snow (-SN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=SN&debugIntensity=moderate&debugTime=day&previewWeatherFx=1">Moderate Snow (SN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=%2BSN&debugIntensity=heavy&debugVisibility=.75&debugTime=night&previewWeatherFx=1">Heavy Snow (+SN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=SHSN&debugTime=day&previewWeatherFx=1">Snow Showers (SHSN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day&previewWeatherFx=1">Blowing Snow (BLSN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=DRSN&debugWind=280&debugWindSpeed=15&debugVisibility=4&debugTime=day&previewWeatherFx=1">Drifting Snow (DRSN)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=SG&debugTime=day&previewWeatherFx=1">Snow Grains (SG)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=IC&debugTime=night&previewWeatherFx=1">Ice Crystals (IC)</a></li>
+        <li><a href="./?debugWeather=snow&debugPhenomena=PL&debugTime=day&previewWeatherFx=1">Ice Pellets (PL)</a></li>
+      </ul>
+    </div>
+
+    <!-- VISIBILITY & OBSCURATION -->
+    <div class="card">
+      <h2>8. Visibility & Obscuration</h2>
+      <ul>
+        <li><a href="./?debugWeather=fog&debugPhenomena=BR&debugVisibility=5&debugTime=day&previewWeatherFx=1">Mist (BR 5SM)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=FG&debugVisibility=1&debugTime=day&previewWeatherFx=1">Fog (FG 1SM)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=FG&debugVisibility=.5&debugTime=night&previewWeatherFx=1">Dense Fog (FG 0.5SM)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=MIFG&debugVisibility=2&debugTime=day&previewWeatherFx=1">Shallow Fog (MIFG)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=BCFG&debugVisibility=2&debugTime=day&previewWeatherFx=1">Patches Fog (BCFG)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=PRFG&debugVisibility=1&debugTime=day&previewWeatherFx=1">Partial Fog (PRFG)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=FZFG&debugVisibility=.5&debugTime=night&previewWeatherFx=1">Freezing Fog (FZFG)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=HZ&debugVisibility=4&debugTime=day&previewWeatherFx=1">Haze (HZ 4SM)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=FU&debugVisibility=3&debugTime=day&previewWeatherFx=1">Smoke (FU 3SM)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=BLDU&debugVisibility=1&debugWind=260&debugWindSpeed=30&debugTime=day&previewWeatherFx=1">Blowing Dust (BLDU)</a></li>
+        <li><a href="./?debugWeather=fog&debugPhenomena=VA&debugVisibility=2&debugTime=day&previewWeatherFx=1">Volcanic Ash (VA)</a></li>
+      </ul>
+    </div>
+
+    <!-- LIGHTNING & THUNDERSTORMS -->
+    <div class="card">
+      <h2>9. Thunderstorms & Lightning</h2>
+      <ul>
+        <li><a href="./?debugWeather=partly-cloudy&debugLightning=distant-ocnl-ic&debugTime=day&previewWeatherFx=1">Distant OCNL IC Lightning</a></li>
+        <li><a href="./?debugWeather=partly-cloudy&debugLightning=distant-frq-cg&debugTime=night&previewWeatherFx=1">Distant FRQ CG Lightning</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=VCTS&debugLightning=vcts&debugTime=day&previewWeatherFx=1">Thunderstorm in Vicinity (VCTS)</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=ts&debugTime=night&previewWeatherFx=1">Thunderstorm (TS)</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=TSRA&debugLightning=tsra&debugTime=night&previewWeatherFx=1">Thunderstorm + Rain (TSRA)</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=%2BTSRA&debugLightning=severe&debugIntensity=heavy&debugTime=night&previewWeatherFx=1">Severe Thunderstorm (+TSRA)</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=TSGR&debugLightning=tsgr&debugTime=day&previewWeatherFx=1">Thunderstorm + Hail (TSGR)</a></li>
+        <li><a href="./?debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=flash-test&debugTime=night&previewWeatherFx=1">Lightning Flash Test</a></li>
+      </ul>
+    </div>
+
+  </div>
+
+</body>
+</html>
