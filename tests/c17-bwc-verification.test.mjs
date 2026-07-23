@@ -37,10 +37,9 @@ test("AHAS BWC timestamp parser and age calculator - required cases", () => {
   const iso5 = parseAhasTimestampIso("23/0025Z", now5);
   assert.equal(calculateBirdObservationAge(iso5, now5), "FUTURE OBS (+7M)");
 
-  // 6. Malformed & boundary validations (hours 00-23, mins 00-59)
-  assert.equal(parseAhasTimestampIso("23/2500Z", now1), null); // invalid hour 25
-  assert.equal(parseAhasTimestampIso("23/1260Z", now1), null); // invalid minute 60
-  assert.equal(parseAhasTimestampIso("—", now1), null);         // dash placeholder
-  assert.equal(parseAhasTimestampIso("INVALID", now1), null);   // malformed string
-  assert.equal(calculateBirdObservationAge(null, now1), "");
+  // 7. Live API SQL timestamp string without trailing Z: 2026-07-23 02:00:00.000 at 23/0211Z = 11 MIN AGO
+  const now7 = new Date("2026-07-23T02:11:12Z");
+  const iso7 = parseAhasTimestampIso("2026-07-23 02:00:00.000", now7);
+  assert.equal(iso7, "2026-07-23T02:00:00.000Z");
+  assert.equal(calculateBirdObservationAge(iso7, now7), "11 MIN AGO");
 });

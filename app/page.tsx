@@ -276,7 +276,15 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   const safeY = Number.isFinite(markerY) ? markerY : 40;
   return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress, markerX:safeX, markerY:safeY};
 }
-function zStamp(value:string) { const match=(value||"").match(/\d{4}-\d{2}-(\d{2})[ T](\d{2}):(\d{2})/); return match?`${match[1]}/${match[2]}${match[3]}Z`:"—"; }
+function zStamp(value:string) {
+  if (!value || value === "—") return "—";
+  const match = value.match(/(?:\d{4}-\d{2}-(\d{2})[ T](\d{2}):(\d{2}))|(?:(\d{2})\/)?(\d{2})(\d{2})Z?/i);
+  if (match) {
+    if (match[1]) return `${match[1]}/${match[2]}${match[3]}Z`;
+    if (match[5] && match[6]) return `${match[4] ? `${match[4]}/` : ""}${match[5]}${match[6]}Z`;
+  }
+  return value !== "—" ? value : "—";
+}
 function aviationStamp(value:string|null) { const time=value?Date.parse(value):NaN; if(!Number.isFinite(time)) return "—"; const d=new Date(time); return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`; }
 // Maps a normalized condition + solar phase onto one of the 16 wallpaper assets in
 // public/assets/backgrounds/. Precipitation and obscuration always keep their own weather

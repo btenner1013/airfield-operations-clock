@@ -906,17 +906,15 @@
 
 /* Day/Twilight/Night Image Treatment */
 .phase-day .c17-photo-img {
-  filter: none;
+  filter: brightness(1.05) contrast(1.05) saturate(1.1);
 }
 
 .phase-twilight .c17-photo-img {
-  /* slightly darken and warm the aircraft */
-  filter: brightness(0.65) sepia(0.3) hue-rotate(345deg) saturate(1.2);
+  filter: brightness(0.85) contrast(1.08) saturate(1.15);
 }
 
 .phase-night .c17-photo-img {
-  /* substantially darken/desaturate so it blends naturally into the night scene */
-  filter: brightness(0.2) saturate(0.1) contrast(0.85);
+  filter: brightness(0.65) contrast(1.15) saturate(1.2);
 }
 
 /* Light Positioning for Right-to-Left (RTL - Left Facing) */
