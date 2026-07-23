@@ -271,11 +271,11 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
     progress = Math.round(nightRatio * 100);
     const nightAngle = nightRatio * Math.PI;
     markerX = 100 + Math.cos(nightAngle) * 88;
-    markerY = 76 + Math.sin(nightAngle) * 18;
+    markerY = 76 + Math.sin(nightAngle) * 56;
   }
   const safeX = Number.isFinite(markerX) ? markerX : 100;
   const safeY = Number.isFinite(markerY) ? markerY : 40;
-  return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress, markerX:safeX, markerY:safeY};
+  return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress, markerX:safeX, markerY:safeY, isTomorrow:afterSunset};
 }
 function zStamp(value:string) {
   if (!value || value === "—") return "—";
@@ -523,7 +523,7 @@ export default function Home() {
   } else {
     const nightAngle = (effSolar.progress / 100) * Math.PI;
     effSolar.markerX = 100 + Math.cos(nightAngle) * 88;
-    effSolar.markerY = 76 + Math.sin(nightAngle) * 18;
+    effSolar.markerY = 76 + Math.sin(nightAngle) * 56;
   }
 
   if (debugPhase) {
@@ -539,7 +539,7 @@ export default function Home() {
     } else {
       const nightAngle = (effSolar.progress / 100) * Math.PI;
       effSolar.markerX = 100 + Math.cos(nightAngle) * 88;
-      effSolar.markerY = 76 + Math.sin(nightAngle) * 18;
+      effSolar.markerY = 76 + Math.sin(nightAngle) * 56;
     }
   }
   // Observation freshness (from actual METAR obs time) is tracked separately from feed-fetch health.
@@ -592,7 +592,7 @@ export default function Home() {
                   <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(226, 232, 240, 0.35)" /><stop offset="70%" stopColor="rgba(148, 163, 184, 0.1)" /><stop offset="100%" stopColor="rgba(148, 163, 184, 0)" /></radialGradient>
                 </defs>
                 <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
-                <path d="M 188 76 A 88 18 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
+                <path d="M 188 76 A 88 56 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
                 <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
                 {effSolar.daylight ? (() => {
                   const isSunrise = effSolar.progress <= 15;
@@ -696,8 +696,8 @@ export default function Home() {
               <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
-              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise.endsWith("L") ? solar.sunrise : `${solar.sunrise}L`}</strong><small>LOCAL</small></div>
-              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset.endsWith("L") ? solar.sunset : `${solar.sunset}L`}</strong><small>LOCAL</small></div>
+              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise.endsWith("L") ? solar.sunrise : `${solar.sunrise}L`}</strong><small>{effSolar.isTomorrow ? "TOMORROW" : "TODAY"}</small></div>
+              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset.endsWith("L") ? solar.sunset : `${solar.sunset}L`}</strong><small>{effSolar.isTomorrow ? "TOMORROW" : "TODAY"}</small></div>
             </div>
           </div>
         </article>
