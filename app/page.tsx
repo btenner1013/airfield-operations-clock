@@ -709,11 +709,11 @@ export default function Home() {
             </b>
           </div>
           <div className="weather-user-spec-layout">
-            <div className="weather-spec-temp-row">
-              <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
-              <strong className="weather-spec-temp">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
+            <span className="weather-glyph-top-left"><WeatherIcon condition={condition} night={phase === "night"} /></span>
+            <div className="weather-spec-center-block">
+              <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
+              <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
             </div>
-            <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
             <div className="weather-spec-feels">
               FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong>
             </div>
@@ -722,7 +722,7 @@ export default function Home() {
             </div>
             <div className="weather-ceiling-badge">
               <span className="ceiling-label">CEILING</span>
-              <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
+              <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
             </div>
             {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
           </div>

@@ -242,6 +242,7 @@
 
 /* ── CURRENT WEATHER (USER CUSTOM SPECIFICATION) ──────────── */
 .weather-user-spec-layout {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -249,27 +250,35 @@
   height: calc(100% - 28px);
   margin: auto 0;
   width: 100%;
-  padding-top: 2px;
+  padding-top: 4px;
   text-align: center;
 }
 
-/* Row 1: Temp & Glyph */
-.weather-spec-temp-row {
+/* Weather Glyph in Top-Left Corner */
+.weather-glyph-top-left {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: clamp(30px, 2.4vw, 42px);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 0.8vw, 14px);
 }
-.weather-glyph {
-  flex-shrink: 0;
-  font-size: clamp(32px, 2.6vw, 44px);
+
+/* Centered Temperature & Condition Block */
+.weather-spec-center-block {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 2px;
 }
-.weather-spec-temp {
-  font: 800 clamp(30px, 2.6vw, 44px) / 1 Consolas, monospace;
+.weather-spec-temp-centered {
+  font: 800 clamp(32px, 2.8vw, 46px) / 1 Consolas, monospace;
   color: #ffffff;
   white-space: nowrap;
+  text-align: center;
 }
 
 /* Row 2: WX Condition (larger font, centered) */
