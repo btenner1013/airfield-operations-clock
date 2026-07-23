@@ -811,15 +811,13 @@ export default function Home() {
 
               return (
                 <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
-                  <div className="forecast-tile-top">
-                    <time className="forecast-time">{timeLabel}</time>
-                    <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time, solar.sunrise, solar.sunset)} /></span>
+                  <time className="forecast-time">{timeLabel}</time>
+                  <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time, solar.sunrise, solar.sunset)} /></span>
+                  <div className="forecast-content-col">
                     <b className="forecast-condition">{conditionLabel}</b>
-                    <strong className="forecast-temp">{f.temperatureF}°</strong>
-                  </div>
-                  <div className="forecast-tile-sub">
                     <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
                   </div>
+                  <strong className="forecast-temp">{f.temperatureF}°</strong>
                 </div>
               );
             }) : (

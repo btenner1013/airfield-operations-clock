@@ -552,7 +552,7 @@
   gap: 4px;
 }
 
-/* ── FUTURE WEATHER (STRUCTURED 2-SUBROW FLIGHT SLOTS) ─────── */
+/* ── FUTURE WEATHER (STRUCTURED FLIGHT TILE ROWS) ─────────── */
 .forecast-card {
   min-width: 0;
   box-sizing: border-box;
@@ -567,8 +567,8 @@
 }
 .forecast-item-tile {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: clamp(8px, 0.8vw, 12px);
   padding: clamp(5px, 0.6vh, 8px) clamp(8px, 0.8vw, 12px);
   background: rgba(13, 25, 31, 0.55);
   border: 1px solid rgba(88, 215, 245, 0.18);
@@ -576,17 +576,14 @@
   width: 100%;
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
 }
-.forecast-tile-top {
+.forecast-content-col {
   display: flex;
-  align-items: center;
-  gap: clamp(8px, 0.8vw, 12px);
-  width: 100%;
-}
-.forecast-tile-sub {
-  display: flex;
-  align-items: center;
-  padding-left: clamp(68px, 5.2vw, 84px);
-  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .forecast-time {
   font: 800 clamp(13px, 0.9vw, 17.5px) / 1 Consolas, monospace !important;
