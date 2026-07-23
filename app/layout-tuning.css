@@ -244,22 +244,19 @@
 .weather-main {
   display: flex;
   align-items: center;
-  gap: clamp(12px, 1.4vw, 22px);
+  gap: clamp(14px, 1.6vw, 24px);
   height: calc(100% - 28px);
   margin: auto 0;
 }
 .weather-left-block {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  gap: 4px;
   flex-shrink: 0;
 }
 .weather-left-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .weather-glyph {
   flex-shrink: 0;
@@ -273,19 +270,6 @@
   white-space: nowrap;
   line-height: 1;
 }
-.humidity-under-glyph {
-  font-size: clamp(11.5px, 0.75vw, 13.5px);
-  color: #cbd5e1;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: center;
-  margin-top: 4px;
-}
-.humidity-under-glyph strong {
-  color: #ffffff;
-  font-weight: 800;
-}
 .weather-copy {
   flex: 1 1 0%;
   min-width: 0;
@@ -295,33 +279,34 @@
   justify-content: center;
 }
 .weather-copy b {
-  font-size: clamp(12px, 0.85vw, 17px);
+  font-size: clamp(13.5px, 0.9vw, 18px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: normal;
   overflow-wrap: break-word;
-  line-height: 1.25;
+  line-height: 1.2;
   color: #ffffff;
 }
 .feels-like-container {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: clamp(11px, 0.72vw, 14px);
-  color: #94a3b8;
   line-height: 1.35;
   letter-spacing: 0.06em;
 }
-.feels-like, .ceiling-line, .vis-line {
+.feels-like, .ceiling-line {
   white-space: nowrap;
-}
-.ceiling-line {
-  font-size: clamp(11.5px, 0.75vw, 14.5px);
+  font-size: clamp(11.5px, 0.78vw, 15px);
   color: #cbd5e1;
 }
-.ceiling-line strong {
+.feels-like strong, .ceiling-line strong {
   color: #ffffff;
-  font-size: 1.08em;
+  font-weight: 800;
+}
+.meta-sep {
+  color: #64748b;
+  margin: 0 4px;
+  font-weight: 700;
 }
 
 /* ── WIND CARD & FLIGHT CATEGORY ─────────────────────────── */
