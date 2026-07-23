@@ -647,8 +647,8 @@ export default function Home() {
               <strong>{effSolar.activeObject === "sun" ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
-              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div>
-              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset}</strong><small>LOCAL · {solar.label}</small></div>
+              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise.endsWith("L") ? solar.sunrise : `${solar.sunrise}L`}</strong><small>LOCAL</small></div>
+              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset.endsWith("L") ? solar.sunset : `${solar.sunset}L`}</strong><small>LOCAL</small></div>
             </div>
           </div>
         </article>
