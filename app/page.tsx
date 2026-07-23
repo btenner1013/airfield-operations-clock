@@ -393,7 +393,7 @@ export default function Home() {
     const ltg=q.get("debugLightning"); if(ltg) setDebugLightning(ltg);
     const fb=q.get("debugFlyby"); if(fb==="off") setDebugFlybyEnabled(false); else if(fb==="on") setDebugFlybyEnabled(true);
     const fbd=q.get("debugFlybyDir"); if(fbd==="ltr"||fbd==="rtl") setDebugFlybyDir(fbd);
-    if(q.get("spawnFlyby")==="1") triggerSpawn();
+    if(q.get("spawnFlyby")==="1") triggerSpawn((fbd==="ltr"||fbd==="rtl")?fbd:undefined);
     navigator.serviceWorker?.register("./service-worker.js").catch(()=>{});
   },[]);
   // Weather refresh lifecycle — deliberately separate from the clock. One coordinator owns the
