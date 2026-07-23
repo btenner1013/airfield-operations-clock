@@ -348,8 +348,8 @@
 }
 .compass-wrap-centered {
   flex: 0 0 auto;
-  width: clamp(54px, 5.0vw, 80px);
-  height: clamp(54px, 5.0vw, 80px);
+  width: clamp(64px, 6.0vw, 92px);
+  height: clamp(64px, 6.0vw, 92px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,7 +376,7 @@
 }
 .compass-label {
   position: absolute;
-  font: 800 clamp(8px, 0.6vw, 11px) Consolas, monospace;
+  font: 800 clamp(9px, 0.65vw, 12px) Consolas, monospace;
   color: #c0d0d5;
   line-height: 1;
 }
@@ -410,22 +410,22 @@
   width: 100%;
 }
 .flight-cat-pill {
-  padding: 4px 10px;
+  padding: 5px 12px;
   border: 1.5px solid currentColor;
   border-radius: 4px;
-  font: 800 clamp(13px, 0.95vw, 17px) Consolas, monospace;
+  font: 800 clamp(15px, 1.1vw, 19px) Consolas, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   box-shadow: 0 0 8px currentColor;
 }
 .wind-vis-tag {
-  font-size: clamp(12.5px, 0.85vw, 16px);
+  font-size: clamp(14px, 1.0vw, 17px);
   color: #cbd5e1;
   letter-spacing: 0.08em;
   font-weight: 700;
 }
 .wind-vis-tag strong {
-  font-size: clamp(14px, 1.05vw, 19px);
+  font-size: clamp(16px, 1.2vw, 21px);
   color: #ffffff;
   font-weight: 800;
 }
@@ -457,7 +457,7 @@
 }
 .bird-icon-symbol {
   flex-shrink: 0;
-  font-size: clamp(28px, 2.4vw, 40px);
+  font-size: clamp(38px, 3.2vw, 50px);
   line-height: 1;
   display: inline-block;
   font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans Egyptian Hieroglyphs", sans-serif;
