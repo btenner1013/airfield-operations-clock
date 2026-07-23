@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseAhasTimestampIso, calculateBirdObservationAge } from "../app/birdWatch.ts";
+import { parseAhasTimestampIso, calculateBirdObservationAge, formatBwcCalendarStamp } from "../app/birdWatch.ts";
 
 test("AHAS BWC timestamp parser and age calculator - required cases", () => {
   // 0. Live regression test: 23/0142Z at 23/0150Z = 8 MIN AGO
@@ -8,6 +8,7 @@ test("AHAS BWC timestamp parser and age calculator - required cases", () => {
   const iso0 = parseAhasTimestampIso("23/0142Z", now0);
   assert.equal(iso0, "2026-07-23T01:42:00.000Z");
   assert.equal(calculateBirdObservationAge(iso0, now0), "8 MIN AGO");
+  assert.equal(formatBwcCalendarStamp(iso0, "23/0142Z"), "23 JUL 0142Z");
 
   // 1. 23/0018Z at 23/0035Z = 17 MIN AGO
   const now1 = new Date("2026-07-23T00:35:00Z");
@@ -26,6 +27,7 @@ test("AHAS BWC timestamp parser and age calculator - required cases", () => {
   const iso3 = parseAhasTimestampIso("31/2350Z", now3);
   assert.equal(iso3, "2026-07-31T23:50:00.000Z");
   assert.equal(calculateBirdObservationAge(iso3, now3), "15 MIN AGO");
+  assert.equal(formatBwcCalendarStamp(iso3, "31/2350Z"), "31 JUL 2350Z");
 
   // 4. Observation under 60 seconds old = 0 MIN AGO
   const now4 = new Date("2026-07-23T00:18:45Z");
@@ -42,4 +44,9 @@ test("AHAS BWC timestamp parser and age calculator - required cases", () => {
   const iso7 = parseAhasTimestampIso("2026-07-23 02:00:00.000", now7);
   assert.equal(iso7, "2026-07-23T02:00:00.000Z");
   assert.equal(calculateBirdObservationAge(iso7, now7), "11 MIN AGO");
+
+  // 8. Calendar format test: 23/0248Z -> "23 JUL 0248Z"
+  const now8 = new Date("2026-07-23T02:56:00Z");
+  const iso8 = parseAhasTimestampIso("23/0248Z", now8);
+  assert.equal(formatBwcCalendarStamp(iso8, "23/0248Z"), "23 JUL 0248Z");
 });

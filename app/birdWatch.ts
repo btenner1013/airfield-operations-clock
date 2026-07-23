@@ -86,3 +86,15 @@ export function calculateBirdObservationAge(bwcIso: string | null, now: Date): s
   const m = elapsedMin % 60;
   return `${h}H ${m}M AGO`;
 }
+
+export function formatBwcCalendarStamp(bwcIso: string | null, rawStamp?: string | null): string {
+  if (!bwcIso) return rawStamp && rawStamp !== "—" ? rawStamp : "—";
+  const date = new Date(bwcIso);
+  if (!Number.isFinite(date.getTime())) return rawStamp && rawStamp !== "—" ? rawStamp : "—";
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const month = monthNames[date.getUTCMonth()];
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const mins = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${day} ${month} ${hours}${mins}Z`;
+}

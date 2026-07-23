@@ -9,7 +9,7 @@ import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLig
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, formatTafWindow, parseAviationSky, parseStructuredTaf, resolveOperationalWeather, type OperationalWeather } from "./aviationWeatherPriority";
 import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
-import { calculateBirdObservationAge, parseAhasTimestampIso } from "./birdWatch";
+import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestampIso } from "./birdWatch";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
@@ -737,12 +737,12 @@ export default function Home() {
             <div className="bird-card-meta">
               {(() => {
                 const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
-                const timeStampStr = birdStamp && birdStamp !== "—" ? birdStamp : "—";
+                const calendarStampStr = formatBwcCalendarStamp(bwcIso, birdStamp);
                 const ageStr = bwcIso ? calculateBirdObservationAge(bwcIso, now) : "";
                 return (
                   <>
-                    <div className="bird-timestamp">{timeStampStr}</div>
                     {bwcIso && ageStr && <div className="bird-age">{ageStr}</div>}
+                    <div className="bird-timestamp">{calendarStampStr}</div>
                   </>
                 );
               })()}
