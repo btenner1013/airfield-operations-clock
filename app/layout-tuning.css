@@ -41,6 +41,14 @@
 }
 
 /* ── HEADER & CLOCK BLACK OUTLINES ───────────────────────── */
+.brand-logo {
+  height: clamp(52px, 6.2vh, 78px) !important;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+  flex-shrink: 0;
+}
 .brand strong,
 .brand small,
 .header-date small,
