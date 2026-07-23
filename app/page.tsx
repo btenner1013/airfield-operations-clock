@@ -9,6 +9,7 @@ import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLig
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, formatTafWindow, parseAviationSky, parseStructuredTaf, resolveOperationalWeather, type OperationalWeather } from "./aviationWeatherPriority";
 import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
+import { calculateBirdObservationAge, parseAhasTimestampIso } from "./birdWatch";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
@@ -229,19 +230,7 @@ function getTafHazardDetails(h: any): { severity: "red" | "yellow" | "blue"; tex
   }
   return { severity, text: codeText };
 }
-function parseAhasTimestampIso(raw: string | undefined | null, now: Date): string | null {
-  if (!raw || raw === "—") return null;
-  if (!isNaN(Date.parse(raw))) return raw;
-  const m = raw.match(/(?:(\d{2})\/)?(\d{2})(\d{2})Z?/i);
-  if (m) {
-    const day = m[1] ? Number(m[1]) : now.getUTCDate();
-    const hour = Number(m[2]);
-    const min = Number(m[3]);
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day, hour, min));
-    if (Number.isFinite(d.getTime())) return d.toISOString();
-  }
-  return null;
-}
+
 function parseTimeMinutes(v: string | undefined): number {
   if (!v || v === "--:--") return 1211;
   const pm = /pm/i.test(v);
@@ -692,9 +681,14 @@ export default function Home() {
             <div className="bird-card-meta">
               {(() => {
                 const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
-                const bwcMs = bwcIso ? Date.parse(bwcIso) : NaN;
-                const ageMin = Number.isFinite(bwcMs) ? Math.max(0, Math.floor((now.getTime() - bwcMs) / 60000)) : null;
-                return `${birdStamp || "1730Z"}${ageMin !== null ? ` · ${ageMin < 60 ? `${ageMin} MIN AGO` : `${Math.floor(ageMin / 60)}H ${ageMin % 60}M AGO`}` : ""}`;
+                const timeStampStr = birdStamp && birdStamp !== "—" ? birdStamp : "—";
+                const ageStr = bwcIso ? calculateBirdObservationAge(bwcIso, now) : "";
+                return (
+                  <>
+                    <div className="bird-timestamp">{timeStampStr}</div>
+                    {bwcIso && ageStr && <div className="bird-age">{ageStr}</div>}
+                  </>
+                );
               })()}
             </div>
           </div>
