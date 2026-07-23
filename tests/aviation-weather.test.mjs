@@ -149,7 +149,7 @@ test("Current-versus-forecast separation regression test", () => {
 
   // Assert current:
   // * Cloud scene
-  assert.equal(resolvedMetar.condition, "overcast");
+  assert.equal(resolvedMetar.condition, "partly-cloudy");
   assert.equal(resolvedMetar.category, "cloud");
   // * No rain, no drizzle, no pane droplets
   assert.equal(fx.precip, "none");
@@ -283,8 +283,8 @@ test("Consistent current and future naming shared resolver and authority test", 
   assert.equal(metar("METAR KMEM 201653Z OVC008").label, "OVERCAST CEILING");
   // * VV003 -> INDEFINITE CEILING
   assert.equal(metar("METAR KMEM 201653Z VV003").label, "INDEFINITE CEILING");
-  // * FEW070 BKN250 -> BROKEN CEILING
-  assert.equal(metar("METAR KMEM 201653Z FEW070 BKN250").label, "BROKEN CEILING");
+  // * FEW070 BKN250 -> PARTLY CLOUDY (high cirrus >= 12,000 FT)
+  assert.equal(metar("METAR KMEM 201653Z FEW070 BKN250").label, "PARTLY CLOUDY");
 
   // Authority test:
   // Current METAR: FEW070 BKN250
@@ -294,7 +294,7 @@ test("Consistent current and future naming shared resolver and authority test", 
   PROB30 2200/2206 4SM TSRA BKN050CB`;
 
   const resolvedMetar = resolveOperationalWeather({ text: metarText, sourceKind: "METAR" });
-  assert.equal(resolvedMetar.label, "BROKEN CEILING");
+  assert.equal(resolvedMetar.label, "PARTLY CLOUDY");
 
   const timeline = parseStructuredTaf(tafText, new Date("2026-07-21T02:00:00Z"));
   assert.ok(timeline);

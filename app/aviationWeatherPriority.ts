@@ -220,14 +220,16 @@ export function resolvePhenomenaLabels(codes: string[]): { label: string; shortL
   };
 }
 
-function cloudLabel(coverage:CloudCoverage|null):string {
+function cloudLabel(coverage:CloudCoverage|null, baseFt:number|null = null):string {
   if (!coverage) return "WEATHER UNAVAILABLE";
   const cov = coverage.toUpperCase();
   if (cov === "CLR" || cov === "SKC" || cov === "NSC" || cov === "NCD") return "CLEAR";
   if (cov === "FEW") return "FEW CLOUDS";
   if (cov === "SCT") return "SCATTERED CLOUDS";
-  if (cov === "BKN") return "BROKEN CEILING";
-  if (cov === "OVC") return "OVERCAST CEILING";
+  if (cov === "BKN" || cov === "OVC") {
+    if (baseFt !== null && baseFt >= 12000) return "PARTLY CLOUDY";
+    return cov === "BKN" ? "BROKEN CEILING" : "OVERCAST CEILING";
+  }
   if (cov === "VV") return "INDEFINITE CEILING";
   return "WEATHER UNAVAILABLE";
 }
@@ -261,9 +263,10 @@ export function resolveOperationalWeather(input:{text?:string;codes?:string[];vi
     };
   }
   
+  const isHighCirrus = (coverage === "BKN" || coverage === "OVC") && base !== null && base >= 12000;
   const category:WeatherCategory=coverage==="CLR"?"clear":coverage?"cloud":"unknown";
-  const condition:Theme=coverage==="CLR"?"clear":coverage==="FEW"||coverage==="SCT"?"partly-cloudy":coverage?"overcast":"neutral";
-  const label=cloudLabel(coverage);
+  const condition:Theme=coverage==="CLR"?"clear":(coverage==="FEW"||coverage==="SCT"||isHighCirrus)?"partly-cloudy":coverage?"overcast":"neutral";
+  const label=cloudLabel(coverage, base);
   
   return {
     code: null,
