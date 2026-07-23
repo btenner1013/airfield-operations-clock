@@ -252,7 +252,6 @@ function parseTimeMinutes(v: string | undefined): number {
   if (!Number.isFinite(h)) return 1211;
   if (pm && h < 12) h += 12;
   if (am && h === 12) h = 0;
-  if (!pm && !am && h < 7) h += 12;
   return h * 60 + m;
 }
 
@@ -648,7 +647,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="solar-subtitle">
-              <strong>{effSolar.activeObject === "sun" ? `${Math.round(effSolar.progress)}% DAYLIGHT` : `MOON - ${moonInfo.name}`}</strong>
+              <strong>{effSolar.activeObject === "sun" ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
             </div>
             <div className="solar-times-row">
               <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise}</strong><small>LOCAL · {solar.label}</small></div>

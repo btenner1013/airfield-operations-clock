@@ -156,3 +156,10 @@ test("failed wallpaper load does not replace active scene", () => {
   assert.match(page, /img\.decode\(\)\.then\(commit\)\.catch/);
   assert.match(page, /img\.onerror = \(\) => {/);
 });
+
+test("parseTimeMinutes correctly parses 24-hour AM times without adding 12 hours", () => {
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(page, /if\s*\(!pm\s*&&\s*!am\s*&&\s*h\s*<\s*7\)\s*h\s*\+=\s*12/);
+  assert.match(page, /DAYLIGHT ELAPSED/);
+});
+
