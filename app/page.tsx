@@ -819,29 +819,48 @@ export default function Home() {
             </div>
           )}
           <div className="forecast-list">
-            {weather.forecast?.length ? weather.forecast.map((f, i) => {
-              const d = new Date(f.iso);
-              const timeLabel = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
-              const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
-              const precipText = `${f.precipitation}% PRECIP`;
-              const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
-                ? `${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
-                : null;
+            {(() => {
+              if (!weather.forecast?.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
+              
+              const currentUtcHour = now.getUTCHours();
+              const seenLabels = new Set<string>();
+              
+              const displayList = weather.forecast.filter((f, i) => {
+                const d = new Date(f.iso);
+                const label = f.time === "NOW" ? "NOW" : (Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time);
+                
+                if (i > 0 && Number.isFinite(d.getTime()) && d.getUTCHours() === currentUtcHour && seenLabels.has("NOW")) {
+                  return false;
+                }
+                if (seenLabels.has(label)) {
+                  return false;
+                }
+                seenLabels.add(label);
+                return true;
+              });
 
-              return (
-                <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
-                  <time className="forecast-time">{timeLabel}</time>
-                  <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.iso || f.time, solar.sunrise, solar.sunset)} /></span>
-                  <div className="forecast-content-col">
-                    <b className="forecast-condition">{conditionLabel}</b>
-                    <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
+              return displayList.slice(0, 3).map((f, i) => {
+                const d = new Date(f.iso);
+                const timeLabel = f.time === "NOW" ? "NOW" : (Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time);
+                const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
+                const precipText = `${f.precipitation}% PRECIP`;
+                const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
+                  ? `${["BKN","OVC","VV"].includes(f.operationalWeather?.cloudCoverage || "") ? "CIG" : "CLD"} ${f.operationalWeather.cloudBaseFt.toLocaleString()} FT` 
+                  : null;
+
+                return (
+                  <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
+                    <time className="forecast-time">{timeLabel}</time>
+                    <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.iso || f.time, solar.sunrise, solar.sunset)} /></span>
+                    <div className="forecast-content-col">
+                      <b className="forecast-condition">{conditionLabel}</b>
+                      <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
+                    </div>
+                    <strong className="forecast-temp">{f.temperatureF}°</strong>
                   </div>
-                  <strong className="forecast-temp">{f.temperatureF}°</strong>
-                </div>
-              );
-            }) : (
-              <div className="forecast-empty">FORECAST UNAVAILABLE</div>
-            )}
+                );
+              });
+            })()}
           </div>
         </article>
       </section>
