@@ -708,21 +708,27 @@ export default function Home() {
               {feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
             </b>
           </div>
-          <div className="weather-main">
-            <div className="weather-left-block">
-              <div className="weather-left-top">
-                <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
-                <strong>{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
+          <div className="weather-main-grid">
+            <div className="weather-top-row">
+              <span className="weather-glyph"><WeatherIcon condition={condition} night={phase === "night"} /></span>
+              <strong className="weather-temp">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
+              <b className="weather-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
+            </div>
+            <div className="weather-tiles-row">
+              <div className="weather-tile">
+                <span>FEELS LIKE</span>
+                <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong>
+              </div>
+              <div className="weather-tile">
+                <span>HUMIDITY</span>
+                <strong>{weather.humidity}%</strong>
+              </div>
+              <div className="weather-tile">
+                <span>CEILING</span>
+                <strong>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNL"}</strong>
               </div>
             </div>
-            <div className="weather-copy">
-              <b>{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
-              <div className="feels-like-container">
-                <span className="feels-like">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong> <span className="meta-sep">·</span> HUMIDITY <strong>{weather.humidity}%</strong></span>
-                <span className="ceiling-line">CEILING <strong>{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudBaseFt.toLocaleString()} FT` : "UNL"}</strong></span>
-              </div>
-              {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
-            </div>
+            {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
           </div>
         </article>
         <article className="wind-card panel">
