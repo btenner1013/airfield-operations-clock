@@ -281,7 +281,11 @@
 .weather-row-temp {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+}
+
+.weather-row-feels {
+  margin-top: -2px;
+  margin-bottom: 1px;
 }
 
 .weather-spec-temp-centered {

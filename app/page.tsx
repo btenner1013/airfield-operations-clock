@@ -731,6 +731,8 @@ export default function Home() {
             <div className="weather-table-left">
               <div className="weather-table-row weather-row-temp">
                 <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
+              </div>
+              <div className="weather-table-row weather-row-feels">
                 <span className="weather-spec-feels">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>
               </div>
               <div className="weather-table-row weather-row-cond">
