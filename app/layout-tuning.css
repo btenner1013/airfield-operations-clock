@@ -200,6 +200,14 @@
   align-items: flex-end;
   text-align: right;
 }
+.solar-time.solar-rise {
+  align-items: center;
+  text-align: center;
+}
+.solar-time.solar-set {
+  align-items: center;
+  text-align: center;
+}
 .solar-time span {
   font-size: clamp(8px, 0.55vw, 10px);
   color: #9eacb1;
@@ -207,13 +215,15 @@
   text-transform: uppercase;
 }
 .solar-time strong {
-  font: 600 clamp(14px, 1.2vw, 22px) / 1 Consolas, monospace;
+  font: 800 clamp(16px, 1.35vw, 24px) / 1 Consolas, monospace;
   color: #f4b45b;
 }
 .solar-time small {
-  font-size: clamp(6.5px, 0.48vw, 9px);
-  color: #708087;
-  white-space: nowrap;
+  font-size: clamp(8px, 0.55vw, 11px);
+  color: #94a3b8;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-align: center;
 }
 
 /* ── CURRENT WEATHER ──────────────────────────────────────── */
@@ -222,6 +232,7 @@
   align-items: center;
   gap: clamp(10px, 1.2vw, 20px);
   height: calc(100% - 32px);
+  margin: auto 0;
 }
 .weather-left-block {
   display: flex;
@@ -248,15 +259,16 @@
   line-height: 1;
 }
 .humidity-under-glyph {
-  font-size: clamp(9.5px, 0.6vw, 12px);
-  color: #aebbc0;
+  font-size: clamp(11px, 0.72vw, 13.5px);
+  color: #cbd5e1;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-left: 2px;
 }
 .humidity-under-glyph strong {
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 800;
 }
 .weather-copy {
   flex: 1 1 0%;
@@ -277,8 +289,8 @@
 .feels-like-container {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: clamp(10px, 0.65vw, 13px);
+  gap: 4px;
+  font-size: clamp(11px, 0.72vw, 14px);
   color: #aebbc0;
   line-height: 1.35;
   letter-spacing: 0.06em;
@@ -301,6 +313,7 @@
   align-items: center;
   gap: clamp(10px, 1vw, 18px);
   height: calc(100% - 32px);
+  margin: auto 0;
 }
 .compass-wrap {
   flex: 0 0 auto;
@@ -367,14 +380,15 @@
   justify-content: center;
 }
 .wind-info strong {
-  font: 600 clamp(17px, 1.5vw, 28px) / 1.1 Consolas, monospace;
+  font: 800 clamp(20px, 1.7vw, 30px) / 1.1 Consolas, monospace;
   white-space: nowrap;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
 }
 .wind-from {
-  font-size: clamp(9px, 0.6vw, 12px);
+  font-size: clamp(10px, 0.65vw, 13px);
   color: #aebbc0;
   letter-spacing: 0.12em;
+  font-weight: 700;
 }
 .wind-flight-meta {
   display: flex;
@@ -409,17 +423,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  height: calc(100% - 32px);
-  padding: 2px 0;
+  justify-content: center;
+  height: calc(100% - 28px);
+  padding: 0;
   text-align: center;
+  gap: 6px;
 }
 .bird-center-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: clamp(10px, 1.2vw, 18px);
-  flex: 1 1 0%;
+  flex: 0 0 auto;
   min-width: 0;
   width: 100%;
 }
@@ -452,15 +467,17 @@
 }
 
 .bird-card-meta {
-  font-size: clamp(10.5px, 0.7vw, 13.5px);
-  font-weight: 700;
-  color: #cbd5e1;
-  letter-spacing: 0.08em;
+  font-size: clamp(14px, 1.0vw, 18px);
+  font-weight: 800;
+  color: #e2e8f0;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  white-space: nowrap;
   text-align: center;
   width: 100%;
-  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ── FUTURE WEATHER (REFINED STACKED FORECAST ROWS) ─────── */
@@ -480,7 +497,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 4px 0;
+  padding: 5px 0;
 }
 .forecast-item + .forecast-item {
   border-top: 1px solid rgba(180, 211, 221, 0.12);
@@ -492,9 +509,9 @@
   min-width: 0;
 }
 .forecast-item-top time {
-  font: 600 clamp(11px, 0.7vw, 15px) / 1 Consolas, monospace;
-  color: #d0dadc;
-  letter-spacing: 0.06em;
+  font: 800 clamp(12.5px, 0.8vw, 16px) / 1 Consolas, monospace;
+  color: #ffffff;
+  letter-spacing: 0.08em;
   flex-shrink: 0;
 }
 .forecast-icon {
