@@ -265,12 +265,13 @@
 /* Weather Glyph in Top-Left Corner (Enlarged) */
 .weather-glyph-top-left {
   position: absolute;
-  top: 4px;
-  left: 6px;
-  font-size: clamp(42px, 3.4vw, 60px);
+  top: 0px;
+  left: 2px;
+  font-size: clamp(54px, 4.2vw, 76px);
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
 }
 
 /* Centered Temperature & Condition Block */
