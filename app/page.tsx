@@ -822,26 +822,22 @@ export default function Home() {
             {(() => {
               if (!weather.forecast?.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
               
-              const currentUtcHour = now.getUTCHours();
+              // Filter out NOW slots so Future Weather strictly displays upcoming future forecast hours (e.g. 06:00Z, 12:00Z, 18:00Z)
+              const futureSlots = weather.forecast.filter(f => f.time !== "NOW" && new Date(f.iso).getTime() > now.getTime() - 10 * 60000);
+              const displayList = futureSlots.length >= 3 ? futureSlots : weather.forecast.filter(f => new Date(f.iso).getTime() > now.getTime() - 10 * 60000);
+
               const seenLabels = new Set<string>();
-              
-              const displayList = weather.forecast.filter((f, i) => {
+              const uniqueList = displayList.filter(f => {
                 const d = new Date(f.iso);
-                const label = f.time === "NOW" ? "NOW" : (Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time);
-                
-                if (i > 0 && Number.isFinite(d.getTime()) && d.getUTCHours() === currentUtcHour && seenLabels.has("NOW")) {
-                  return false;
-                }
-                if (seenLabels.has(label)) {
-                  return false;
-                }
+                const label = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
+                if (seenLabels.has(label)) return false;
                 seenLabels.add(label);
                 return true;
               });
 
-              return displayList.slice(0, 3).map((f, i) => {
+              return (uniqueList.length ? uniqueList : weather.forecast).slice(0, 3).map((f, i) => {
                 const d = new Date(f.iso);
-                const timeLabel = f.time === "NOW" ? "NOW" : (Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time);
+                const timeLabel = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:00Z` : f.time;
                 const conditionLabel = tafCardCondition(f.operationalWeather, f.description);
                 const precipText = `${f.precipitation}% PRECIP`;
                 const cigText = f.operationalWeather?.cloudBaseFt !== null && f.operationalWeather?.cloudBaseFt !== undefined 
