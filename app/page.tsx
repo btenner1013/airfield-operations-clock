@@ -711,7 +711,7 @@ export default function Home() {
           <div className="weather-user-spec-layout">
             <span className="weather-glyph-top-left"><WeatherIcon condition={condition} night={phase === "night"} /></span>
             <div className="weather-spec-center-block">
-              <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small style={{ fontSize: "0.4em", color: "#8899a0" }}>F</small></strong>
+              <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
               <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
             </div>
             <div className="weather-spec-feels">
