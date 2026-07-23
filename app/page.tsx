@@ -810,12 +810,16 @@ export default function Home() {
                 : null;
 
               return (
-                <div key={`${f.time}-${i}`} className="forecast-item-row" data-category={f.operationalWeather?.category || "unknown"}>
-                  <time className="forecast-time">{timeLabel}</time>
-                  <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time, solar.sunrise, solar.sunset)} /></span>
-                  <b className="forecast-condition">{conditionLabel}</b>
-                  <span className="forecast-detail-inline">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
-                  <strong className="forecast-temp">{f.temperatureF}°</strong>
+                <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
+                  <div className="forecast-tile-top">
+                    <time className="forecast-time">{timeLabel}</time>
+                    <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.time, solar.sunrise, solar.sunset)} /></span>
+                    <b className="forecast-condition">{conditionLabel}</b>
+                    <strong className="forecast-temp">{f.temperatureF}°</strong>
+                  </div>
+                  <div className="forecast-tile-sub">
+                    <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
+                  </div>
                 </div>
               );
             }) : (
