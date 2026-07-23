@@ -552,7 +552,7 @@
   gap: 4px;
 }
 
-/* ── FUTURE WEATHER (REFINED STACKED FORECAST ROWS) ─────── */
+/* ── FUTURE WEATHER (OPTION 1 — SINGLE-LINE TACTICAL FLIGHT TABLE) ── */
 .forecast-card {
   min-width: 0;
   box-sizing: border-box;
@@ -562,79 +562,60 @@
   flex-direction: column;
   justify-content: space-between;
   height: calc(100% - 28px);
-  gap: 4px;
+  gap: 6px;
   padding-top: 4px;
 }
-.forecast-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 5px 0;
-}
-.forecast-item + .forecast-item {
-  border-top: 1px solid rgba(180, 211, 221, 0.12);
-}
-.forecast-item-top {
+.forecast-item-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: clamp(8px, 0.8vw, 14px);
+  padding: clamp(5px, 0.6vh, 8px) clamp(8px, 0.8vw, 12px);
+  background: rgba(13, 25, 31, 0.55);
+  border: 1px solid rgba(88, 215, 245, 0.18);
+  border-radius: 4px;
+  width: 100%;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
 }
-.forecast-item-top time {
-  font: 800 clamp(13px, 0.85vw, 16.5px) / 1 Consolas, monospace;
-  color: #ffffff;
-  letter-spacing: 0.08em;
-  flex-shrink: 0;
-}
-.forecast-condition {
-  font-size: clamp(11px, 0.7vw, 14px);
-  font-weight: 700;
-  color: #ffffff;
+.forecast-time {
+  font: 800 clamp(13.5px, 0.95vw, 18px) / 1 Consolas, monospace !important;
+  color: var(--cyan) !important;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1 1 0%;
-  min-width: 0;
-}
-.forecast-temp {
-  font: 800 clamp(14px, 1.0vw, 20px) / 1 Consolas, monospace;
-  color: #f4b45b;
   flex-shrink: 0;
-  margin-left: auto;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(88, 215, 245, 0.35);
 }
 .forecast-icon {
-  font-size: clamp(16px, 1.2vw, 22px);
+  font-size: clamp(18px, 1.3vw, 26px);
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 .forecast-condition {
-  font-size: clamp(10px, 0.65vw, 13.5px);
-  font-weight: 700;
-  color: var(--white);
+  font-size: clamp(12.5px, 0.85vw, 16px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.forecast-detail-inline {
+  font-size: clamp(11px, 0.72vw, 13.5px);
+  color: #cbd5e1;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1 1 0%;
-  min-width: 0;
+  text-align: center;
+  font-weight: 700;
 }
 .forecast-temp {
-  font: 700 clamp(13px, 0.9vw, 19px) / 1 Consolas, monospace;
-  color: #f4b45b;
+  font: 800 clamp(15px, 1.1vw, 20px) / 1 Consolas, monospace !important;
+  color: #ffffff !important;
+  white-space: nowrap;
   flex-shrink: 0;
   margin-left: auto;
-}
-.forecast-item-sub {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  width: 100%;
-  font-size: clamp(10.5px, 0.72vw, 13.5px);
-  font-weight: 600;
-  color: #aebbc0;
-  line-height: 1.25;
-  margin-top: 2px;
 }
 .forecast-badge {
   background: rgba(244, 180, 91, 0.15);
