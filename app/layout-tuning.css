@@ -262,12 +262,12 @@
   text-align: center;
 }
 
-/* Weather Glyph in Top-Left Corner (Enlarged) */
+/* Weather Glyph in Top-Left Corner (Enlarged with Comfortable Spacing) */
 .weather-glyph-top-left {
   position: absolute;
-  top: 0px;
-  left: 2px;
-  font-size: clamp(54px, 4.2vw, 76px);
+  top: 10px;
+  left: 8px;
+  font-size: clamp(66px, 5.0vw, 92px);
   display: flex;
   align-items: center;
   justify-content: center;
