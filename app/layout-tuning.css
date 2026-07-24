@@ -402,6 +402,20 @@
   text-overflow: ellipsis;
 }
 
+.lightning-awareness {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font: 900 clamp(11.5px, 3.6cqw, 15px) Consolas, monospace !important;
+  color: #ffcc00 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: opsAlertFlash 0.5s steps(2, end) infinite !important;
+}
+
 /* ── WIND CARD & FLIGHT CATEGORY ─────────────────────────── */
 .wind-main-stacked {
   display: flex;

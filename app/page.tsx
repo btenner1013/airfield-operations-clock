@@ -83,14 +83,26 @@ function getMoonPhase(date: Date): { phase: number; name: string } {
 function simplifyLightningRemark(raw: string): string {
   if (!raw) return "";
   let clean = raw.replace(/^ATIS\s*/i, "").trim();
-  if (/OCNL\s+LTGIC\s+DSNT/i.test(clean) || /DISTANT\s+LIGHTNING/i.test(clean) || /LTG\s+DSNT/i.test(clean) || /DSNT\s+LTG/i.test(clean)) {
+  if (/OCNL\s+LTGIC\s+DSNT/i.test(clean) || /DISTANT\s+LIGHTNING/i.test(clean) || /LTG\s+DSNT/i.test(clean) || /DSNT\s+LTG/i.test(clean) || /DSNT\s+LIGHTNING/i.test(clean)) {
     let dir = "";
-    const m = clean.match(/(?:DSNT|LIGHTNING|LTG)\s+([N|S|E|W|NE|NW|SE|SW|\/\-]+)/i) || clean.match(/\b(N|S|E|W|NE|NW|SE|SW|SE\-S|NE\-E)\b/i);
-    if (m) dir = m[1].toUpperCase();
-    return dir ? `DSNT LIGHTNING ${dir}` : "DSNT LIGHTNING";
+    const m = clean.match(/(?:DSNT|LIGHTNING|LTG)\s+([A-Z\/\-]+)/i) || clean.match(/\b(SOUTH|NORTH|EAST|WEST|SOUTHEAST|SOUTHWEST|NORTHEAST|NORTHWEST|SE|SW|NE|NW|N|S|E|W)\b/i);
+    if (m) {
+      let d = m[1].toUpperCase();
+      if (d === "SOUTH") d = "S";
+      else if (d === "NORTH") d = "N";
+      else if (d === "EAST") d = "E";
+      else if (d === "WEST") d = "W";
+      else if (d === "SOUTHEAST" || d === "SE-S") d = "SE";
+      else if (d === "SOUTHWEST") d = "SW";
+      else if (d === "NORTHEAST" || d === "NE-E") d = "NE";
+      else if (d === "NORTHWEST") d = "NW";
+      dir = d;
+    }
+    return dir ? `⚡ DSNT LIGHTNING ${dir}` : "⚡ DSNT LIGHTNING";
   }
-  if (/VCTS/i.test(clean)) return "TS IN VICINITY";
-  return clean.replace(/\.\s*\d+[-–]\d+\s*NM\.?/i, "").toUpperCase();
+  if (/VCTS/i.test(clean)) return "⚡ TS IN VICINITY";
+  const formatted = clean.replace(/\.\s*\d+[-–]\d+\s*NM\.?/i, "").toUpperCase();
+  return formatted.startsWith("⚡") ? formatted : `⚡ ${formatted}`;
 }
 function windDirection(deg:number) { const d=["N","NE","E","SE","S","SW","W","NW"]; return d[Math.round(deg/45)%8]; }
 function bearingToCardinal(deg:number):string { const pts=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]; return pts[Math.round(deg/22.5)%16]; }
@@ -819,16 +831,24 @@ export default function Home() {
             })()}
           </div>
         </article>
-        <article className={`forecast-card panel ${weather.wxAlertVisible?"has-taf-hazard":""}`}>
-          <div className="panel-title">
-            <span>FUTURE WEATHER · NEXT 9 HOURS</span>
-            <b>TAF</b>
-          </div>
-          {weather.wxAlertVisible && (
-            <div className={`taf-hazard-band ${weather.wxAlertPulse ? "alert-pulse" : ""} ${weather.wxAlertFlash ? "alert-flash" : ""}`} data-tone={weather.wxAlertTone}>
-              <em>{weather.wxAlertText}</em>
-            </div>
-          )}
+        {(() => {
+          const ltgText = lightning.awareness ? simplifyLightningRemark(lightning.awareness) : null;
+          const activeHazardText = weather.wxAlertVisible ? weather.wxAlertText : ltgText;
+          const hasHazard = !!activeHazardText;
+          const hazardTone = weather.wxAlertVisible ? weather.wxAlertTone : "yellow";
+          const hazardFlash = weather.wxAlertVisible ? weather.wxAlertFlash : true;
+          const hazardPulse = weather.wxAlertVisible ? weather.wxAlertPulse : false;
+          return (
+            <article className={`forecast-card panel ${hasHazard ? "has-taf-hazard" : ""}`}>
+              <div className="panel-title">
+                <span>FUTURE WEATHER · NEXT 9 HOURS</span>
+                <b>TAF</b>
+              </div>
+              {hasHazard && (
+                <div className={`taf-hazard-band ${hazardPulse ? "alert-pulse" : ""} ${hazardFlash ? "alert-flash" : ""}`} data-tone={hazardTone}>
+                  <em>{activeHazardText}</em>
+                </div>
+              )}
           <div className="forecast-list">
             {(() => {
               if (!weather.forecast?.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
@@ -885,6 +905,8 @@ export default function Home() {
             })()}
           </div>
         </article>
+      );
+    })()}
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
