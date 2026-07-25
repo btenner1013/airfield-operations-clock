@@ -85,18 +85,24 @@ function simplifyLightningRemark(raw: string): string {
   let clean = raw.replace(/^ATIS\s*/i, "").trim();
   if (/OCNL\s+LTGIC\s+DSNT/i.test(clean) || /DISTANT\s+LIGHTNING/i.test(clean) || /LTG\s+DSNT/i.test(clean) || /DSNT\s+LTG/i.test(clean) || /DSNT\s+LIGHTNING/i.test(clean)) {
     let dir = "";
-    const m = clean.match(/(?:DSNT|LIGHTNING|LTG)\s+([A-Z\/\-]+)/i) || clean.match(/\b(SOUTH|NORTH|EAST|WEST|SOUTHEAST|SOUTHWEST|NORTHEAST|NORTHWEST|SE|SW|NE|NW|N|S|E|W)\b/i);
-    if (m) {
-      let d = m[1].toUpperCase();
-      if (d === "SOUTH") d = "S";
-      else if (d === "NORTH") d = "N";
-      else if (d === "EAST") d = "E";
-      else if (d === "WEST") d = "W";
-      else if (d === "SOUTHEAST" || d === "SE-S") d = "SE";
-      else if (d === "SOUTHWEST") d = "SW";
-      else if (d === "NORTHEAST" || d === "NE-E") d = "NE";
-      else if (d === "NORTHWEST") d = "NW";
-      dir = d;
+    const slashMatch = clean.match(/\b([A-Z]{1,2}\/[A-Z]{1,2})\b/i);
+    if (slashMatch) {
+      dir = slashMatch[1].toUpperCase();
+    } else {
+      const m = clean.match(/(?:DSNT|LIGHTNING|LTG)\s+([A-Z\/\–\-\s]+)/i) || clean.match(/\b(SOUTH|NORTH|EAST|WEST|SOUTHEAST|SOUTHWEST|NORTHEAST|NORTHWEST|SE|SW|NE|NW|N|S|E|W)\b/i);
+      if (m) {
+        let d = m[1].trim().toUpperCase();
+        d = d.replace(/\b(AND|AND\/OR)\b/g, "/").replace(/[\s–\-]+/g, "/").replace(/\/+/g, "/");
+        if (d === "SOUTH") d = "S";
+        else if (d === "NORTH") d = "N";
+        else if (d === "EAST") d = "E";
+        else if (d === "WEST") d = "W";
+        else if (d === "SOUTHEAST") d = "SE";
+        else if (d === "SOUTHWEST") d = "SW";
+        else if (d === "NORTHEAST") d = "NE";
+        else if (d === "NORTHWEST") d = "NW";
+        dir = d;
+      }
     }
     return dir ? `⚡ DSNT LIGHTNING ${dir}` : "⚡ DSNT LIGHTNING";
   }
@@ -836,8 +842,8 @@ export default function Home() {
           const activeHazardText = weather.wxAlertVisible ? weather.wxAlertText : ltgText;
           const hasHazard = !!activeHazardText;
           const hazardTone = weather.wxAlertVisible ? weather.wxAlertTone : "yellow";
-          const hazardFlash = weather.wxAlertVisible ? weather.wxAlertFlash : true;
-          const hazardPulse = weather.wxAlertVisible ? weather.wxAlertPulse : false;
+          const hazardFlash = weather.wxAlertVisible ? weather.wxAlertFlash : false;
+          const hazardPulse = weather.wxAlertVisible ? weather.wxAlertPulse : true;
           return (
             <article className={`forecast-card panel ${hasHazard ? "has-taf-hazard" : ""}`}>
               <div className="panel-title">
