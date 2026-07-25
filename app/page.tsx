@@ -839,9 +839,13 @@ export default function Home() {
         </article>
         {(() => {
           const ltgText = lightning.awareness ? simplifyLightningRemark(lightning.awareness) : null;
-          const activeHazardText = weather.wxAlertVisible ? weather.wxAlertText : ltgText;
+          let rawHazardText = weather.wxAlertVisible ? weather.wxAlertText : ltgText;
+          if (rawHazardText && /DSNT\s*(?:LIGHTNING|LTG)/i.test(rawHazardText) && !rawHazardText.startsWith("⚡")) {
+            rawHazardText = `⚡ ${rawHazardText}`;
+          }
+          const activeHazardText = rawHazardText;
           const hasHazard = !!activeHazardText;
-          const isDsntLtg = !!activeHazardText && /DSNT LIGHTNING/i.test(activeHazardText);
+          const isDsntLtg = !!activeHazardText && /DSNT\s*(?:LIGHTNING|LTG)/i.test(activeHazardText);
           const hazardTone = isDsntLtg ? "yellow" : (weather.wxAlertVisible ? weather.wxAlertTone : "yellow");
           const hazardFlash = isDsntLtg ? false : (weather.wxAlertVisible ? weather.wxAlertFlash : false);
           const hazardPulse = isDsntLtg || (weather.wxAlertVisible ? weather.wxAlertPulse : true);

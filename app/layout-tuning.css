@@ -766,11 +766,11 @@
 
 /* YELLOW / AMBER POSSIBLE HAZARD (#ffcc00) */
 .taf-hazard-band[data-tone="yellow"] {
-  border-color: #ffcc00;
-  color: #ffcc00;
+  border-color: #ffcc00 !important;
+  color: #ffcc00 !important;
 }
 .taf-hazard-band[data-tone="yellow"] em {
-  color: #ffcc00;
+  color: #ffcc00 !important;
 }
 
 /* BLUE PRE-HAZARD / ROUTINE (#35b7ff) */
