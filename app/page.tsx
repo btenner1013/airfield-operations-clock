@@ -768,7 +768,11 @@ export default function Home() {
                   <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
                 </div>
               </div>
-              {lightning.awareness&&<small className="lightning-awareness">{simplifyLightningRemark(lightning.awareness)}</small>}
+              {lightning.awareness && (
+                <small className="lightning-awareness" style={{ color: "#ffcc00" }}>
+                  <span style={{ color: "#ffcc00" }}>{simplifyLightningRemark(lightning.awareness)}</span>
+                </small>
+              )}
             </div>
             <div className="weather-table-right">
               <span className="weather-glyph-right"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
@@ -856,8 +860,10 @@ export default function Home() {
                 <b>TAF</b>
               </div>
               {hasHazard && (
-                <div className={`taf-hazard-band ${hazardPulse ? "alert-pulse" : ""} ${hazardFlash ? "alert-flash" : ""}`} data-tone={hazardTone}>
-                  <em>{activeHazardText}</em>
+                <div className={`taf-hazard-band ${hazardPulse ? "alert-pulse" : ""} ${hazardFlash ? "alert-flash" : ""}`} data-tone={hazardTone} style={{ borderColor: "#ffcc00", color: "#ffcc00" }}>
+                  <em style={{ color: "#ffcc00" }}>
+                    <span style={{ color: "#ffcc00" }}>{activeHazardText}</span>
+                  </em>
                 </div>
               )}
           <div className="forecast-list">

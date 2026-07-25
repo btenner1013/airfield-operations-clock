@@ -765,12 +765,15 @@
 }
 
 /* YELLOW / AMBER POSSIBLE HAZARD (#ffcc00) */
-.taf-hazard-band[data-tone="yellow"] {
+.taf-hazard-band[data-tone="yellow"],
+.taf-hazard-band[data-tone="yellow"] *,
+.taf-hazard-band[data-tone="yellow"] em,
+.taf-hazard-band[data-tone="yellow"] span,
+.lightning-awareness,
+.lightning-awareness * {
   border-color: #ffcc00 !important;
   color: #ffcc00 !important;
-}
-.taf-hazard-band[data-tone="yellow"] em {
-  color: #ffcc00 !important;
+  fill: #ffcc00 !important;
 }
 
 /* BLUE PRE-HAZARD / ROUTINE (#35b7ff) */
