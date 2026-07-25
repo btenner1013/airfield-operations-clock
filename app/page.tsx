@@ -841,9 +841,10 @@ export default function Home() {
           const ltgText = lightning.awareness ? simplifyLightningRemark(lightning.awareness) : null;
           const activeHazardText = weather.wxAlertVisible ? weather.wxAlertText : ltgText;
           const hasHazard = !!activeHazardText;
-          const hazardTone = weather.wxAlertVisible ? weather.wxAlertTone : "yellow";
-          const hazardFlash = weather.wxAlertVisible ? weather.wxAlertFlash : false;
-          const hazardPulse = weather.wxAlertVisible ? weather.wxAlertPulse : true;
+          const isDsntLtg = !!activeHazardText && /DSNT LIGHTNING/i.test(activeHazardText);
+          const hazardTone = isDsntLtg ? "yellow" : (weather.wxAlertVisible ? weather.wxAlertTone : "yellow");
+          const hazardFlash = isDsntLtg ? false : (weather.wxAlertVisible ? weather.wxAlertFlash : false);
+          const hazardPulse = isDsntLtg || (weather.wxAlertVisible ? weather.wxAlertPulse : true);
           return (
             <article className={`forecast-card panel ${hasHazard ? "has-taf-hazard" : ""}`}>
               <div className="panel-title">
