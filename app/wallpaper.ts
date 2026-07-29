@@ -11,9 +11,12 @@ export function sceneFor(condition:Theme,phase:SolarPhase,_coverage:CloudCoverag
   if(condition==="thunderstorm") return `thunderstorm-${light}`;
   if(condition==="snow") return `snow-${light}`;
   if(condition==="fog") return `fog-${light}`;
+  // Golden hour is the dominant photographic cue for otherwise VFR cloud scenes.
+  // Reported cloud coverage is still rendered by the procedural cloud field, while
+  // adverse weather and low overcast retain their dedicated wallpaper families.
+  if((phase==="sunrise"||phase==="sunset")&&(condition==="clear"||condition==="partly-cloudy"||condition==="neutral")) return phase;
   if(condition==="overcast") return `overcast-${light}`;
   if(condition==="partly-cloudy") return `partly-cloudy-${light}`;
-  if(phase==="sunrise"||phase==="sunset") return phase;
   return `clear-${light}`;
 }
 

@@ -13,7 +13,7 @@ const assetExists=scene=>existsSync(new URL(`../public/assets/backgrounds/${scen
 test("all normalized conditions select an existing phase-correct wallpaper",()=>{
   const expected={
     clear:{day:"clear-day",night:"clear-night",sunrise:"sunrise",sunset:"sunset"},
-    "partly-cloudy":Object.fromEntries(phases.map(p=>[p,`partly-cloudy-${light(p)}`])),
+    "partly-cloudy":{day:"partly-cloudy-day",night:"partly-cloudy-night",sunrise:"sunrise",sunset:"sunset"},
     overcast:Object.fromEntries(phases.map(p=>[p,`overcast-${light(p)}`])),
     rain:Object.fromEntries(phases.map(p=>[p,`rain-${light(p)}`])),
     "heavy-rain":Object.fromEntries(phases.map(p=>[p,`rain-${light(p)}`])),
@@ -50,11 +50,19 @@ test("obscuration cannot replace higher-priority precipitation or thunderstorm w
 });
 
 test("cloud and obscuration scenes stay phase-correct",()=>{
-  assert.equal(sceneFor("partly-cloudy","sunrise"),"partly-cloudy-day");
+  assert.equal(sceneFor("partly-cloudy","sunrise"),"sunrise");
+  assert.equal(sceneFor("partly-cloudy","sunset"),"sunset");
   assert.equal(sceneFor("overcast","sunset"),"overcast-day");
   assert.equal(sceneForEffects("fog-day","fog",2,"day","OVC"),"overcast-day");
   assert.equal(sceneForEffects("fog-night","fog",0.5,"night","OVC"),"fog-night");
   assert.equal(sceneForEffects("fog-day","haze",4,"day","SCT"),"partly-cloudy-day");
+});
+
+test("partly cloudy golden-hour regression uses sunrise and sunset photography",()=>{
+  assert.equal(sceneFor("partly-cloudy","sunrise","SCT"),"sunrise");
+  assert.equal(sceneFor("partly-cloudy","sunset","SCT"),"sunset");
+  assert.equal(sceneForEffects("sunrise","none",10,"sunrise","SCT"),"sunrise");
+  assert.equal(sceneForEffects("sunset","none",10,"sunset","SCT"),"sunset");
 });
 
 test("successful wallpaper load still commits when decode rejects",()=>{
