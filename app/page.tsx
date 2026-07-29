@@ -5,15 +5,16 @@ import { useSystemClock, type ClockDebug } from "./useClock";
 import { buildFxSpec, buildObscurationSpec, classifyEffect, type Intensity } from "./weatherFx";
 import PrecipCanvas from "./PrecipCanvas";
 import PreviewLab from "./PreviewLab";
-import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningSource, type LightningReport } from "./lightning";
+import { NO_LIGHTNING, debugLightningReport, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningReport, type LightningTone } from "./lightning";
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, formatTafWindow, parseAviationSky, parseStructuredTaf, resolveOperationalWeather, type OperationalWeather } from "./aviationWeatherPriority";
 import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
 import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestampIso } from "./birdWatch";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
+import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
 
 type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
-type Phase = "day"|"night"|"sunrise"|"sunset";
+type Phase = SolarPhase;
 type OpsBoardWeather = {
   metar?:string;
   taf?:string;
@@ -27,6 +28,7 @@ type OpsBoardWeather = {
   bwcFetchStatus?:string;
   lightning?:string;
   lightningSeverity?:string;
+  lightningTone?:string;
   lightningFlash?:boolean;
   lightningPulse?:boolean;
   lightningSource?:string;
@@ -83,6 +85,7 @@ function getMoonPhase(date: Date): { phase: number; name: string } {
 function simplifyLightningRemark(raw: string): string {
   if (!raw) return "";
   let clean = raw.replace(/^ATIS\s*/i, "").trim();
+  if (/^[⚡⛈]/u.test(clean)) return clean.toUpperCase();
   if (/OCNL\s+LTGIC\s+DSNT/i.test(clean) || /DISTANT\s+LIGHTNING/i.test(clean) || /LTG\s+DSNT/i.test(clean) || /DSNT\s+LTG/i.test(clean) || /DSNT\s+LIGHTNING/i.test(clean)) {
     let dir = "";
     const slashMatch = clean.match(/\b([A-Z]{1,2}\/[A-Z]{1,2})\b/i);
@@ -182,10 +185,12 @@ function upstreamStatus(value:string|undefined) { return (value||"UNKNOWN").trim
 function resolveCurrentLightning(ops:OpsBoardWeather, metarFallback:LightningReport):LightningReport {
   const sev = ops.lightningSeverity?.toLowerCase();
   if (sev && ["none","distant","vicinity","station","severe"].includes(sev)) {
-    if (sev === "none") return { level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null };
+    if (sev === "none") return {...NO_LIGHTNING};
     const level = sev as LightningLevel;
-    const source = (ops.lightningSource?.toLowerCase().replace("_","-") || "none") as LightningSource;
-    const awareness = ops.lightningLogText || metarFallback.awareness || (level === "vicinity" ? "VCTS" : "TS OVR FIELD");
+    const toneRaw=ops.lightningTone?.toLowerCase();
+    const tone:LightningTone=toneRaw==="red"||toneRaw==="blue"||toneRaw==="green"||toneRaw==="yellow"?toneRaw:metarFallback.tone;
+    const source=metarFallback.source!=="none"?metarFallback.source:"ops-feed";
+    const awareness = ops.lightning || metarFallback.awareness || ops.lightningLogText || (level === "vicinity" ? "⚡ VCTS 5-10 NM" : "⛈️ TS OVER FIELD");
     return {
       level,
       source,
@@ -193,7 +198,10 @@ function resolveCurrentLightning(ops:OpsBoardWeather, metarFallback:LightningRep
       frequency: metarFallback.frequency,
       types: metarFallback.types,
       directions: metarFallback.directions,
-      awareness
+      awareness,
+      tone,
+      flash:typeof ops.lightningFlash==="boolean"?ops.lightningFlash:metarFallback.flash,
+      pulse:typeof ops.lightningPulse==="boolean"?ops.lightningPulse:metarFallback.pulse
     };
   }
   return metarFallback;
@@ -324,40 +332,6 @@ function zStamp(value:string) {
   return value !== "—" ? value : "—";
 }
 function aviationStamp(value:string|null) { const time=value?Date.parse(value):NaN; if(!Number.isFinite(time)) return "—"; const d=new Date(time); return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`; }
-// Maps a normalized condition + solar phase onto one of the 16 wallpaper assets in
-// public/assets/backgrounds/. Precipitation and obscuration always keep their own weather
-// wallpaper (day/night) and never fall back to a clear sunrise/sunset frame; only clear skies
-// use the dedicated sunrise/sunset art. heavy-rain shares the rain wallpaper (intensity is an
-// animation concern, not a separate scene).
-function sceneFor(condition:Theme,phase:"day"|"night"|"sunrise"|"sunset",coverage:CloudCoverage="CLR") {
-  const light=phase==="night"?"night":"day";
-  if(condition==="rain"||condition==="heavy-rain") return `rain-${light}`;
-  if(condition==="thunderstorm") return `thunderstorm-${light}`;
-  if(condition==="snow") return `snow-${light}`;
-  if(condition==="fog") return `fog-${light}`;
-  if(phase==="sunrise"||phase==="sunset") return phase;
-  if(condition==="overcast") return `overcast-${light}`;
-  if(condition==="partly-cloudy") return `partly-cloudy-${light}`;
-  return `clear-${light}`;
-}
-function cloudSceneForCoverage(coverage:CloudCoverage,phase:Phase) {
-  const condition:Theme=coverage==="OVC"||coverage==="VV"||coverage==="BKN"?"overcast":coverage==="FEW"||coverage==="SCT"?"partly-cloudy":"clear";
-  return sceneFor(condition,phase,coverage);
-}
-// Obscurations need a recognizable world behind their procedural layers. Mild/spatial variants use
-// a readable runway scene, while only genuinely dense full fog uses the photographic fog family.
-function sceneForEffects(baseScene:string,obscuration:ReturnType<typeof buildObscurationSpec>["type"],visibilitySm:number|null,phase:Phase,coverage:CloudCoverage) {
-  const light=phase==="night"?"night":"day",visibility=visibilitySm??10;
-  if(obscuration==="mist") return sceneFor("partly-cloudy",phase,"SCT");
-  if(obscuration==="shallow-fog"||obscuration==="patchy-fog"||obscuration==="partial-fog") return sceneFor("partly-cloudy",phase,"SCT");
-  if(obscuration==="fog") return visibility>=1.5?`overcast-${light}`:`fog-${light}`;
-  if(obscuration==="freezing-fog") return `fog-${light}`;
-  if(obscuration==="haze") return cloudSceneForCoverage(coverage,phase);
-  if(obscuration==="smoke"||obscuration==="volcanic-ash") return `overcast-${light}`;
-  if(["dust","blowing-dust","drifting-dust","sand","blowing-sand","drifting-sand","dust-storm","sandstorm","dust-whirl"].includes(obscuration)) return sceneFor("partly-cloudy",phase,"SCT");
-  return baseScene;
-}
-
 function isFlybyWeatherAllowed(weather: Weather, flightCat: { cat: string }): boolean {
   if (flightCat.cat !== "VFR") return false;
   if (weather.visibilitySm !== null && weather.visibilitySm < 5) return false;
@@ -515,8 +489,9 @@ export default function Home() {
   const sceneStyle={...cloudStyle,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction,"--lightning-x":`${lightningPoint.x}%`,"--lightning-y":`${lightningPoint.y}%`} as unknown as CSSProperties;
   
   // Crossfade the wallpaper between two ping-pong layers using a race-safe state machine.
-  // We preload the incoming image and ONLY swap `active` when it successfully decodes,
-  // ensuring no stale load callbacks supersede newer scene requests.
+  // We preload the incoming image and swap only after a successful load. A decode rejection is
+  // not a load failure in every browser, so it still commits the loaded image; the cancellation
+  // guard prevents stale callbacks from superseding newer scene requests.
   useEffect(() => {
     const { active: ac, a, b } = cfRef.current;
     const currentScene = ac === "a" ? a : b;
@@ -540,7 +515,7 @@ export default function Home() {
     img.onload = () => {
       if (cancelled) return;
       if (img.decode) {
-        img.decode().then(commit).catch(() => { /* keep current on decode error */ });
+        img.decode().then(commit).catch(commit);
       } else {
         commit();
       }
@@ -607,7 +582,8 @@ export default function Home() {
     return m;
   }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
-  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={scene}>
+  const activeWallpaper=active==="a"?aScene:bScene;
+  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}>
     <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{(isFlybyWeatherAllowed(weather, flightCat) || debugFlybyEnabled === true) && activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong><strong>JULIAN {julian4(now)}</strong></div></header>
@@ -769,8 +745,8 @@ export default function Home() {
                 </div>
               </div>
               {lightning.awareness && (
-                <small className="lightning-awareness" style={{ color: "#ffcc00" }}>
-                  <span style={{ color: "#ffcc00" }}>{simplifyLightningRemark(lightning.awareness)}</span>
+                <small className={`lightning-awareness${lightning.pulse?" alert-pulse":""}${lightning.flash?" alert-flash":""}`} data-tone={lightning.tone}>
+                  <span>{simplifyLightningRemark(lightning.awareness)}</span>
                 </small>
               )}
             </div>
@@ -849,10 +825,10 @@ export default function Home() {
           }
           const activeHazardText = rawHazardText;
           const hasHazard = !!activeHazardText;
-          const isDsntLtg = !!activeHazardText && /DSNT\s*(?:LIGHTNING|LTG)/i.test(activeHazardText);
-          const hazardTone = isDsntLtg ? "yellow" : (weather.wxAlertVisible ? weather.wxAlertTone : "yellow");
-          const hazardFlash = isDsntLtg ? false : (weather.wxAlertVisible ? weather.wxAlertFlash : false);
-          const hazardPulse = isDsntLtg || (weather.wxAlertVisible ? weather.wxAlertPulse : true);
+          const requestedTone=String(weather.wxAlertVisible?weather.wxAlertTone:lightning.tone).toLowerCase();
+          const hazardTone=requestedTone==="blue"||requestedTone==="red"||requestedTone==="yellow"?requestedTone:"yellow";
+          const hazardFlash=weather.wxAlertVisible?weather.wxAlertFlash:lightning.flash;
+          const hazardPulse=weather.wxAlertVisible?weather.wxAlertPulse:lightning.pulse;
           return (
             <article className={`forecast-card panel ${hasHazard ? "has-taf-hazard" : ""}`}>
               <div className="panel-title">
@@ -860,9 +836,9 @@ export default function Home() {
                 <b>TAF</b>
               </div>
               {hasHazard && (
-                <div className={`taf-hazard-band ${hazardPulse ? "alert-pulse" : ""} ${hazardFlash ? "alert-flash" : ""}`} data-tone={hazardTone} style={{ borderColor: "#ffcc00", color: "#ffcc00" }}>
-                  <em style={{ color: "#ffcc00" }}>
-                    <span style={{ color: "#ffcc00" }}>{activeHazardText}</span>
+                <div className={`taf-hazard-band ${hazardPulse ? "alert-pulse" : ""} ${hazardFlash ? "alert-flash" : ""}`} data-tone={hazardTone}>
+                  <em>
+                    <span>{activeHazardText}</span>
                   </em>
                 </div>
               )}

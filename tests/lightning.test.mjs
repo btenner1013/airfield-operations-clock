@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync,readdirSync } from "node:fs";
 import { join } from "node:path";
-import { createLightningScheduler,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
+import { createLightningScheduler,lightningAnimationEligible,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
 
 const metar=body=>parseCurrentLightning(`METAR KMEM 201853Z 18008KT 10SM ${body} 30/20 A2992`);
 
@@ -23,7 +23,7 @@ test("rain, showers, hail, pellets and convective clouds do not invent lightning
 
 test("explicit lightning remarks parse frequency, type, distance and direction",()=>{
   const occasional=metar("SCT040 RMK OCNL LTGIC DSNT NE AND NW");
-  assert.deepEqual(occasional,{level:"distant",source:"metar-remarks",code:"LTGIC",frequency:"occasional",types:["IC"],directions:["NE","NW"],awareness:"OCNL LTGIC DSNT NE–NW"});
+  assert.equal(occasional.level,"distant");assert.equal(occasional.source,"metar-remarks");assert.equal(occasional.code,"LTGIC");assert.equal(occasional.frequency,"occasional");assert.deepEqual(occasional.types,["IC"]);assert.deepEqual(occasional.directions,["NE","NW"]);assert.equal(occasional.awareness,"OCNL LTGIC DSNT NE–NW");assert.equal(occasional.tone,"yellow");assert.equal(occasional.flash,false);assert.equal(occasional.pulse,true);
   const frequent=metar("SCT040 RMK FRQ LTGCG DSNT W");
   assert.equal(frequent.level,"distant");assert.equal(frequent.frequency,"frequent");assert.deepEqual(frequent.types,["CG"]);assert.deepEqual(frequent.directions,["W"]);assert.equal(frequent.awareness,"FRQ LTGCG DSNT W");
   assert.equal(metar("SCT040 RMK CB DSNT NE").level,"none");
@@ -32,6 +32,23 @@ test("explicit lightning remarks parse frequency, type, distance and direction",
 test("body evidence outranks remarks and remarks never weaken it",()=>{
   const report=metar("+TSRA BKN015CB RMK OCNL LTGIC DSNT NE");
   assert.equal(report.level,"severe");assert.equal(report.source,"metar-body");assert.equal(report.code,"+TSRA");
+});
+
+test("lightning text presentation matches Ops Board tone and motion rules",()=>{
+  const field=metar("TSRA BKN030CB"),vicinity=metar("VCTS SCT040CB"),distant=metar("SCT040 RMK FRQ LTGCG DSNT W");
+  assert.deepEqual({tone:field.tone,flash:field.flash,pulse:field.pulse},{tone:"red",flash:true,pulse:false});
+  assert.deepEqual({tone:vicinity.tone,flash:vicinity.flash,pulse:vicinity.pulse},{tone:"yellow",flash:false,pulse:true});
+  assert.deepEqual({tone:distant.tone,flash:distant.flash,pulse:distant.pulse},{tone:"yellow",flash:false,pulse:true});
+});
+
+test("only explicit body thunderstorms own animated lightning",()=>{
+  assert.equal(lightningAnimationEligible(metar("TS BKN030CB")),true);
+  assert.equal(lightningAnimationEligible(metar("TSRA BKN030CB")),true);
+  assert.equal(lightningAnimationEligible(metar("+TSRA BKN015CB")),true);
+  assert.equal(lightningAnimationEligible(metar("VCTS SCT040CB")),true);
+  assert.equal(lightningAnimationEligible(metar("SCT040 RMK FRQ LTGCG DSNT W")),false);
+  assert.equal(lightningAnimationEligible(metar("SCT040 RMK LTGCG OHD")),false);
+  assert.equal(lightningAnimationEligible({...metar("TSRA BKN030CB"),source:"none"}),false);
 });
 
 test("quiet ranges remain irregular, level-specific, and operationally restrained",()=>{
@@ -51,6 +68,15 @@ class FakeVisibility {
   fire(){for(const fn of this.listeners)fn();}
 }
 const station=metar("TS BKN030CB");
+
+test("distant remark lightning has no flash timers, pulses, bolts, or visibility listener",()=>{
+  const timers=new FakeTimers(),visibility=new FakeVisibility(),states=[];
+  const distant=metar("SCT040 RMK FRQ LTGCG DSNT W");
+  const scheduler=createLightningScheduler(distant,{setTimer:timers.set,clearTimer:timers.clear,visibilityTarget:visibility,onState:s=>states.push(s)});
+  scheduler.start();timers.advance(120000);
+  assert.equal(scheduler.pendingCount(),0);assert.equal(visibility.listeners.size,0);
+  assert.ok(states.every(s=>s.pulse===0&&!s.bolt&&!s.active));scheduler.stop();
+});
 
 test("one scheduler cancels hidden timers and restores only a future cluster",()=>{
   const timers=new FakeTimers(),visibility=new FakeVisibility(),states=[];
@@ -79,7 +105,8 @@ test("integration keeps current lightning on METAR authority and TAF forecast-on
   const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8"),hook=readFileSync(new URL("../app/useLightning.ts",import.meta.url),"utf8"),css=readFileSync(new URL("../app/lightning.css",import.meta.url),"utf8"),layout=readFileSync(new URL("../app/layout.tsx",import.meta.url),"utf8");
   assert.match(page,/currentLightning=parseCurrentLightning\(raw\)/);assert.doesNotMatch(page,/parseCurrentLightning\(rawTaf\)/);assert.match(page,/currentLightning:metar\?\.currentLightning\?\?model\.currentLightning/);
   assert.equal((page.match(/useLightningScheduler\(mainRef/g)||[]).length,1);assert.doesNotMatch(hook,/requestAnimationFrame|setInterval/);assert.match(hook,/visibilityTarget:document/);
-  assert.doesNotMatch(css,/@keyframes/);assert.match(css,/animation:none!important/);assert.ok(layout.lastIndexOf('".\/lightning.css"')>layout.lastIndexOf('".\/clock.css"'));
+  assert.doesNotMatch(css,/@keyframes/);assert.match(css,/\.lightning-awareness\{[^}]*font-family:Arial,sans-serif!important/);assert.match(css,/\.lightning-awareness\{[^}]*animation:none!important/);assert.match(css,/\.lightning-awareness\.alert-pulse\{animation:opsAlertPulse \.95s/);assert.match(css,/\.lightning-awareness\.alert-flash\{animation:opsAlertFlash 1s/);assert.ok(layout.lastIndexOf('".\/lightning.css"')>layout.lastIndexOf('".\/clock.css"'));
+  assert.doesNotMatch(page,/taf-hazard-band[^\n]+style=\{\{[^}]*#ffcc00/);assert.match(page,/data-tone=\{hazardTone\}/);
   const roots=[new URL("../app",import.meta.url),new URL("../public",import.meta.url)];const source=[];for(const root of roots)for(const file of readdirSync(root)){if(/\.(?:ts|tsx|css|json|js)$/.test(file))source.push(readFileSync(join(root.pathname.slice(1),file),"utf8"));}
   const forbidden=["manual","alert.json"].join("_");const closure=["FLT","LINE","CLOSED"].join(" ");assert.ok(source.every(text=>!text.includes(forbidden)&&!text.includes(closure)));
 });

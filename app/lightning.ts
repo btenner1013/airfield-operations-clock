@@ -2,9 +2,10 @@
 // TAF/model products deliberately never enter this module.
 
 export type LightningLevel = "none"|"distant"|"vicinity"|"station"|"severe";
-export type LightningSource = "none"|"metar-body"|"metar-remarks"|"debug";
+export type LightningSource = "none"|"metar-body"|"metar-remarks"|"ops-feed"|"debug";
 export type LightningFrequency = "occasional"|"frequent"|"continuous"|null;
 export type LightningDirection = "N"|"NE"|"E"|"SE"|"S"|"SW"|"W"|"NW";
+export type LightningTone = "green"|"blue"|"yellow"|"red";
 export type LightningReport = {
   level:LightningLevel;
   source:LightningSource;
@@ -13,9 +14,12 @@ export type LightningReport = {
   types:string[];
   directions:LightningDirection[];
   awareness:string|null;
+  tone:LightningTone;
+  flash:boolean;
+  pulse:boolean;
 };
 
-export const NO_LIGHTNING:LightningReport={level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null};
+export const NO_LIGHTNING:LightningReport={level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null,tone:"green",flash:false,pulse:false};
 
 const DIRECTIONS=new Set<LightningDirection>(["N","NE","E","SE","S","SW","W","NW"]);
 const FREQUENCY:Record<string,LightningFrequency>={OCNL:"occasional",FRQ:"frequent",CONS:"continuous"};
@@ -23,7 +27,8 @@ const FREQUENCY_CODE:Record<Exclude<LightningFrequency,null>,string>={occasional
 
 function cleanTokens(text:string):string[]{return text.toUpperCase().replace(/=/g," ").split(/\s+/).map(v=>v.replace(/^[,.;]+|[,.;]+$/g,"")).filter(Boolean);}
 function bodyReport(code:string,level:"vicinity"|"station"|"severe"):LightningReport {
-  return {level,source:"metar-body",code,frequency:null,types:[],directions:[],awareness:level==="vicinity"?"VCTS":`${code} OVR FIELD`};
+  const field=level==="station"||level==="severe";
+  return {level,source:"metar-body",code,frequency:null,types:[],directions:[],awareness:level==="vicinity"?"⚡ VCTS 5-10 NM":`⛈️ TS OVER FIELD`,tone:field?"red":"yellow",flash:field,pulse:!field};
 }
 function directionText(values:LightningDirection[]):string{return values.length<2?(values[0]||""):values.join("–");}
 
@@ -52,7 +57,7 @@ export function parseCurrentLightning(rawMetar:string):LightningReport {
   const location=nearby.includes("DSNT")?"DSNT":nearby.includes("VC")?"VC":nearby.includes("OHD")?"OHD":null;
   const level:LightningLevel=location==="DSNT"?"distant":location==="VC"?"vicinity":"station";
   const typeText=types.length?`LTG${types.join("")}`:"LTG", prefix=frequency?`${FREQUENCY_CODE[frequency]} `:"", dir=directionText(directions);
-  return {level,source:"metar-remarks",code:typeText,frequency,types,directions,awareness:`${prefix}${typeText}${location?` ${location}`:""}${dir?` ${dir}`:""}`};
+  return {level,source:"metar-remarks",code:typeText,frequency,types,directions,awareness:`${prefix}${typeText}${location?` ${location}`:""}${dir?` ${dir}`:""}`,tone:"yellow",flash:false,pulse:true};
 }
 
 const DEBUG_METARS:Record<string,string>={
@@ -96,14 +101,21 @@ export function lightningQuietRange(level:LightningLevel, frequency:LightningFre
   return range;
 }
 
+export function lightningAnimationEligible(report:LightningReport):boolean {
+  if(report.source!=="metar-body"&&report.source!=="debug") return false;
+  if(report.level==="none"||report.level==="distant") return false;
+  return /^(?:VCTS|[+-]?TS)/.test(report.code||"");
+}
+
 export function createLightningScheduler(report:LightningReport,options:LightningSchedulerOptions):LightningScheduler {
   const random=options.random||Math.random,setTimer=options.setTimer||setTimeout,clearTimer=options.clearTimer||clearTimeout,target=options.visibilityTarget;
+  const animationEligible=lightningAnimationEligible(report);
   const pending=new Set<TimerHandle>();let stopped=false,started=false,cluster=0;
   const visible=()=>!target||target.visibilityState==="visible";
   const emit=(active:boolean,pulse:0|1|2=0,bolt=false)=>options.onState({active,pulse,bolt,cluster});
   const later=(callback:()=>void,delay:number)=>{let handle:TimerHandle;handle=setTimer(()=>{pending.delete(handle);callback();},delay);pending.add(handle);return handle;};
   const clearAll=()=>{for(const handle of pending)clearTimer(handle);pending.clear();};
-  const scheduleQuiet=()=>{if(stopped||report.level==="none"||options.reduced||!visible())return;const [min,max]=lightningQuietRange(report.level,report.frequency);later(runCluster,min+Math.round(random()*(max-min)));};
+  const scheduleQuiet=()=>{if(stopped||!animationEligible||options.reduced||!visible())return;const [min,max]=lightningQuietRange(report.level,report.frequency);later(runCluster,min+Math.round(random()*(max-min)));};
   const runCluster=()=>{
     if(stopped||!visible()){emit(false);return;} cluster++;
     const doublePulse=options.flashTest||random()<(report.level==="distant"?.25:report.level==="vicinity"?.52:report.level==="station"?.68:.85);
@@ -115,7 +127,7 @@ export function createLightningScheduler(report:LightningReport,options:Lightnin
   };
   const onVisibility=()=>{clearAll();emit(false);if(visible()&&!stopped)scheduleQuiet();};
   return {
-    start:()=>{if(started)return;started=true;stopped=false;emit(report.level!=="none"&&!options.reduced);if(report.level==="none"||options.reduced)return;target?.addEventListener("visibilitychange",onVisibility);if(visible()) options.flashTest?later(runCluster,650):scheduleQuiet();},
+    start:()=>{if(started)return;started=true;stopped=false;emit(animationEligible&&!options.reduced);if(!animationEligible||options.reduced)return;target?.addEventListener("visibilitychange",onVisibility);if(visible()) options.flashTest?later(runCluster,650):scheduleQuiet();},
     stop:()=>{if(stopped)return;stopped=true;clearAll();target?.removeEventListener("visibilitychange",onVisibility);emit(false);},
     pendingCount:()=>pending.size,isStopped:()=>stopped,
   };

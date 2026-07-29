@@ -9,7 +9,7 @@ const METAR_CURRENT_MS = 75 * 60 * 1000;
 const CACHE_VERSION = 3;
 const THEMES = new Set(["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset","neutral"]);
 const COVERAGE = new Set(["CLR","FEW","SCT","BKN","OVC","VV"]);
-const LEGACY_NO_LIGHTNING={level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null} as const;
+const LEGACY_NO_LIGHTNING={level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null,tone:"green",flash:false,pulse:false} as const;
 
 function validDate(value:string|null|undefined):value is string {
   return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
@@ -133,7 +133,8 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     if (!w.tafValidStartIso || !w.tafValidEndIso) return null;
     if (w.solarDays && w.solarDays.length > 0 && w.solarDays[0].date !== today) return null;
     
-    const candidate=parsed.version===1?{...(parsed.weather as Weather),operationalWeather:null,currentLightning:{...LEGACY_NO_LIGHTNING},tafHazards:[],forecast:Array.isArray((parsed.weather as Weather).forecast)?(parsed.weather as Weather).forecast.map(f=>({...f,operationalWeather:null})):[]}:parsed.version===2?{...(parsed.weather as Weather),currentLightning:{...LEGACY_NO_LIGHTNING}}:parsed.weather;
+    const migrated=parsed.version===1?{...(parsed.weather as Weather),operationalWeather:null,currentLightning:{...LEGACY_NO_LIGHTNING},tafHazards:[],forecast:Array.isArray((parsed.weather as Weather).forecast)?(parsed.weather as Weather).forecast.map(f=>({...f,operationalWeather:null})):[]}:parsed.version===2?{...(parsed.weather as Weather),currentLightning:{...LEGACY_NO_LIGHTNING}}:parsed.weather as Weather;
+    const candidate={...migrated,currentLightning:{...LEGACY_NO_LIGHTNING,...migrated.currentLightning}};
     if(![1,2,CACHE_VERSION].includes(parsed.version||0)||!isWeather(candidate)) return null;
     return {...candidate,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }

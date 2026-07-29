@@ -739,20 +739,20 @@
 
 .taf-hazard-band em {
   font-style: normal;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  font-family: Consolas, monospace;
+  font-weight: 1000;
+  letter-spacing: 0.01em;
+  font-family: Arial, sans-serif;
   font-size: clamp(12.5px, 0.85vw, 16px);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.taf-hazard-band.alert-flash em {
+  animation: opsAlertFlash 1s step-start infinite !important;
+}
 .taf-hazard-band.alert-pulse em {
   animation: opsAlertPulse 0.82s ease-in-out infinite !important;
-}
-.taf-hazard-band.alert-flash em {
-  animation: opsAlertFlash 0.5s steps(2, end) infinite !important;
 }
 
 /* RED SEVERE HAZARD (#ff4444) */
@@ -806,7 +806,7 @@
 
 @keyframes opsAlertFlash {
   0% { opacity: 1; }
-  50% { opacity: 0; }
+  50% { opacity: 0.25; }
   100% { opacity: 1; }
 }
 
