@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync,readdirSync } from "node:fs";
 import { join } from "node:path";
-import { createLightningScheduler,lightningAnimationEligible,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
+import { compactLightningDisplay,createLightningScheduler,lightningAnimationEligible,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
 
 const metar=body=>parseCurrentLightning(`METAR KMEM 201853Z 18008KT 10SM ${body} 30/20 A2992`);
 
@@ -39,6 +39,16 @@ test("lightning text presentation matches Ops Board tone and motion rules",()=>{
   assert.deepEqual({tone:field.tone,flash:field.flash,pulse:field.pulse},{tone:"red",flash:true,pulse:false});
   assert.deepEqual({tone:vicinity.tone,flash:vicinity.flash,pulse:vicinity.pulse},{tone:"yellow",flash:false,pulse:true});
   assert.deepEqual({tone:distant.tone,flash:distant.flash,pulse:distant.pulse},{tone:"yellow",flash:false,pulse:true});
+});
+
+test("visible lightning wording matches the compact Ops Board display",()=>{
+  assert.equal(compactLightningDisplay("⚡ DSNT S 10-30 NM"),"⚡ DSNT S");
+  assert.equal(compactLightningDisplay("⚡ DSNT NE AND NW 10-30 NM"),"⚡ DSNT NE/NW");
+  assert.equal(compactLightningDisplay("OCNL LTGIC DSNT NE–NW"),"⚡ DSNT NE-NW");
+  assert.equal(compactLightningDisplay("LTG DSNT S"),"⚡ DSNT S");
+  assert.equal(compactLightningDisplay("⚡ VCTS 5-10 NM"),"⚡ VCTS");
+  assert.equal(compactLightningDisplay("⛈️ TS OVER FIELD"),"⛈️ TS OVR FIELD");
+  assert.equal(compactLightningDisplay("⛈️ TSRA ACTIVE NOW"),"⛈️ TSRA ACTIVE");
 });
 
 test("only explicit body thunderstorms own animated lightning",()=>{

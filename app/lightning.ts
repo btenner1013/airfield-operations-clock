@@ -25,6 +25,38 @@ const DIRECTIONS=new Set<LightningDirection>(["N","NE","E","SE","S","SW","W","NW
 const FREQUENCY:Record<string,LightningFrequency>={OCNL:"occasional",FRQ:"frequent",CONS:"continuous"};
 const FREQUENCY_CODE:Record<Exclude<LightningFrequency,null>,string>={occasional:"OCNL",frequent:"FRQ",continuous:"CONS"};
 
+// Keep the clock's visible lightning wording identical to the compact KMEM Ops Board value.
+export function compactLightningDisplay(value:string|null|undefined):string {
+  let text=String(value||"").trim();
+  text=text.replace(/TS\s+OVER\s+FIELD/ig,"TS OVR FIELD");
+  text=text.replace(/THUNDERSTORM\s+OVER\s+FIELD/ig,"TS OVR FIELD");
+  text=text.replace(/TSRA\s+ACTIVE\s+NOW/ig,"TSRA ACTIVE");
+  text=text.replace(/\bVCTS\s+\d+(?:-\d+)?\s*NM\b/ig,"VCTS");
+  text=text.replace(/\bDSNT\s+([A-Z]{1,3}(?:\s*(?:-|\/|AND)\s*[A-Z]{1,3})*)\s+\d+(?:-\d+)?\s*NM(?:\s*CB)?\b/ig,(_,direction:string)=>{
+    const compactDirection=String(direction)
+      .replace(/\bAND\b/ig,"/")
+      .replace(/\s*\/\s*/g,"/")
+      .replace(/\s*-\s*/g,"-")
+      .replace(/\s+/g," ")
+      .trim();
+    return `DSNT ${compactDirection}`;
+  });
+  text=text.replace(/\s+\d+(?:-\d+)?\s*NM(?:\s*CB)?\b/ig,"");
+  text=text.replace(/\bDSNT\s+(?:LIGHTNING|LTG)\s+/ig,"DSNT ");
+  text=text.replace(/\s+/g," ").trim().toUpperCase();
+  const distant=text.match(/\bDSNT(?:\s+([NSEW]{1,2}(?:\s*(?:-|\/|–|AND)\s*[NSEW]{1,2})*))?\b/i);
+  if(distant) {
+    const direction=String(distant[1]||"")
+      .replace(/\bAND\b/ig,"/")
+      .replace(/\s*\/\s*/g,"/")
+      .replace(/\s*[–-]\s*/g,"-")
+      .trim();
+    return `⚡ DSNT${direction?` ${direction}`:""}`;
+  }
+  if(/\bVCTS\b/i.test(text)) return "⚡ VCTS";
+  return text;
+}
+
 function cleanTokens(text:string):string[]{return text.toUpperCase().replace(/=/g," ").split(/\s+/).map(v=>v.replace(/^[,.;]+|[,.;]+$/g,"")).filter(Boolean);}
 function bodyReport(code:string,level:"vicinity"|"station"|"severe"):LightningReport {
   const field=level==="station"||level==="severe";
