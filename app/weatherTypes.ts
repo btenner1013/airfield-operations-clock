@@ -1,8 +1,22 @@
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
+import type { CurrentWindRecord } from "./currentWind";
 import type { LightningReport } from "./lightning";
 
 export type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
-export type Forecast = { time:string; iso:string; temperatureF:number; condition:Theme; description:string; precipitation:number; source:"TAF"|"MODEL"; operationalWeather:OperationalWeather|null };
+export type Forecast = {
+  time:string;
+  iso:string;
+  temperatureF:number;
+  condition:Theme;
+  description:string;
+  precipitationProbability:number|null;
+  precipitationSource:string|null;
+  precipitationValidTime:string|null;
+  precipitationFetchedAt:string|null;
+  precipitationAgeMinutes:number|null;
+  source:"TAF"|"MODEL";
+  operationalWeather:OperationalWeather|null;
+};
 export type SolarDay = { date:string; sunriseLocal:string; sunsetLocal:string };
 export type CloudCoverage = "CLR"|"FEW"|"SCT"|"BKN"|"OVC"|"VV";
 export type FeedStatus = "OK" | "DEGRADED" | "OFFLINE";
@@ -13,10 +27,7 @@ export type Weather = {
   feelsLikeF:number;
   condition:Theme;
   description:string;
-  windSpeedKt:number;
-  windDirection:string;
-  windDegrees:number|null;
-  windGustKt:number|null;
+  currentWind:CurrentWindRecord;
   humidity:number;
   sunriseLocal:string;
   sunsetLocal:string;
@@ -59,5 +70,6 @@ export type WeatherFetchResult = {
   metarValid:boolean;
   tafValid:boolean;
   modelValid:boolean;
+  windValid:boolean;
   feedReached:boolean;
 };

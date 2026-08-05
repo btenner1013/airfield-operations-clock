@@ -17,6 +17,9 @@ export type LightningReport = {
   tone:LightningTone;
   flash:boolean;
   pulse:boolean;
+  isStale?:boolean;
+  isUnavailable?:boolean;
+  sourceTime?:string|null;
 };
 
 export const NO_LIGHTNING:LightningReport={level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null,tone:"green",flash:false,pulse:false};

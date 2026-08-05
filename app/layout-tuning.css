@@ -410,9 +410,9 @@
   margin-top: 6px;
   padding: 4px 10px;
   background: #000000 !important;
-  border: 1.5px solid #ffcc00 !important;
+  border: 1.5px solid #333 !important;
   border-radius: 4px;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 204, 0, 0.25);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
   font: 900 clamp(11.5px, 3.4cqw, 15px) Consolas, monospace !important;
   color: #ffcc00 !important;
   letter-spacing: 0.1em;
@@ -438,12 +438,21 @@
 .wind-speed-row {
   width: 100%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .wind-speed-row strong {
   font: 800 clamp(20px, 1.6vw, 28px) / 1.1 Consolas, monospace;
   color: #ffffff;
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+.wind-variability {
+  margin-top: 2px;
+  font: 800 clamp(9px, 0.62vw, 12px) / 1 Consolas, monospace;
+  color: var(--muted);
+  letter-spacing: 0.1em;
 }
 .compass-wrap-centered {
   flex: 0 0 auto;
@@ -465,6 +474,18 @@
   align-items: center;
   justify-content: center;
   overflow: visible;
+}
+.compass-dial.compass-neutral {
+  border-color: rgba(148, 161, 167, 0.22);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.7), 0 0 6px rgba(148,161,167,0.08);
+}
+.compass-dial.compass-neutral .compass-ticks,
+.compass-dial.compass-neutral .compass-label {
+  opacity: 0.42;
+}
+.compass-dial.compass-neutral .compass-n {
+  color: var(--muted);
+  text-shadow: none;
 }
 .compass-ticks {
   position: absolute;
@@ -727,7 +748,7 @@
   border-radius: 4px;
   margin-bottom: 6px;
   background: #000000 !important;
-  border: 1.5px solid currentColor;
+  border: 1.5px solid #333;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
@@ -738,6 +759,9 @@
 }
 
 .taf-hazard-band em {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-style: normal;
   font-weight: 1000;
   letter-spacing: 0.01em;
@@ -757,7 +781,6 @@
 
 /* RED SEVERE HAZARD (#ff4444) */
 .taf-hazard-band[data-tone="red"] {
-  border-color: #ff4444;
   color: #ff4444;
 }
 .taf-hazard-band[data-tone="red"] em {
@@ -768,17 +791,13 @@
 .taf-hazard-band[data-tone="yellow"],
 .taf-hazard-band[data-tone="yellow"] *,
 .taf-hazard-band[data-tone="yellow"] em,
-.taf-hazard-band[data-tone="yellow"] span,
-.lightning-awareness,
-.lightning-awareness * {
-  border-color: #ffcc00 !important;
+.taf-hazard-band[data-tone="yellow"] span {
   color: #ffcc00 !important;
   fill: #ffcc00 !important;
 }
 
 /* BLUE PRE-HAZARD / ROUTINE (#35b7ff) */
 .taf-hazard-band[data-tone="blue"] {
-  border-color: #35b7ff;
   color: #35b7ff;
 }
 .taf-hazard-band[data-tone="blue"] em {
@@ -794,7 +813,7 @@
   }
   50% {
     opacity: 0.72;
-    transform: scale(1.04);
+    transform: scale(1.05);
     text-shadow: 0 0 10px currentColor, 0 0 22px currentColor;
   }
   100% {
@@ -808,6 +827,13 @@
   0% { opacity: 1; }
   50% { opacity: 0.25; }
   100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taf-hazard-band.alert-flash em,
+  .taf-hazard-band.alert-pulse em {
+    animation: none !important;
+  }
 }
 
 /* ── 4K & LARGE DISPLAY FLUID SCALING (≥ 2560px width or ≥ 1440px height) ── */

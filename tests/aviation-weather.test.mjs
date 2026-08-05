@@ -65,18 +65,46 @@ test("forecast slots use active overlays, severity, and exclusive TAF end times"
   const timeline=parseStructuredTaf(rolloverTaf,new Date("2026-07-31T23:30:00Z"));
   assert.ok(timeline);
   const slots=[
-    ["03:00","2026-08-01T03:00:00.000Z"],
-    ["04:00","2026-08-01T04:00:00.000Z"],
-    ["07:00","2026-08-01T07:00:00.000Z"],
-    ["08:00","2026-08-01T08:00:00.000Z"],
-    ["11:00","2026-08-01T11:00:00.000Z"],
-  ].map(([time,iso])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitation:10,source:"MODEL",operationalWeather:null}));
+    ["03:00","2026-08-01T03:00:00.000Z",10],
+    ["04:00","2026-08-01T04:00:00.000Z",20],
+    ["07:00","2026-08-01T07:00:00.000Z",30],
+    ["08:00","2026-08-01T08:00:00.000Z",40],
+    ["11:00","2026-08-01T11:00:00.000Z",50],
+  ].map(([time,iso,precipitationProbability])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitationProbability,precipitationSource:"Open-Meteo",precipitationValidTime:iso,precipitationFetchedAt:"2026-08-01T02:45:00.000Z",precipitationAgeMinutes:15,source:"MODEL",operationalWeather:null}));
   const result=applyStructuredTaf(slots,timeline,new Date("2026-08-01T03:00:00Z"));
   assert.deepEqual(result.forecast.map(f=>f.time),["NOW","04:00Z","07:00Z","08:00Z","11:00Z"]);
   assert.deepEqual(result.forecast.map(f=>f.operationalWeather?.sourceKind),["TAF_FM","TAF_TEMPO","TAF_PROB30","TAF_PROB40_TEMPO","TAF_FM"]);
   assert.deepEqual(result.forecast.map(f=>f.description),["BROKEN CEILING","THUNDERSTORMS WITH RAIN","HEAVY SNOW","HEAVY FREEZING RAIN","CLEAR"]);
+  assert.deepEqual(result.forecast.map(f=>f.precipitationProbability),[10,20,30,40,50]);
+  assert.deepEqual(result.forecast.map(f=>f.precipitationValidTime),slots.map(slot=>slot.precipitationValidTime));
+  assert.deepEqual({
+    precipitationSource:result.forecast[0].precipitationSource,
+    precipitationFetchedAt:result.forecast[0].precipitationFetchedAt,
+    precipitationAgeMinutes:result.forecast[0].precipitationAgeMinutes,
+  },{
+    precipitationSource:"Open-Meteo",
+    precipitationFetchedAt:"2026-08-01T02:45:00.000Z",
+    precipitationAgeMinutes:15,
+  });
   assert.equal(result.forecast[2].operationalWeather?.sourceKind,"TAF_PROB30");
   assert.equal(result.forecast[3].operationalWeather?.category,"freezing-precipitation");
+  assert.deepEqual({
+    skyCondition:result.forecast[4].operationalWeather?.skyCondition,
+    skyCoverage:result.forecast[4].operationalWeather?.skyCoverage,
+    cloudCoverage:result.forecast[4].operationalWeather?.cloudCoverage,
+    cloudBaseFt:result.forecast[4].operationalWeather?.cloudBaseFt,
+    ceilingCoverage:result.forecast[4].operationalWeather?.ceilingCoverage,
+    ceilingFt:result.forecast[4].operationalWeather?.ceilingFt,
+    ceilingUnlimited:result.forecast[4].operationalWeather?.ceilingUnlimited,
+  },{
+    skyCondition:"clear",
+    skyCoverage:"SKC",
+    cloudCoverage:"CLR",
+    cloudBaseFt:null,
+    ceilingCoverage:null,
+    ceilingFt:null,
+    ceilingUnlimited:true,
+  });
   assert.deepEqual(result.hazards.map(h=>h.weather.sourceKind),["TAF_TEMPO","TAF_PROB40_TEMPO","TAF_PROB30"]);
 });
 
@@ -338,16 +366,28 @@ test("transition rows include exact times and conditions instead of fixed slots"
   
   // Dummy model slots
   const slots=[
-    ["05:00","2026-07-22T05:00:00Z"],
-    ["08:00","2026-07-22T08:00:00Z"],
-    ["11:00","2026-07-22T11:00:00Z"],
-  ].map(([time,iso])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitation:10,source:"MODEL",operationalWeather:null}));
+    ["05:00","2026-07-22T05:00:00Z",15],
+    ["08:00","2026-07-22T08:00:00Z",40],
+    ["11:00","2026-07-22T11:00:00Z",65],
+  ].map(([time,iso,precipitationProbability])=>({time,iso,temperatureF:80,condition:"clear",description:"Model clear",precipitationProbability,precipitationSource:"Open-Meteo",precipitationValidTime:iso,precipitationFetchedAt:"2026-07-22T04:15:00Z",precipitationAgeMinutes:22,source:"MODEL",operationalWeather:null}));
   
   // Current time is 04:37Z
   const result=applyStructuredTaf(slots,timeline,new Date("2026-07-22T04:37:00Z"));
   
   const times = result.forecast.map(f=>f.time);
   assert.deepEqual(times, ["NOW", "05:00Z", "06:00Z", "13:00Z"]);
+  assert.deepEqual(result.forecast.map(f=>f.precipitationProbability),[null,15,null,null]);
+  assert.deepEqual({
+    precipitationSource:result.forecast[1].precipitationSource,
+    precipitationValidTime:result.forecast[1].precipitationValidTime,
+    precipitationFetchedAt:result.forecast[1].precipitationFetchedAt,
+    precipitationAgeMinutes:result.forecast[1].precipitationAgeMinutes,
+  },{
+    precipitationSource:"Open-Meteo",
+    precipitationValidTime:"2026-07-22T05:00:00.000Z",
+    precipitationFetchedAt:"2026-07-22T04:15:00.000Z",
+    precipitationAgeMinutes:22,
+  });
   
   // 04Z (base window): PROB30 -TSRA BKN020CB
   assert.equal(result.forecast[0].operationalWeather.shortLabel, "LT TSTMS WITH RAIN");
@@ -360,8 +400,23 @@ test("transition rows include exact times and conditions instead of fixed slots"
   assert.equal(result.forecast[1].operationalWeather.cloudBaseFt, 20000);
   
   // 06Z: FEW250
-  assert.equal(result.forecast[2].operationalWeather.cloudCoverage, "FEW");
-  assert.equal(result.forecast[2].operationalWeather.cloudBaseFt, 25000);
+  assert.deepEqual({
+    skyCondition:result.forecast[2].operationalWeather.skyCondition,
+    skyCoverage:result.forecast[2].operationalWeather.skyCoverage,
+    cloudCoverage:result.forecast[2].operationalWeather.cloudCoverage,
+    cloudBaseFt:result.forecast[2].operationalWeather.cloudBaseFt,
+    ceilingCoverage:result.forecast[2].operationalWeather.ceilingCoverage,
+    ceilingFt:result.forecast[2].operationalWeather.ceilingFt,
+    ceilingUnlimited:result.forecast[2].operationalWeather.ceilingUnlimited,
+  },{
+    skyCondition:"cloud-layer",
+    skyCoverage:"FEW",
+    cloudCoverage:"FEW",
+    cloudBaseFt:25000,
+    ceilingCoverage:null,
+    ceilingFt:null,
+    ceilingUnlimited:true,
+  });
   
   // 13Z: SCT035
   assert.equal(result.forecast[3].operationalWeather.cloudCoverage, "SCT");

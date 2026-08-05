@@ -18,9 +18,10 @@ function weather(overrides={}) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()).map(x => [x.type, x.value]));
   const today = `${p.year}-${p.month.padStart(2,"0")}-${p.day.padStart(2,"0")}`;
   return {
-    temperatureF:80,feelsLikeF:84,condition:"clear",description:"Clear",windSpeedKt:6,windDirection:"S",windDegrees:180,windGustKt:null,humidity:55,
+    temperatureF:80,feelsLikeF:84,condition:"clear",description:"Clear",currentWind:{directionType:"directional",directionDegrees:180,speedKt:6,gustKt:null,variableFromDegrees:null,variableToDegrees:null,source:"METAR",observedAt:iso,raw:"18006KT"},humidity:55,
     sunriseLocal:"06:00",sunsetLocal:"20:10",solarDays:[{date:today,sunriseLocal:"06:00",sunsetLocal:"20:10"}],observationTime:iso,
-    forecast:[{time:"09:00",iso:"2026-07-20T14:00:00.000Z",temperatureF:82,condition:"clear",description:"Clear",precipitation:0,source:"TAF",operationalWeather:null}],operationalWeather:null,currentLightning:{level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null},tafHazards:[],
+    forecast:[{time:"09:00",iso:"2026-07-20T14:00:00.000Z",temperatureF:82,condition:"clear",description:"Clear",precipitationProbability:0,precipitationSource:"Open-Meteo",precipitationValidTime:"2026-07-20T14:00:00.000Z",precipitationFetchedAt:iso,precipitationAgeMinutes:0,source:"TAF",operationalWeather:null}],operationalWeather:null,currentLightning:{level:"none",source:"none",code:null,frequency:null,types:[],directions:[],awareness:null,tone:"green",flash:false,pulse:false},tafHazards:[],
+    wxAlertText:"",wxAlertTone:"none",wxAlertPulse:false,wxAlertFlash:false,wxAlertVisible:false,
     birdRisk:"LOW",birdBasis:"AHAS",birdUpdated:iso,source:"METAR",cloudCoverage:"CLR",cloudBaseFt:null,visibilitySm:10,phenomena:[],
     metarObsIso:iso,tafIssueIso:"2026-07-20T05:00:00.000Z",tafValidStartIso:"2026-07-20T06:00:00.000Z",tafValidEndIso:"2026-07-21T12:00:00.000Z",
     metarFetchStatus:"OK",tafFetchStatus:"OK",bwcFetchStatus:"OK",feedStatus:"OK",requestStatus:"IDLE",lastRefreshAttemptIso:iso,lastRefreshSuccessIso:iso,feedError:null,
@@ -56,15 +57,23 @@ test("TAF issue and validity states cover current, pending, expired, midnight, a
 });
 
 test("failed or partial refresh preserves independent last-valid METAR and TAF data",()=>{
-  const previous=weather({operationalWeather:{category:"clear",condition:"clear"},currentLightning:{level:"station",source:"metar-body",code:"TS",frequency:null,types:[],directions:[],awareness:"TS OVR FIELD"},tafHazards:[{id:"tempo",fromIso:"2026-07-20T07:00:00.000Z",toIso:"2026-07-20T09:00:00.000Z",weather:{category:"thunderstorm",condition:"thunderstorm"}}]});
-  const modelOnly=weather({temperatureF:65,feelsLikeF:68,humidity:88,condition:"rain",description:"Model rain",source:"MODEL",metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,forecast:[],feedStatus:"DEGRADED"});
-  const merged=mergeWeather(previous,{weather:modelOnly,metarValid:false,tafValid:false,modelValid:true,feedReached:false});
+  const previous=weather({operationalWeather:{category:"clear",condition:"clear"},currentLightning:{level:"station",source:"metar-body",code:"TS",frequency:null,types:[],directions:[],awareness:"TS OVR FIELD",tone:"red",flash:true,pulse:false},tafHazards:[{id:"tempo",fromIso:"2026-07-20T07:00:00.000Z",toIso:"2026-07-20T09:00:00.000Z",weather:{category:"thunderstorm",condition:"thunderstorm"}}]});
+  const modelWind={directionType:"directional",directionDegrees:300,speedKt:15,gustKt:null,variableFromDegrees:null,variableToDegrees:null,source:"MODEL",observedAt:iso,raw:"30015KT"};
+  const freshModelRow={...previous.forecast[0],description:"Model rain",precipitationProbability:35,precipitationSource:"Open-Meteo",precipitationFetchedAt:"2026-07-20T06:00:00.000Z",source:"MODEL",operationalWeather:null};
+  const modelOnly=weather({temperatureF:65,feelsLikeF:68,humidity:88,condition:"rain",description:"Model rain",currentWind:modelWind,source:"MODEL",metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,forecast:[freshModelRow],feedStatus:"DEGRADED"});
+  const merged=mergeWeather(previous,{weather:modelOnly,metarValid:false,tafValid:false,modelValid:true,windValid:false,feedReached:false});
   assert.equal(merged.temperatureF,80);
   assert.equal(merged.condition,"clear");
   assert.equal(merged.operationalWeather,previous.operationalWeather);
-  assert.equal(merged.currentLightning,previous.currentLightning);
+  assert.equal(merged.currentLightning.level,"none");
+  assert.equal(merged.currentLightning.tone,"green");
+  assert.equal(merged.currentLightning.isUnavailable,true);
+  assert.equal(merged.currentWind,previous.currentWind);
   assert.equal(merged.metarObsIso,previous.metarObsIso);
-  assert.deepEqual(merged.forecast,previous.forecast);
+  assert.equal(merged.forecast[0].description,previous.forecast[0].description);
+  assert.equal(merged.forecast[0].source,previous.forecast[0].source);
+  assert.equal(merged.forecast[0].precipitationProbability,35);
+  assert.equal(merged.forecast[0].precipitationSource,"Open-Meteo");
   assert.deepEqual(merged.tafHazards,previous.tafHazards);
   assert.equal(merged.tafValidEndIso,previous.tafValidEndIso);
   assert.equal(merged.feelsLikeF,68);
@@ -72,19 +81,65 @@ test("failed or partial refresh preserves independent last-valid METAR and TAF d
   assert.equal(merged.feedStatus,"DEGRADED");
 });
 
+test("wind refresh replacement is atomic and independent of METAR validity",()=>{
+  const observed={directionType:"variable",directionDegrees:null,speedKt:8,gustKt:16,variableFromDegrees:null,variableToDegrees:null,source:"ATIS",observedAt:iso,raw:"VRB08G16KT"};
+  const replacement={directionType:"directional",directionDegrees:310,speedKt:5,gustKt:null,variableFromDegrees:null,variableToDegrees:null,source:"METAR",observedAt:"2026-07-20T06:05:00.000Z",raw:"31005KT"};
+  const previous=weather({currentWind:observed});
+  const incoming=weather({currentWind:replacement});
+  const failed=mergeWeather(previous,{weather:incoming,metarValid:true,tafValid:true,modelValid:true,windValid:false,feedReached:true});
+  assert.equal(failed.currentWind,observed);
+  const current=mergeWeather(previous,{weather:incoming,metarValid:false,tafValid:true,modelValid:true,windValid:true,feedReached:true});
+  assert.equal(current.currentWind,replacement);
+  assert.deepEqual(current.currentWind,replacement);
+
+  const staleObserved={...observed,observedAt:"2026-07-20T04:00:00.000Z"};
+  const stalePrevious=weather({currentWind:staleObserved,lastRefreshAttemptIso:"2026-07-20T06:02:00.000Z"});
+  const modelWind={directionType:"directional",directionDegrees:300,speedKt:15,gustKt:null,variableFromDegrees:null,variableToDegrees:null,source:"MODEL",observedAt:"2026-07-20T06:02:00.000Z",raw:"30015KT"};
+  const staleResult=mergeWeather(stalePrevious,{weather:weather({currentWind:modelWind,lastRefreshAttemptIso:"2026-07-20T06:02:00.000Z"}),metarValid:true,tafValid:true,modelValid:true,windValid:false,feedReached:true});
+  assert.equal(staleResult.currentWind.source,"MODEL");
+  assert.equal(staleResult.currentWind.directionDegrees,300);
+});
+
+test("ATIS lightning remains independent of METAR validity and unreachable feeds use Ops Board unavailable handling",()=>{
+  const prior=weather({currentLightning:{level:"none",source:"ops-feed",code:null,frequency:null,types:[],directions:[],awareness:null,tone:"green",flash:false,pulse:false}});
+  const atisLightning={level:"station",source:"ops-feed",code:"TS",frequency:null,types:[],directions:[],awareness:"TS OVER FIELD",tone:"red",flash:true,pulse:false,sourceTime:"2026-07-20T06:01:00.000Z"};
+  const reached=mergeWeather(prior,{weather:weather({currentLightning:atisLightning}),metarValid:false,tafValid:true,modelValid:true,windValid:true,feedReached:true});
+  assert.equal(reached.currentLightning,atisLightning);
+  const unreachable=mergeWeather(reached,{weather:weather(),metarValid:false,tafValid:false,modelValid:true,windValid:false,feedReached:false});
+  assert.equal(unreachable.currentLightning.level,"none");
+  assert.equal(unreachable.currentLightning.tone,"green");
+  assert.equal(unreachable.currentLightning.flash,false);
+  assert.equal(unreachable.currentLightning.pulse,false);
+  assert.equal(unreachable.currentLightning.isUnavailable,true);
+});
+
 test("validated cache restores; malformed or partial cache cannot replace it",()=>{
   const snapshot=weather({ tafValidStartIso:"2026-07-20T00:00:00.000Z", tafValidEndIso:"2026-07-21T00:00:00.000Z", solarDays:[{date:"2026-07-20", sunriseLocal:"06:00", sunsetLocal:"20:00"}] });
   const raw=serializeWeatherCache(snapshot,"2026-07-20T06:02:00.000Z");
   assert.ok(raw);
+  assert.equal(JSON.parse(raw).version,4);
   const displayNow = new Date("2026-07-20T06:02:00.000Z");
   const restored=restoreWeatherCache(raw, displayNow);
   assert.equal(restored?.metarObsIso,snapshot.metarObsIso);
+  assert.deepEqual(restored?.currentWind,snapshot.currentWind);
+  assert.equal(restored?.forecast[0].precipitationAgeMinutes,2);
   assert.equal(restored?.feedStatus,"DEGRADED");
   assert.equal(restoreWeatherCache("{bad", displayNow),null);
   assert.equal(restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:{condition:"clear", tafValidStartIso:"2026-07-20T00:00:00Z", tafValidEndIso:"2026-07-21T00:00:00Z", solarDays:[{date:"2026-07-20"}]}}), displayNow),null); // Still fails due to missing fields
-  const legacy=JSON.parse(JSON.stringify(snapshot));delete legacy.operationalWeather;delete legacy.currentLightning;delete legacy.tafHazards;for(const f of legacy.forecast) delete f.operationalWeather;
+  const malformed=JSON.parse(raw);malformed.weather.currentWind={...malformed.weather.currentWind,directionType:"variable",directionDegrees:180};
+  assert.equal(restoreWeatherCache(JSON.stringify(malformed),displayNow),null);
+  const legacy=JSON.parse(JSON.stringify(snapshot));legacy.windSpeedKt=6;legacy.windDirection="S";legacy.windDegrees=180;legacy.windGustKt=null;delete legacy.currentWind;delete legacy.operationalWeather;delete legacy.currentLightning;delete legacy.tafHazards;for(const f of legacy.forecast){f.precipitation=f.precipitationProbability;delete f.precipitationProbability;delete f.precipitationSource;delete f.precipitationValidTime;delete f.precipitationFetchedAt;delete f.precipitationAgeMinutes;delete f.operationalWeather;}
   const migrated=restoreWeatherCache(JSON.stringify({version:1,savedAtIso:iso,weather:legacy}), displayNow);
-  assert.equal(migrated?.operationalWeather,null);assert.equal(migrated?.currentLightning.level,"none");assert.deepEqual(migrated?.tafHazards,[]);assert.equal(migrated?.forecast[0].operationalWeather,null);
+  assert.equal(migrated?.operationalWeather,null);assert.equal(migrated?.currentLightning.level,"none");assert.deepEqual(migrated?.tafHazards,[]);assert.equal(migrated?.forecast[0].operationalWeather,null);assert.equal(migrated?.currentWind.directionType,"directional");assert.equal(migrated?.currentWind.directionDegrees,180);assert.equal(migrated?.forecast[0].precipitationProbability,null);
+  const legacyVrb=JSON.parse(JSON.stringify(legacy));legacyVrb.operationalWeather=null;legacyVrb.currentLightning={...snapshot.currentLightning};legacyVrb.tafHazards=[];for(const f of legacyVrb.forecast) f.operationalWeather=null;legacyVrb.windSpeedKt=8;legacyVrb.windDirection="VRB";legacyVrb.windDegrees=245;legacyVrb.windGustKt=16;
+  const migratedVrb=restoreWeatherCache(JSON.stringify({version:3,savedAtIso:iso,weather:legacyVrb}),displayNow);
+  assert.equal(migratedVrb?.currentWind.directionType,"variable");assert.equal(migratedVrb?.currentWind.directionDegrees,null);assert.equal(migratedVrb?.currentWind.speedKt,8);assert.equal(migratedVrb?.currentWind.gustKt,16);
+
+  const stalePop=JSON.parse(raw);stalePop.weather.forecast[0].precipitationFetchedAt="2026-07-20T02:00:00.000Z";
+  const stalePopRestored=restoreWeatherCache(JSON.stringify(stalePop),displayNow);
+  assert.equal(stalePopRestored?.forecast[0].precipitationProbability,null);
+  assert.equal(stalePopRestored?.forecast[0].precipitationSource,"Open-Meteo");
+  assert.equal(stalePopRestored?.forecast[0].precipitationAgeMinutes,242);
 });
 
 class FakeTarget {

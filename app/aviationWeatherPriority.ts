@@ -1,12 +1,28 @@
 import type { CloudCoverage, Forecast, Theme } from "./weatherTypes";
+import { matchHourlyPrecipitation } from "./futureWeather.ts";
 
 export type WeatherSourceKind = "METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PROB30"|"TAF_PROB40"|"TAF_PROB30_TEMPO"|"TAF_PROB40_TEMPO"|"MODEL";
 export type WeatherCategory = "severe-convection"|"thunderstorm"|"freezing-precipitation"|"winter-precipitation"|"liquid-precipitation"|"obscuration"|"cloud"|"clear"|"unknown";
+export type SkyCoverage = CloudCoverage|"SKC"|"NSC"|"NCD";
+export type CloudLayer = { coverage:CloudCoverage; baseFt:number|null; summary:string };
+export type AviationSky = {
+  skyCondition:"clear"|"cloud-layer"|"ceiling"|"unavailable";
+  skyCoverage:SkyCoverage|null;
+  cloudCoverage:CloudCoverage|null;
+  cloudBaseFt:number|null;
+  ceilingCoverage:"BKN"|"OVC"|"VV"|null;
+  ceilingFt:number|null;
+  ceilingUnlimited:boolean;
+  visibilitySm:number|null;
+  cloudSummary:string|null;
+  cloudLayers:CloudLayer[];
+};
 export type OperationalWeather = {
   code:string|null; codes:string[]; category:WeatherCategory; condition:Theme; label:string; shortLabel:string;
   secondaryLabel?:string|null;
   intensity:"light"|"moderate"|"heavy"|null; vicinity:boolean; temporary:boolean; probability:number|null;
-  visibilitySm:number|null; cloudCoverage:CloudCoverage|null; cloudBaseFt:number|null; cloudSummary:string|null; sourceKind:WeatherSourceKind;
+  visibilitySm:number|null; skyCondition:AviationSky["skyCondition"]; skyCoverage:SkyCoverage|null; cloudCoverage:CloudCoverage|null; cloudBaseFt:number|null;
+  ceilingCoverage:"BKN"|"OVC"|"VV"|null; ceilingFt:number|null; ceilingUnlimited:boolean; cloudSummary:string|null; cloudLayers:CloudLayer[]; sourceKind:WeatherSourceKind;
 };
 export type TafTimelinePeriod = { id:string; fromIso:string; toIso:string; raw:string; weather:OperationalWeather };
 export type TafTimeline = { issueIso:string; validStartIso:string; validEndIso:string; prevailing:TafTimelinePeriod[]; overlays:TafTimelinePeriod[] };
@@ -22,21 +38,33 @@ export function extractAviationPhenomena(text:string):string[] {
   return [...new Set(found)];
 }
 
-export function parseAviationSky(text:string):{cloudCoverage:CloudCoverage|null;cloudBaseFt:number|null;visibilitySm:number|null;cloudSummary:string|null} {
-  const core=(text||"").toUpperCase().split(/\sRMK\s/)[0], layers:{coverage:CloudCoverage;base:number|null;summary:string}[]=[];
+export function parseAviationSky(text:string):AviationSky {
+  const core=(text||"").toUpperCase().split(/\sRMK\s/)[0], layers:CloudLayer[]=[];
   const layer=/\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b/g; let match:RegExpExecArray|null;
-  while((match=layer.exec(core))) layers.push({coverage:match[1] as CloudCoverage,base:Number(match[2])*100,summary:match[0]});
-  const vv=core.match(/\bVV(\d{3}|\/{3})\b/); if(vv) layers.push({coverage:"VV",base:vv[1]==="///"?null:Number(vv[1])*100,summary:vv[0]});
+  while((match=layer.exec(core))) layers.push({coverage:match[1] as CloudCoverage,baseFt:Number(match[2])*100,summary:match[0]});
+  const vv=core.match(/\bVV(\d{3}|\/{3})\b/); if(vv) layers.push({coverage:"VV",baseFt:vv[1]==="///"?null:Number(vv[1])*100,summary:vv[0]});
   const ceilings = layers.filter(l => ["BKN", "OVC", "VV"].includes(l.coverage));
-  ceilings.sort((a,b) => (a.base??Infinity) - (b.base??Infinity));
+  ceilings.sort((a,b) => (a.baseFt??Infinity) - (b.baseFt??Infinity));
   const nonCeilings = layers.filter(l => !["BKN", "OVC", "VV"].includes(l.coverage));
-  nonCeilings.sort((a,b)=>COVERAGE_RANK[b.coverage]-COVERAGE_RANK[a.coverage]||(a.base??Infinity)-(b.base??Infinity));
+  nonCeilings.sort((a,b)=>COVERAGE_RANK[b.coverage]-COVERAGE_RANK[a.coverage]||(a.baseFt??Infinity)-(b.baseFt??Infinity));
   
-  const clear=/\b(?:CLR|SKC|NSC|NCD|CAVOK)\b/.test(core), best=ceilings[0] || nonCeilings[0];
+  const clearToken=core.match(/\b(CLR|SKC|NSC|NCD|CAVOK)\b/)?.[1]||null, clear=clearToken!==null, best=ceilings[0] || nonCeilings[0], ceiling=ceilings[0]||null;
   const vis=core.match(/(?:^|\s)(P|M)?(?:(\d+)\s+)?(\d+)(?:\/(\d+))?SM(?:\s|$)/); let visibilitySm:number|null=null;
   if(vis){visibilitySm=vis[4]?(Number(vis[2]||0)+Number(vis[3])/Number(vis[4])):Number(vis[3]);if(vis[1]==="M") visibilitySm=Math.max(0,visibilitySm);}
   else if(/\bCAVOK\b/.test(core)) visibilitySm=10;
-  return {cloudCoverage:best?.coverage||(clear?"CLR":null),cloudBaseFt:best?.base??null,visibilitySm,cloudSummary:best?.summary||(clear?"CLR":null)};
+  const skyCoverage:SkyCoverage|null=best?.coverage||(clear?(clearToken==="CAVOK"?"CLR":clearToken as SkyCoverage):null);
+  return {
+    skyCondition:ceiling?"ceiling":best?"cloud-layer":clear?"clear":"unavailable",
+    skyCoverage,
+    cloudCoverage:best?.coverage||(clear?"CLR":null),
+    cloudBaseFt:best?.baseFt??null,
+    ceilingCoverage:(ceiling?.coverage as "BKN"|"OVC"|"VV"|undefined)??null,
+    ceilingFt:ceiling?.baseFt??null,
+    ceilingUnlimited:!ceiling&&(clear||layers.length>0),
+    visibilitySm,
+    cloudSummary:best?.summary||(clear?(clearToken==="CAVOK"?"CLR":clearToken):null),
+    cloudLayers:[...layers].sort((a,b)=>(a.baseFt??Infinity)-(b.baseFt??Infinity))
+  };
 }
 
 function categoryFor(code:string):WeatherCategory {
@@ -234,10 +262,18 @@ function cloudLabel(coverage:CloudCoverage|null, baseFt:number|null = null):stri
   return "WEATHER UNAVAILABLE";
 }
 
-export function resolveOperationalWeather(input:{text?:string;codes?:string[];visibilitySm?:number|null;cloudCoverage?:CloudCoverage|null;cloudBaseFt?:number|null;cloudSummary?:string|null;sourceKind:WeatherSourceKind;temporary?:boolean;probability?:number|null}):OperationalWeather {
+export function resolveOperationalWeather(input:{text?:string;codes?:string[];visibilitySm?:number|null;skyCondition?:AviationSky["skyCondition"];skyCoverage?:SkyCoverage|null;cloudCoverage?:CloudCoverage|null;cloudBaseFt?:number|null;ceilingCoverage?:"BKN"|"OVC"|"VV"|null;ceilingFt?:number|null;ceilingUnlimited?:boolean;cloudSummary?:string|null;cloudLayers?:CloudLayer[];sourceKind:WeatherSourceKind;temporary?:boolean;probability?:number|null}):OperationalWeather {
   const sky=parseAviationSky(input.text||""), codes=input.codes||extractAviationPhenomena(input.text||"");
   const sorted=[...codes].sort((a,b)=>CATEGORY_RANK[categoryFor(b)]-CATEGORY_RANK[categoryFor(a)]||({heavy:3,moderate:2,light:1}[intensityFor(b,categoryFor(b))||"light"]-({heavy:3,moderate:2,light:1}[intensityFor(a,categoryFor(a))||"light"])));
   const code=sorted[0]||null, coverage=input.cloudCoverage??sky.cloudCoverage, base=input.cloudBaseFt??sky.cloudBaseFt, summary=input.cloudSummary??sky.cloudSummary, visibility=input.visibilitySm??sky.visibilitySm;
+  const skyFields={
+    skyCondition:input.skyCondition??sky.skyCondition,
+    skyCoverage:input.skyCoverage??sky.skyCoverage,
+    ceilingCoverage:input.ceilingCoverage??sky.ceilingCoverage,
+    ceilingFt:input.ceilingFt??sky.ceilingFt,
+    ceilingUnlimited:input.ceilingUnlimited??sky.ceilingUnlimited,
+    cloudLayers:input.cloudLayers??sky.cloudLayers
+  };
   
   if(code){
     const category=categoryFor(code);
@@ -256,6 +292,7 @@ export function resolveOperationalWeather(input:{text?:string;codes?:string[];vi
       temporary: !!input.temporary,
       probability: input.probability??null,
       visibilitySm: visibility,
+      ...skyFields,
       cloudCoverage: coverage,
       cloudBaseFt: base,
       cloudSummary: summary,
@@ -281,6 +318,7 @@ export function resolveOperationalWeather(input:{text?:string;codes?:string[];vi
     temporary: !!input.temporary,
     probability: input.probability??null,
     visibilitySm: visibility,
+    ...skyFields,
     cloudCoverage: coverage,
     cloudBaseFt: base,
     cloudSummary: summary,
@@ -367,14 +405,17 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
   
   for (const time of sortedTransitions) {
     const closestSlot = [...model].sort((a,b) => Math.abs(Date.parse(a.iso) - time) - Math.abs(Date.parse(b.iso) - time))[0];
+    if(!closestSlot) continue;
     const prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
     const overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
     const primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);
     const timeDate = new Date(time);
     const hourLabel = time === windowStartMs ? "NOW" : `${String(timeDate.getUTCHours()).padStart(2,"0")}:00Z`;
+    const precipitation=matchHourlyPrecipitation(timeDate,model,{now:windowStart});
 
     forecast.push({
-      ...(closestSlot || model[0]),
+      ...closestSlot,
+      ...precipitation,
       time: hourLabel,
       iso: timeDate.toISOString(),
       condition: primary ? primary.condition : (closestSlot?.condition || "neutral"),

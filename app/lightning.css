@@ -43,4 +43,4 @@
 .lightning-awareness[data-tone="blue"],.lightning-awareness[data-tone="blue"] *{color:#35b7ff!important}
 .lightning-awareness[data-tone="yellow"],.lightning-awareness[data-tone="yellow"] *{color:#ffcc00!important}
 .lightning-awareness[data-tone="red"],.lightning-awareness[data-tone="red"] *{color:#ff4444!important}
-@media(prefers-reduced-motion:reduce){.lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{transition:none!important;animation:none!important}.lightning-glow,.lightning-bolt-overlay{opacity:0!important}}
+@media(prefers-reduced-motion:reduce){.lightning-glow,.lightning-horizon-glow,.lightning-bolt-overlay{transition:none!important;animation:none!important}.lightning-glow,.lightning-bolt-overlay{opacity:0!important}.lightning-awareness.alert-pulse,.lightning-awareness.alert-flash{animation:none!important}}
