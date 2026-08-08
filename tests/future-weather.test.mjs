@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   formatPrecipitationDisplay,
-  HOURLY_PRECIPITATION_TOLERANCE_MS,
-  matchHourlyPrecipitation,
+  HOURLY_PRECIPITATION_COVERAGE_MS,
+  matchPeriodPrecipitation,
   normalizeFutureSkyDisplay,
   normalizePrecipitationProbability,
 } from "../app/futureWeather.ts";
@@ -81,7 +82,7 @@ test("PoP normalization preserves explicit zero and valid percentages but keeps 
 });
 
 test("hourly PoP carries normalized source, valid time, fetch time, and age",()=>{
-  const matched=matchHourlyPrecipitation("2026-08-05T20:00:00Z",[{
+  const matched=matchPeriodPrecipitation("2026-08-05T20:00:00Z","2026-08-05T21:00:00Z",[{
     precipitationProbability:0,
     precipitationSource:"Open-Meteo",
     precipitationValidTime:"2026-08-05T20:00:00-00:00",
@@ -101,24 +102,39 @@ test("UTC-hour matching handles date rollover without borrowing from the wrong d
     {precipitationProbability:35,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T00:00:00Z",precipitationFetchedAt:"2026-08-04T23:45:00Z"},
     {precipitationProbability:0,precipitationSource:"NWS",precipitationValidTime:"2026-08-06T00:00:00Z",precipitationFetchedAt:"2026-08-05T23:45:00Z"},
   ];
-  const matched=matchHourlyPrecipitation("2026-08-06T00:10:00Z",samples,{now:"2026-08-06T00:11:00Z"});
+  const matched=matchPeriodPrecipitation("2026-08-06T00:10:00Z","2026-08-06T01:00:00Z",samples,{now:"2026-08-06T00:11:00Z"});
   assert.equal(matched.precipitationProbability,0);
   assert.equal(matched.precipitationValidTime,"2026-08-06T00:00:00.000Z");
 });
 
-test("an FM transition stays in its UTC valid hour even when the next-hour sample is closer",()=>{
-  assert.equal(HOURLY_PRECIPITATION_TOLERANCE_MS,3600000);
+test("a multi-hour block reports its worst hour instead of only the hour it starts on",()=>{
+  assert.equal(HOURLY_PRECIPITATION_COVERAGE_MS,3600000);
   const samples=[
-    {precipitationProbability:35,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T20:00:00Z"},
+    {precipitationProbability:5,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T20:00:00Z"},
+    {precipitationProbability:80,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T21:00:00Z"},
+    {precipitationProbability:40,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T22:00:00Z"},
+    {precipitationProbability:95,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T23:00:00Z"},
+  ];
+  const matched=matchPeriodPrecipitation("2026-08-05T20:00:00Z","2026-08-05T23:00:00Z",samples);
+  assert.equal(matched.precipitationProbability,80);
+  assert.equal(matched.precipitationValidTime,"2026-08-05T21:00:00.000Z");
+
+  // 23:00Z begins the hour after the block ends and is never borrowed.
+  assert.equal(matchPeriodPrecipitation("2026-08-05T20:00:00Z","2026-08-05T21:00:00Z",samples).precipitationProbability,5);
+});
+
+test("a period with no usable end falls back to the single hour it begins",()=>{
+  const samples=[
+    {precipitationProbability:5,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T20:00:00Z"},
     {precipitationProbability:80,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T21:00:00Z"},
   ];
-  const matched=matchHourlyPrecipitation("2026-08-05T20:50:00Z",samples);
-  assert.equal(matched.precipitationProbability,35);
-  assert.equal(matched.precipitationValidTime,"2026-08-05T20:00:00.000Z");
+  for(const end of [null,undefined,"","2026-08-05T20:00:00Z","2026-08-05T19:00:00Z"]) {
+    assert.equal(matchPeriodPrecipitation("2026-08-05T20:00:00Z",end,samples).precipitationProbability,5);
+  }
 });
 
 test("missing and prior-hour PoP remain unavailable instead of becoming or carrying zero",()=>{
-  const missing=matchHourlyPrecipitation("2026-08-05T20:00:00Z",[{
+  const missing=matchPeriodPrecipitation("2026-08-05T20:00:00Z","2026-08-05T21:00:00Z",[{
     precipitationProbability:null,
     precipitationSource:"NWS",
     precipitationValidTime:"2026-08-05T20:00:00Z",
@@ -126,7 +142,14 @@ test("missing and prior-hour PoP remain unavailable instead of becoming or carry
   assert.equal(missing.precipitationProbability,null);
   assert.equal(missing.precipitationSource,"NWS");
 
-  const stale=matchHourlyPrecipitation("2026-08-05T21:00:00Z",[{
+  // A real number always outranks a sample with no usable probability.
+  const partial=matchPeriodPrecipitation("2026-08-05T20:00:00Z","2026-08-05T22:00:00Z",[
+    {precipitationProbability:null,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T20:00:00Z"},
+    {precipitationProbability:20,precipitationSource:"NWS",precipitationValidTime:"2026-08-05T21:00:00Z"},
+  ]);
+  assert.equal(partial.precipitationProbability,20);
+
+  const stale=matchPeriodPrecipitation("2026-08-05T21:00:00Z","2026-08-05T22:00:00Z",[{
     precipitationProbability:35,
     precipitationSource:"NWS",
     precipitationValidTime:"2026-08-05T20:00:00Z",
@@ -142,7 +165,20 @@ test("missing and prior-hour PoP remain unavailable instead of becoming or carry
 
 test("TAF weather content cannot manufacture a precipitation percentage",()=>{
   const tafShapedRow={validTime:"2026-08-06T04:00:00Z",raw:"FM060400 12004KT P6SM SKC"};
-  const result=matchHourlyPrecipitation(tafShapedRow.validTime,[]);
+  const result=matchPeriodPrecipitation(tafShapedRow.validTime,"2026-08-06T08:00:00Z",[]);
   assert.equal(result.precipitationProbability,null);
   assert.equal(result.precipitationValidTime,null);
+});
+
+test("model timestamps are absolute, never a whole series shifted by one fixed offset",()=>{
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  // A single utc_offset_seconds is correct only until a DST transition lands inside the
+  // forecast window; unixtime values are already absolute UTC.
+  assert.match(page,/timeformat=unixtime/);
+  assert.doesNotMatch(page,/j\.utc_offset_seconds/);
+  assert.doesNotMatch(page,/utcOffset/);
+  assert.match(page,/utcIso=\(seconds:number\)=>new Date\(Number\(seconds\)\*1000\)\.toISOString\(\)/);
+  // Local wall-clock strings are formatted per-instant in the configured zone.
+  assert.match(page,/Intl\.DateTimeFormat\("en-US",\{timeZone:CONFIG\.timeZone,hourCycle:"h23"/);
+  assert.match(page,/solarDays:SolarDay\[\]=j\.daily\.time\.map\(\(seconds:number,i:number\)=>\(\{date:dateKey\(/);
 });

@@ -146,8 +146,8 @@ export type HourlyPrecipitationMatchOptions = {
   now?:string|number|Date;
 };
 
-/** Matching never crosses a UTC-hour boundary; the strict distance limit is one hour. */
-export const HOURLY_PRECIPITATION_TOLERANCE_MS=60*60*1000;
+/** An hourly PoP sample describes the hour that begins at its own valid time. */
+export const HOURLY_PRECIPITATION_COVERAGE_MS=60*60*1000;
 
 export function normalizePrecipitationProbability(value:unknown):number|null {
   return typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=100?Math.round(value):null;
@@ -164,11 +164,6 @@ function normalizeTime(value:string|number|Date|null|undefined):{iso:string;mill
   return Number.isFinite(milliseconds)?{iso:new Date(milliseconds).toISOString(),milliseconds}:null;
 }
 
-function utcHourStart(milliseconds:number):number {
-  const date=new Date(milliseconds);
-  return Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate(),date.getUTCHours());
-}
-
 function unavailablePrecipitation():NormalizedPrecipitation {
   return {
     precipitationProbability:null,
@@ -180,29 +175,42 @@ function unavailablePrecipitation():NormalizedPrecipitation {
 }
 
 /**
- * Matches an hourly PoP to a Future Weather row. Candidates must be in the
- * target's same UTC calendar hour and less than one hour away; consequently a
- * closer sample from an adjacent hour is never selected. Ties resolve by valid
- * time and then original source order. No match returns nullable/unavailable
- * PoP rather than carrying a prior hour forward.
+ * Matches hourly PoP to one Future Weather row. A row is a period, not an
+ * instant: it stands from its own valid time until the next TAF transition, so
+ * every hourly sample whose hour overlaps that period is eligible and the
+ * highest probability wins — a 3-hour block reports the worst hour inside it
+ * rather than only the hour it happens to start on.
+ *
+ * Overlap is strict: a sample is never borrowed from outside the period, so no
+ * prior hour is carried forward. A sample with no usable probability still
+ * qualifies (retaining provenance) but ranks below any real number. Remaining
+ * ties resolve by valid time and then original source order. An empty or
+ * unmatched period returns unavailable PoP rather than a fabricated zero.
+ *
+ * A missing or non-positive period end falls back to the single hour beginning
+ * at `periodStart`, which is the most a lone timestamp can honestly claim.
  */
-export function matchHourlyPrecipitation(
-  targetValidTime:string|number|Date,
+export function matchPeriodPrecipitation(
+  periodStart:string|number|Date,
+  periodEnd:string|number|Date|null|undefined,
   samples:readonly HourlyPrecipitationInput[],
   options:HourlyPrecipitationMatchOptions={},
 ):NormalizedPrecipitation {
-  const target=normalizeTime(targetValidTime);
-  if(!target) return unavailablePrecipitation();
-  const targetHour=utcHourStart(target.milliseconds);
+  const start=normalizeTime(periodStart);
+  if(!start) return unavailablePrecipitation();
+  const suppliedEnd=normalizeTime(periodEnd);
+  const endMs=suppliedEnd&&suppliedEnd.milliseconds>start.milliseconds
+    ? suppliedEnd.milliseconds
+    : start.milliseconds+HOURLY_PRECIPITATION_COVERAGE_MS;
 
   const candidates=samples.map((sample,index)=>{
     const valid=normalizeTime(sample.precipitationValidTime);
     if(!valid) return null;
-    const distance=Math.abs(valid.milliseconds-target.milliseconds);
-    if(utcHourStart(valid.milliseconds)!==targetHour||distance>=HOURLY_PRECIPITATION_TOLERANCE_MS) return null;
-    return {sample,index,valid,distance};
+    const overlaps=valid.milliseconds<endMs&&valid.milliseconds+HOURLY_PRECIPITATION_COVERAGE_MS>start.milliseconds;
+    if(!overlaps) return null;
+    return {sample,index,valid,probability:normalizePrecipitationProbability(sample.precipitationProbability)};
   }).filter((candidate):candidate is NonNullable<typeof candidate>=>candidate!==null)
-    .sort((a,b)=>a.distance-b.distance||a.valid.milliseconds-b.valid.milliseconds||a.index-b.index);
+    .sort((a,b)=>(b.probability??-1)-(a.probability??-1)||a.valid.milliseconds-b.valid.milliseconds||a.index-b.index);
 
   const matched=candidates[0];
   if(!matched) return unavailablePrecipitation();
@@ -212,7 +220,7 @@ export function matchHourlyPrecipitation(
   const age=fetched&&now?Math.max(0,Math.floor((now.milliseconds-fetched.milliseconds)/60000)):null;
   const source=(matched.sample.precipitationSource||"").trim()||null;
   return {
-    precipitationProbability:normalizePrecipitationProbability(matched.sample.precipitationProbability),
+    precipitationProbability:matched.probability,
     precipitationSource:source,
     precipitationValidTime:matched.valid.iso,
     precipitationFetchedAt:fetched?.iso||null,

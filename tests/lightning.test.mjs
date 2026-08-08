@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync,readdirSync } from "node:fs";
 import { join } from "node:path";
 import { compactLightningDisplay,createLightningScheduler,lightningAnimationEligible,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
+import { resolveLightningDisplay } from "../app/alertPresentation.ts";
 
 const metar=body=>parseCurrentLightning(`METAR KMEM 201853Z 18008KT 10SM ${body} 30/20 A2992`);
 
@@ -119,4 +120,13 @@ test("integration keeps current lightning on METAR authority and TAF forecast-on
   assert.doesNotMatch(page,/taf-hazard-band[^\n]+style=\{\{[^}]*#ffcc00/);assert.match(page,/data-tone=\{hazardTone\}/);
   const roots=[new URL("../app",import.meta.url),new URL("../public",import.meta.url)];const source=[];for(const root of roots)for(const file of readdirSync(root)){if(/\.(?:ts|tsx|css|json|js)$/.test(file))source.push(readFileSync(join(root.pathname.slice(1),file),"utf8"));}
   const forbidden=["manual","alert.json"].join("_");const closure=["FLT","LINE","CLOSED"].join(" ");assert.ok(source.every(text=>!text.includes(forbidden)&&!text.includes(closure)));
+});
+
+test("a quiet lightning report renders no awareness row at all",()=>{
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  // The row is an exception line: "NONE" must never occupy space in Current Weather.
+  assert.match(page,/\{lightningDisplay\.severity!=="none"&&\(\s*<small className=\{`lightning-awareness/);
+  assert.equal(resolveLightningDisplay({text:null,level:"none",tone:"green"}).severity,"none");
+  assert.equal(resolveLightningDisplay({text:"⚡ DSNT NE",level:"distant",tone:"yellow"}).severity,"caution");
+  assert.equal(resolveLightningDisplay({text:"⛈️ TS OVR FIELD",level:"station",tone:"red"}).severity,"warning");
 });

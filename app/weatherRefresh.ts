@@ -1,5 +1,5 @@
 import { ATIS_WIND_CURRENT_MINUTES, METAR_WIND_CURRENT_MINUTES, type CurrentWindRecord } from "./currentWind.ts";
-import { matchHourlyPrecipitation } from "./futureWeather.ts";
+import { matchPeriodPrecipitation } from "./futureWeather.ts";
 import type { Weather, WeatherFetchResult } from "./weatherTypes";
 
 export type MetarFreshness = { state:"CURRENT"|"STALE"|"UNAVAILABLE"; ageMinutes:number|null };
@@ -121,6 +121,16 @@ function preserve(target:Weather, previous:Weather, keys:(keyof Weather)[]) {
   for(const key of keys) mutable[key]=prior[key];
 }
 
+/**
+ * Retained rows keep the same period semantics the TAF builder gave them: a row
+ * stands until the next row's valid time, so re-matched PoP cannot drift from what
+ * a fresh TAF would have produced for the identical block.
+ */
+function rematchPrecipitation(rows:Weather["forecast"], samples:Weather["forecast"], result:WeatherFetchResult):Weather["forecast"] {
+  const now=result.weather.lastRefreshAttemptIso||Date.now();
+  return rows.map((row,index)=>({...row,...matchPeriodPrecipitation(row.iso,rows[index+1]?.iso??null,samples,{now})}));
+}
+
 export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weather {
   const incomingForecast=result.weather.forecast;
   const merged={...previous,...result.weather};
@@ -131,10 +141,10 @@ export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weathe
   if(!result.tafValid&&validDate(previous.tafValidEndIso)) {
     preserve(merged,previous,TAF_KEYS);
     const samples=result.modelValid?incomingForecast:[];
-    merged.forecast=previous.forecast.map(row=>({...row,...matchHourlyPrecipitation(row.iso,samples,{now:result.weather.lastRefreshAttemptIso||Date.now()})}));
+    merged.forecast=rematchPrecipitation(previous.forecast,samples,result);
   }
   if(result.tafValid&&!result.weather.forecast.length&&previous.forecast.length) {
-    merged.forecast=previous.forecast.map(row=>({...row,...matchHourlyPrecipitation(row.iso,[],{now:result.weather.lastRefreshAttemptIso||Date.now()})}));
+    merged.forecast=rematchPrecipitation(previous.forecast,[],result);
   }
   if(result.weather.birdRisk==="UNAVAILABLE"&&previous.birdRisk!=="UNAVAILABLE") preserve(merged,previous,["birdRisk","birdBasis","birdUpdated"]);
   return merged;

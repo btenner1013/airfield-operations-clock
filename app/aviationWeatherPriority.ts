@@ -1,5 +1,5 @@
 import type { CloudCoverage, Forecast, Theme } from "./weatherTypes";
-import { matchHourlyPrecipitation } from "./futureWeather.ts";
+import { matchPeriodPrecipitation } from "./futureWeather.ts";
 
 export type WeatherSourceKind = "METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PROB30"|"TAF_PROB40"|"TAF_PROB30_TEMPO"|"TAF_PROB40_TEMPO"|"MODEL";
 export type WeatherCategory = "severe-convection"|"thunderstorm"|"freezing-precipitation"|"winter-precipitation"|"liquid-precipitation"|"obscuration"|"cloud"|"clear"|"unknown";
@@ -329,6 +329,31 @@ export function resolveOperationalWeather(input:{text?:string;codes?:string[];vi
 function score(weather:OperationalWeather):number { const intensity=weather.intensity==="heavy"?30:weather.intensity==="moderate"?20:weather.intensity==="light"?10:0;return CATEGORY_RANK[weather.category]+intensity+(weather.probability||0)/100; }
 export function choosePrimaryOperationalWeather(values:OperationalWeather[]):OperationalWeather|null { return [...values].sort((a,b)=>score(b)-score(a))[0]||null; }
 
+/**
+ * A TEMPO/PROB group amends the prevailing forecast; it never cancels the sky.
+ * When the selected primary carries no cloud layer and no clear token of its own
+ * (e.g. "PROB30 0805/0808 6SM -SHRA"), the concurrent prevailing group supplies the
+ * sky so the row still reports the ceiling that remains in force. Phenomenon, label
+ * and visibility stay with the primary — only sky fields are inherited.
+ */
+export function withInheritedSky(primary:OperationalWeather,background:OperationalWeather|null|undefined):OperationalWeather {
+  const hasOwnSky=primary.skyCondition!=="unavailable"||primary.cloudCoverage!==null||primary.cloudLayers.length>0;
+  if(hasOwnSky||!background||background===primary) return primary;
+  if(background.skyCondition==="unavailable"&&background.cloudCoverage===null&&!background.cloudLayers.length) return primary;
+  return {
+    ...primary,
+    skyCondition:background.skyCondition,
+    skyCoverage:background.skyCoverage,
+    cloudCoverage:background.cloudCoverage,
+    cloudBaseFt:background.cloudBaseFt,
+    ceilingCoverage:background.ceilingCoverage,
+    ceilingFt:background.ceilingFt,
+    ceilingUnlimited:background.ceilingUnlimited,
+    cloudSummary:background.cloudSummary,
+    cloudLayers:background.cloudLayers,
+  };
+}
+
 // Hazard-band eligibility is deliberately narrower than primary-condition selection. A valid
 // phenomenon such as VCSH still outranks clouds in its forecast card without becoming an alert.
 export function qualifiesForTafHazardBand(weather:OperationalWeather):boolean {
@@ -408,14 +433,13 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
     if(!closestSlot) continue;
     const prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
     const overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
-    const primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+    const chosen=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+    const primary=chosen?withInheritedSky(chosen,choosePrimaryOperationalWeather(prevailing)):null;
     const timeDate = new Date(time);
     const hourLabel = time === windowStartMs ? "NOW" : `${String(timeDate.getUTCHours()).padStart(2,"0")}:00Z`;
-    const precipitation=matchHourlyPrecipitation(timeDate,model,{now:windowStart});
 
     forecast.push({
       ...closestSlot,
-      ...precipitation,
       time: hourLabel,
       iso: timeDate.toISOString(),
       condition: primary ? primary.condition : (closestSlot?.condition || "neutral"),
@@ -432,7 +456,8 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
          const time = Date.parse(candidate.iso);
          const prevailing=timeline.prevailing.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
          const overlays=timeline.overlays.filter(p=>isTafPeriodActive(p,time)).map(p=>p.weather);
-         const primary=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+         const chosen=choosePrimaryOperationalWeather([...prevailing,...overlays]);
+         const primary=chosen?withInheritedSky(chosen,choosePrimaryOperationalWeather(prevailing)):null;
          forecast.push({
              ...candidate,
              condition: primary ? primary.condition : candidate.condition,
@@ -446,6 +471,14 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
 
   forecast.sort((a,b) => Date.parse(a.iso) - Date.parse(b.iso));
 
+  // PoP is assigned only once the rows are ordered, because each row's period runs
+  // to the next transition. The final row runs to the end of the 9-hour window.
+  const windowEndIso=new Date(windowEnd).toISOString();
+  const withPrecipitation=forecast.map((row,index)=>({
+    ...row,
+    ...matchPeriodPrecipitation(row.iso,forecast[index+1]?.iso??windowEndIso,model,{now:windowStart}),
+  }));
+
   const hazards=[...timeline.prevailing,...timeline.overlays].filter(p=>Date.parse(p.fromIso)<windowEnd&&Date.parse(p.toIso)>windowStartMs&&qualifiesForTafHazardBand(p.weather)).map(p=>({id:p.id,fromIso:p.fromIso,toIso:p.toIso,weather:p.weather})).sort((a,b)=>score(b.weather)-score(a.weather)||Number(isTafPeriodActive(b,windowStartMs))-Number(isTafPeriodActive(a,windowStartMs))||Date.parse(a.fromIso)-Date.parse(b.fromIso));
-  return {forecast,hazards};
+  return {forecast:withPrecipitation,hazards};
 }

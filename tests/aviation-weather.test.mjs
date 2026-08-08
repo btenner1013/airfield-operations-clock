@@ -9,8 +9,10 @@ import {
   parseStructuredTaf,
   qualifiesForTafHazardBand,
   resolveOperationalWeather,
-  parseAviationSky
+  parseAviationSky,
+  withInheritedSky
 } from "../app/aviationWeatherPriority.ts";
+import { normalizeFutureSkyDisplay } from "../app/futureWeather.ts";
 
 const metar=value=>resolveOperationalWeather({text:value,sourceKind:"METAR"});
 
@@ -376,7 +378,11 @@ test("transition rows include exact times and conditions instead of fixed slots"
   
   const times = result.forecast.map(f=>f.time);
   assert.deepEqual(times, ["NOW", "05:00Z", "06:00Z", "13:00Z"]);
-  assert.deepEqual(result.forecast.map(f=>f.precipitationProbability),[null,15,null,null]);
+  // Each row covers the block up to the next transition, so the 06:00Z row spans
+  // 06:00–13:00Z and reports the worst hour inside it (65% at 11Z) rather than the
+  // empty 06Z hour. NOW ends at 05:00Z and 13:00Z runs past the last sample.
+  assert.deepEqual(result.forecast.map(f=>f.precipitationProbability),[null,15,65,null]);
+  assert.equal(result.forecast[2].precipitationValidTime,"2026-07-22T11:00:00.000Z");
   assert.deepEqual({
     precipitationSource:result.forecast[1].precipitationSource,
     precipitationValidTime:result.forecast[1].precipitationValidTime,
@@ -421,4 +427,65 @@ test("transition rows include exact times and conditions instead of fixed slots"
   // 13Z: SCT035
   assert.equal(result.forecast[3].operationalWeather.cloudCoverage, "SCT");
   assert.equal(result.forecast[3].operationalWeather.cloudBaseFt, 3500);
+});
+
+test("a sky-less PROB group inherits the prevailing sky instead of reporting no sky data",()=>{
+  const taf="TAF KMEM 072321Z 0800/0906 17008KT P6SM VCSH SCT050 BKN100 FM080300 18007KT P6SM BKN050 FM080500 18006KT P6SM VCSH BKN050 PROB30 0805/0808 6SM -SHRA FM080800 18006KT P6SM SCT045 BKN070 FM081800 23007KT P6SM SCT045 PROB30 0820/0824 5SM -TSRA BKN045CB";
+  const timeline=parseStructuredTaf(taf,new Date("2026-08-07T23:21:00Z"));
+  const slots=[
+    ["00:00","2026-08-08T00:00:00Z",1],
+    ["03:00","2026-08-08T03:00:00Z",1],
+    ["05:00","2026-08-08T05:00:00Z",1],
+    ["08:00","2026-08-08T08:00:00Z",1],
+  ].map(([time,iso,precipitationProbability])=>({time,iso,temperatureF:78,condition:"clear",description:"Model clear",precipitationProbability,precipitationSource:"Open-Meteo",precipitationValidTime:iso,precipitationFetchedAt:"2026-08-08T00:00:00Z",precipitationAgeMinutes:17,source:"MODEL",operationalWeather:null}));
+
+  const result=applyStructuredTaf(slots,timeline,new Date("2026-08-08T00:17:00Z"));
+  const row=result.forecast.find(f=>f.time==="05:00Z");
+  assert.ok(row,"expected an 05:00Z transition row");
+
+  // The PROB30 group carries only "6SM -SHRA"; BKN050 from the concurrent FM080500
+  // group stays in force and must still drive the ceiling.
+  assert.equal(row.operationalWeather.shortLabel,"LT RAIN SHOWERS");
+  assert.equal(row.operationalWeather.probability,30);
+  assert.deepEqual({
+    skyCondition:row.operationalWeather.skyCondition,
+    skyCoverage:row.operationalWeather.skyCoverage,
+    cloudCoverage:row.operationalWeather.cloudCoverage,
+    cloudBaseFt:row.operationalWeather.cloudBaseFt,
+    ceilingCoverage:row.operationalWeather.ceilingCoverage,
+    ceilingFt:row.operationalWeather.ceilingFt,
+    ceilingUnlimited:row.operationalWeather.ceilingUnlimited,
+    visibilitySm:row.operationalWeather.visibilitySm,
+  },{
+    skyCondition:"ceiling",
+    skyCoverage:"BKN",
+    cloudCoverage:"BKN",
+    cloudBaseFt:5000,
+    ceilingCoverage:"BKN",
+    ceilingFt:5000,
+    ceilingUnlimited:false,
+    visibilitySm:6,
+  });
+
+  const sky=normalizeFutureSkyDisplay({
+    skyCondition:row.operationalWeather.skyCondition,
+    skyCoverage:row.operationalWeather.skyCoverage,
+    cloudCoverage:row.operationalWeather.cloudCoverage,
+    cloudBaseFt:row.operationalWeather.cloudBaseFt,
+    cloudLayers:row.operationalWeather.cloudLayers,
+  });
+  assert.equal(sky.detail,"CIG 5,000 FT");
+});
+
+test("sky inheritance never overwrites a group that reported its own sky",()=>{
+  const showers=resolveOperationalWeather({text:"6SM -SHRA",sourceKind:"TAF_PROB30",probability:30});
+  const prevailing=resolveOperationalWeather({text:"18006KT P6SM VCSH BKN050",sourceKind:"TAF_FM"});
+  const withCb=resolveOperationalWeather({text:"5SM -TSRA BKN045CB",sourceKind:"TAF_PROB30",probability:30});
+
+  assert.equal(withInheritedSky(withCb,prevailing).cloudBaseFt,4500);
+  assert.equal(withInheritedSky(showers,null).skyCondition,"unavailable");
+  assert.equal(withInheritedSky(showers,prevailing).cloudBaseFt,5000);
+  // Inheriting sky leaves the phenomenon untouched.
+  assert.equal(withInheritedSky(showers,prevailing).code,"-SHRA");
+  assert.equal(withInheritedSky(showers,prevailing).condition,"rain");
 });

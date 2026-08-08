@@ -148,18 +148,30 @@ function parseMetar(raw:string) {
   const sky=parseAviationSky(raw), operationalWeather=resolveOperationalWeather({text:raw,...sky,sourceKind:"METAR"}), currentLightning=parseCurrentLightning(raw), temp=raw.match(/\s(M?\d{2})\/(?:M?\d{2}|XX)\s/);
   return { condition:operationalWeather.condition, description:operationalWeather.label, operationalWeather, currentLightning, temperatureF:temp?cToF(signedCelsius(temp[1])):null };
 }
+// Open-Meteo unixtime values are absolute UTC seconds, so every timestamp converts on its
+// own. A single utc_offset_seconds applied to the whole series silently shifts every hour
+// after a DST transition, which the strict PoP period match then drops as unmatched.
+function localClock(epochSeconds:number):string {
+  const date=new Date(Number(epochSeconds)*1000);
+  if(!Number.isFinite(date.getTime())) return "--:--";
+  const parts=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:CONFIG.timeZone,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value]));
+  const hour=parts.hour==="24"?"00":parts.hour;
+  return `${hour.padStart(2,"0")}:${parts.minute.padStart(2,"0")}`;
+}
 async function getModelWeather(signal?:AbortSignal):Promise<Weather> {
-  const url=`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.latitude}&longitude=${CONFIG.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=${encodeURIComponent(CONFIG.timeZone)}&forecast_days=2`;
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.latitude}&longitude=${CONFIG.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=kn&timezone=${encodeURIComponent(CONFIG.timeZone)}&forecast_days=2&timeformat=unixtime`;
   const r=await fetch(url,{signal}); if(!r.ok) throw new Error("weather"); const j=await r.json(); const mapped=mapCode(j.current.weather_code,j.current.wind_speed_10m);
-  const tm=(iso:string)=>iso?.slice(11,16)||"--:--", utcOffset=Number(j.utc_offset_seconds||0), utcIso=(iso:string)=>new Date(new Date(`${iso}:00Z`).getTime()-utcOffset*1000).toISOString();
-  const start=Math.max(0,j.hourly.time.findIndex((t:string)=>t>=j.current.time));
+  // The timezone parameter still anchors the daily blocks to local midnight; only the
+  // timestamps themselves become absolute.
+  const tm=(seconds:number)=>localClock(seconds), utcIso=(seconds:number)=>new Date(Number(seconds)*1000).toISOString();
+  const start=Math.max(0,j.hourly.time.findIndex((t:number)=>t>=j.current.time));
   const fetchedAt=new Date().toISOString();
   const forecast:Forecast[]=[0,1,2,3,4,5,6,7,8,9].map(offset=>start+offset).filter(i=>i>=0&&i<j.hourly.time.length).map(i=>{const condition=mapCode(j.hourly.weather_code[i],0),validTime=utcIso(j.hourly.time[i]);return {time:tm(j.hourly.time[i]),iso:validTime,temperatureF:Math.round(j.hourly.temperature_2m[i]),...condition,precipitationProbability:normalizePrecipitationProbability(j.hourly.precipitation_probability[i]),precipitationSource:"Open-Meteo",precipitationValidTime:validTime,precipitationFetchedAt:fetchedAt,precipitationAgeMinutes:0,source:"MODEL",operationalWeather:null}});
   const windDegrees=Math.round(j.current.wind_direction_10m);
   const windSpeedKt=Math.round(j.current.wind_speed_10m), currentIso=utcIso(j.current.time), normalizedDirection=windDegrees===0?360:windDegrees;
   const modelWindToken=windSpeedKt===0?"00000KT":`${String(normalizedDirection).padStart(3,"0")}${String(windSpeedKt).padStart(2,"0")}KT`;
   const currentWind=parseStandardWind(modelWindToken,"MODEL",currentIso)??FALLBACK_WIND;
-  const solarDays:SolarDay[]=j.daily.time.map((date:string,i:number)=>({date,sunriseLocal:tm(j.daily.sunrise[i]),sunsetLocal:tm(j.daily.sunset[i])}));
+  const solarDays:SolarDay[]=j.daily.time.map((seconds:number,i:number)=>({date:dateKey(new Date(Number(seconds)*1000),CONFIG.timeZone),sunriseLocal:tm(j.daily.sunrise[i]),sunsetLocal:tm(j.daily.sunset[i])}));
   return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,currentWind,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:currentIso,forecast,operationalWeather:null,currentLightning:{...NO_LIGHTNING},tafHazards:[],wxAlertText:"",wxAlertTone:"none",wxAlertPulse:false,wxAlertFlash:false,wxAlertVisible:false,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:phenomenaFromCondition(mapped.condition),metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,metarFetchStatus:"UNKNOWN",tafFetchStatus:"UNKNOWN",bwcFetchStatus:"UNKNOWN",feedStatus:"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:null};
 }
 function isOpsBoardWeather(value:unknown):value is OpsBoardWeather { return !!value&&typeof value==="object"&&(typeof (value as OpsBoardWeather).metar==="string"||typeof (value as OpsBoardWeather).taf==="string"); }
@@ -749,9 +761,12 @@ export default function Home() {
                   <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
                 </div>
               </div>
-              <small className={`lightning-awareness${lightningDisplay.shouldPulse?" alert-pulse":""}${lightningDisplay.shouldFlash?" alert-flash":""}`} data-tone={lightningDisplay.colorClass.replace("lightning-","")} data-stale={lightningDisplay.isStale||undefined} data-source-time={lightningDisplay.sourceTime||undefined}>
-                <span>{lightningDisplay.text}</span>
-              </small>
+              {/* Lightning awareness is an exception line: no lightning reported means no row at all. */}
+              {lightningDisplay.severity!=="none"&&(
+                <small className={`lightning-awareness${lightningDisplay.shouldPulse?" alert-pulse":""}${lightningDisplay.shouldFlash?" alert-flash":""}`} data-tone={lightningDisplay.colorClass.replace("lightning-","")} data-stale={lightningDisplay.isStale||undefined} data-source-time={lightningDisplay.sourceTime||undefined}>
+                  <span>{lightningDisplay.text}</span>
+                </small>
+              )}
             </div>
             <div className="weather-table-right">
               <span className="weather-glyph-right"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
