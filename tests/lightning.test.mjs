@@ -62,6 +62,19 @@ test("only explicit body thunderstorms own animated lightning",()=>{
   assert.equal(lightningAnimationEligible({...metar("TSRA BKN030CB"),source:"none"}),false);
 });
 
+test("the live ops feed animates an observed field thunderstorm the same as a direct METAR",()=>{
+  // The board's normal path relays METAR/ATIS lightning through the ops feed, so a
+  // TS over the field must animate rather than only render the awareness row.
+  const feed=(over,level="station")=>({...metar(over),source:"ops-feed",level});
+  assert.equal(lightningAnimationEligible(feed("TS BKN030CB")),true);
+  assert.equal(lightningAnimationEligible(feed("TSRA BKN030CB")),true);
+  assert.equal(lightningAnimationEligible(feed("VCTS SCT040CB","vicinity")),true);
+  // Remarks-only and distant reports stay unanimated on the feed path too.
+  assert.equal(lightningAnimationEligible(feed("SCT040 RMK FRQ LTGCG DSNT W","distant")),false);
+  assert.equal(lightningAnimationEligible(feed("SCT040 RMK LTGCG OHD")),false);
+  assert.equal(lightningAnimationEligible({...feed("TS BKN030CB"),level:"none"}),false);
+});
+
 test("quiet ranges remain irregular, level-specific, and operationally restrained",()=>{
   assert.deepEqual(lightningQuietRange("distant"),[20000,45000]);assert.deepEqual(lightningQuietRange("vicinity"),[10000,25000]);assert.deepEqual(lightningQuietRange("station"),[7000,18000]);assert.deepEqual(lightningQuietRange("severe"),[4000,12000]);
 });

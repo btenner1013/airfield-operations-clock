@@ -136,8 +136,15 @@ export function lightningQuietRange(level:LightningLevel, frequency:LightningFre
   return range;
 }
 
+/**
+ * Animation belongs to an observed thunderstorm at or near the field. The source
+ * check exists to keep TAF/model products out; the ops feed relays the same
+ * current METAR/ATIS observation the board already trusts for the awareness row,
+ * so it qualifies on the strength of its code. Remarks-only lightning still
+ * carries an LTG code and fails the test below, as does a distant report.
+ */
 export function lightningAnimationEligible(report:LightningReport):boolean {
-  if(report.source!=="metar-body"&&report.source!=="debug") return false;
+  if(report.source!=="metar-body"&&report.source!=="debug"&&report.source!=="ops-feed") return false;
   if(report.level==="none"||report.level==="distant") return false;
   return /^(?:VCTS|[+-]?TS)/.test(report.code||"");
 }
