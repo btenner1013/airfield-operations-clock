@@ -12,11 +12,11 @@ import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator,
 import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestampIso } from "./birdWatch";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
+import { isFlybyWeatherAllowed } from "./flyby";
 import { parseStandardWind, resolveCurrentWind, resolveCurrentWindDisplay, type CurrentWindRecord } from "./currentWind";
 import { formatPrecipitationDisplay, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
 import { resolveLightningDisplay, resolveWxAlertDisplay } from "./alertPresentation";
 
-type Flyby = { top:number; cycle:number; delay:number; scale:number; tilt:number; direction:"ltr"|"rtl" };
 type Phase = SolarPhase;
 type DebugWindMode = "variable"|"calm"|"directional"|"gust"|"sector";
 type DebugWxAlert = "none"|"info"|"caution"|"warning";
@@ -311,22 +311,6 @@ function zStamp(value:string) {
   return value !== "—" ? value : "—";
 }
 function aviationStamp(value:string|null) { const time=value?Date.parse(value):NaN; if(!Number.isFinite(time)) return "—"; const d=new Date(time); return `${String(d.getUTCDate()).padStart(2,"0")}${String(d.getUTCHours()).padStart(2,"0")}${String(d.getUTCMinutes()).padStart(2,"0")}Z`; }
-function isFlybyWeatherAllowed(weather: Weather, flightCat: { cat: string }): boolean {
-  if (flightCat.cat !== "VFR") return false;
-  if (weather.visibilitySm !== null && weather.visibilitySm < 5) return false;
-  const coverage = weather.cloudCoverage || "CLR";
-  const base = weather.cloudBaseFt;
-  // Low overcast/broken ceilings (< 10,000 FT) restrict flybys. High thin cirrus (>= 10,000 FT) in VFR permit flybys.
-  if (["BKN", "OVC", "VV"].includes(coverage) && (base !== null && base < 10000)) return false;
-  if (weather.currentLightning && weather.currentLightning.level !== "none") return false;
-  const rawMetar = (weather.rawMetar || "").toUpperCase();
-  const phen = (weather.phenomena || []).join(" ").toUpperCase();
-  const combined = `${rawMetar} ${phen}`;
-  if (/\b(?:RA|SN|DZ|SG|PL|GR|GS|UP|SH|TS|VCTS|FG|FZFG|BR|HZ|FU|DU|SA|VA|BLSN|BLSA|BLDU|PO|SQ|FC)\b/.test(combined)) {
-    return false;
-  }
-  return true;
-}
 
 export default function Home() {
   const [weather,setWeather]=useState<Weather>(FALLBACK); const weatherRef=useRef<Weather>(FALLBACK); const [debug,setDebug]=useState<Theme|null>(null); const [debugPhase,setDebugPhase]=useState<"day"|"night"|"sunrise"|"sunset"|null>(null); const [debugBird,setDebugBird]=useState<"LOW"|"MODERATE"|"SEVERE"|null>(null); const [debugMoon,setDebugMoon]=useState<string|null>(null);
@@ -344,6 +328,9 @@ export default function Home() {
   
   // Spawning controls for single C-17 photo flyby
   const activeFlybyRemovalRef = useRef<number | null>(null);
+  // The weather answer is captured when a pass is launched, never re-read mid-transit.
+  const flybyAllowedRef = useRef(false);
+  const [flybySlot, setFlybySlot] = useState(0);
   
   const triggerSpawn = useCallback((forcedDir?: "ltr" | "rtl") => {
     if (activeFlybyRemovalRef.current) window.clearTimeout(activeFlybyRemovalRef.current);
@@ -351,7 +338,7 @@ export default function Home() {
     const top = 9 + Math.random() * 7; // constrained to upper sky/header 9%-16%
     const duration = 12 + Math.random() * 6; // fast 12s-18s transit
     const newId = Date.now();
-    setActiveFlyby({ id: newId, top, direction: dir, duration, forced: true } as any);
+    setActiveFlyby({ id: newId, top, direction: dir, duration });
     activeFlybyRemovalRef.current = window.setTimeout(() => {
       setActiveFlyby(curr => (curr?.id === newId ? null : curr));
     }, duration * 1000);
@@ -362,18 +349,21 @@ export default function Home() {
       setActiveFlyby(null);
       return;
     }
-    // Restart the normal random schedule only after the forced pass exits (activeFlyby is null)
+    // An airborne pass owns the screen until its own removal timer clears it.
     if (activeFlyby) return;
 
     const scheduleNext = () => {
       const delayMs = 15000 + Math.random() * 15000; // 15s - 30s interval
       return window.setTimeout(() => {
-        triggerSpawn();
+        // Weather is consulted here rather than at render, so a mid-transit change can no
+        // longer make an aircraft vanish or pop in halfway across the sky.
+        if (debugFlybyEnabled === true || flybyAllowedRef.current) triggerSpawn();
+        else setFlybySlot(slot => slot + 1);
       }, delayMs);
     };
     const timerId = scheduleNext();
     return () => clearTimeout(timerId);
-  }, [activeFlyby, debugFlybyEnabled, triggerSpawn]);
+  }, [activeFlyby, debugFlybyEnabled, triggerSpawn, flybySlot]);
 
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
@@ -588,6 +578,8 @@ export default function Home() {
   const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const flightCat = getFlightCategory(effVisibility, effBase, effCoverage);
+  const flybyAllowed = isFlybyWeatherAllowed(weather, flightCat);
+  useEffect(()=>{ flybyAllowedRef.current = flybyAllowed; },[flybyAllowed]);
   const moonInfo = useMemo(() => {
     const m = getMoonPhase(now);
     if (debugMoon) {
@@ -601,7 +593,7 @@ export default function Home() {
 
   const activeWallpaper=active==="a"?aScene:bScene;
   return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{(isFlybyWeatherAllowed(weather, flightCat) || debugFlybyEnabled === true) && activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong><strong>JULIAN {julian4(now)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
