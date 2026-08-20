@@ -13,6 +13,7 @@ import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestamp
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
 import { isFlybyWeatherAllowed } from "./flyby";
+import { applyNwsPrecipitation, parseNwsHourlyPrecipitation } from "./nwsPrecipitation";
 import { parseStandardWind, resolveCurrentWind, resolveCurrentWindDisplay, type CurrentWindRecord } from "./currentWind";
 import { formatForecastProbability, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
 import { resolveLightningDisplay, resolveWxAlertDisplay } from "./alertPresentation";
@@ -53,7 +54,10 @@ type OpsBoardWeather = {
 // deliberately separate from weather parsing so animation layers never re-parse METAR.
 type SceneModel = { baseScene:string; cloudCoverage:CloudCoverage; cloudBaseFt:number|null; phenomena:string[]; intensity:"light"|"moderate"|"heavy"; vicinityOnly:boolean; windDirectionDeg:number|null; windSpeedKt:number; gustKt:number|null; visibilitySm:number|null; timePhase:Phase };
 
-const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:2, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json" };
+const CONFIG = { title:"AIRFIELD OPERATIONS", airportCode:"KMEM", locationName:"Memphis, Tennessee", latitude:35.0424, longitude:-89.9767, timeZone:"America/Chicago", weatherRefreshMinutes:2, opsBoardWeatherUrl:"https://btenner1013.github.io/kmem-ops-board/weather.json",
+  // Gridpoint for the KMEM coordinates, resolved once because the field does not move.
+  // Re-derive with: https://api.weather.gov/points/35.0424,-89.9767 -> properties.forecastHourly
+  nwsHourlyUrl:"https://api.weather.gov/gridpoints/MEG/45,62/forecast/hourly" };
 const FALLBACK_WIND:CurrentWindRecord={directionType:"calm",directionDegrees:null,speedKt:0,gustKt:null,variableFromDegrees:null,variableToDegrees:null,source:"MODEL",observedAt:null,raw:"00000KT"};
 const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral", description:"Weather unavailable", currentWind:FALLBACK_WIND, humidity:0, sunriseLocal:"--:--", sunsetLocal:"--:--", solarDays:[], observationTime:"", forecast:[], operationalWeather:null, currentLightning:{...NO_LIGHTNING}, tafHazards:[], wxAlertText:"", wxAlertTone:"none", wxAlertPulse:false, wxAlertFlash:false, wxAlertVisible:false, birdRisk:"UNAVAILABLE", birdBasis:"—", birdUpdated:"—", source:"MODEL", cloudCoverage:"CLR", cloudBaseFt:null, visibilitySm:null, phenomena:[], metarObsIso:null, tafIssueIso:null, tafValidStartIso:null, tafValidEndIso:null, metarFetchStatus:"UNKNOWN", tafFetchStatus:"UNKNOWN", bwcFetchStatus:"UNKNOWN", feedStatus:"DEGRADED", requestStatus:"IDLE", lastRefreshAttemptIso:null, lastRefreshSuccessIso:null, feedError:"NO DATA" };
 const DEBUG_THEMES: Theme[] = ["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset"];
@@ -207,9 +211,18 @@ function resolveCurrentLightning(ops:OpsBoardWeather, metarFallback:LightningRep
 }
 async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   const feed=fetch(`${CONFIG.opsBoardWeatherUrl}?v=${Date.now()}_${Math.random().toString(36).slice(2)}`,{cache:"no-store",signal}).then(async response=>{if(!response.ok) throw new Error(`FEED HTTP ${response.status}`);const json:unknown=await response.json();if(!isOpsBoardWeather(json)) throw new Error("MALFORMED FEED");return json;});
-  const [modelResult,feedResult]=await Promise.allSettled([getModelWeather(signal),feed]);
+  // NWS gridpoint PoP is preferred over the model's own: it is the product line the KMEM TAF
+  // is written against. A failure here is not a weather failure, so it degrades to the
+  // Open-Meteo PoP already on the rows rather than blanking the forecast card.
+  const nws=fetch(CONFIG.nwsHourlyUrl,{signal,headers:{Accept:"application/geo+json"}}).then(async response=>{
+    if(!response.ok) throw new Error(`NWS HTTP ${response.status}`);
+    return parseNwsHourlyPrecipitation(await response.json(),new Date().toISOString());
+  });
+  const [modelResult,feedResult,nwsResult]=await Promise.allSettled([getModelWeather(signal),feed,nws]);
   if(signal?.aborted) throw new DOMException("Weather refresh aborted","AbortError");
-  const modelValid=modelResult.status==="fulfilled", model=modelValid?modelResult.value:{...FALLBACK};
+  const modelValid=modelResult.status==="fulfilled", modelWeather=modelValid?modelResult.value:{...FALLBACK};
+  const nwsSamples=nwsResult.status==="fulfilled"?nwsResult.value:[];
+  const model=nwsSamples.length?{...modelWeather,forecast:applyNwsPrecipitation(modelWeather.forecast,nwsSamples)}:modelWeather;
   if(feedResult.status==="rejected") return {weather:{...model,feedStatus:"DEGRADED",feedError:feedResult.reason instanceof Error?feedResult.reason.message:"FEED FETCH FAILED"},metarValid:false,tafValid:false,modelValid,windValid:false,feedReached:false};
   const ops=feedResult.value, rawMetar=ops.metar||"", rawTaf=ops.taf||"", reference=new Date();
   const metarSyntax=/\b(?:(?:METAR|SPECI)\s+)?KMEM\b/.test(rawMetar.toUpperCase())&&!/UNAVAILABLE|ERROR/.test(rawMetar.toUpperCase());
