@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  formatForecastProbability,
   formatPrecipitationDisplay,
+  normalizeTafProbability,
   HOURLY_PRECIPITATION_COVERAGE_MS,
   matchPeriodPrecipitation,
   normalizeFutureSkyDisplay,
@@ -181,4 +183,31 @@ test("model timestamps are absolute, never a whole series shifted by one fixed o
   // Local wall-clock strings are formatted per-instant in the configured zone.
   assert.match(page,/Intl\.DateTimeFormat\("en-US",\{timeZone:CONFIG\.timeZone,hourCycle:"h23"/);
   assert.match(page,/solarDays:SolarDay\[\]=j\.daily\.time\.map\(\(seconds:number,i:number\)=>\(\{date:dateKey\(/);
+});
+
+test("a row states the probability that belongs to the words beside it",()=>{
+  // A PROB group wins the row, so the forecaster's own figure is shown, not a model PoP
+  // that answers a different question and disagrees with the label.
+  assert.equal(formatForecastProbability(30,17),"PROB30");
+  assert.equal(formatForecastProbability(40,8),"PROB40");
+  assert.equal(formatForecastProbability(30,null),"PROB30");
+
+  // Every other row keeps the hourly model PoP, including an explicit zero.
+  assert.equal(formatForecastProbability(null,17),"17% PRECIP");
+  assert.equal(formatForecastProbability(undefined,0),"0% PRECIP");
+  assert.equal(formatForecastProbability(null,null),"—% PRECIP");
+
+  // Only the two probabilities a TAF can carry are honored; anything else is not a
+  // forecaster figure and must not be printed as one.
+  for(const bogus of [0,15,100,"30",NaN,true]) {
+    assert.equal(normalizeTafProbability(bogus),null);
+    assert.equal(formatForecastProbability(bogus,17),"17% PRECIP");
+  }
+  assert.equal(normalizeTafProbability(30),30);
+  assert.equal(normalizeTafProbability(40),40);
+});
+
+test("the forecast row reads its probability from the winning group",()=>{
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  assert.match(page,/const precipText=formatForecastProbability\(f\.operationalWeather\?\.probability,f\.precipitationProbability\);/);
 });

@@ -158,6 +158,24 @@ export function formatPrecipitationDisplay(value:unknown):string {
   return probability===null?"—% PRECIP":`${probability}% PRECIP`;
 }
 
+/** TAF probability groups are only ever PROB30 or PROB40. */
+const TAF_PROBABILITIES=new Set([30,40]);
+
+export function normalizeTafProbability(value:unknown):number|null {
+  return typeof value==="number"&&TAF_PROBABILITIES.has(value)?value:null;
+}
+
+/**
+ * A row states one probability: the one that belongs to the words printed beside it.
+ * When a PROB group wins the row, its label came from the forecaster, so the forecaster's
+ * own figure is shown in TAF form rather than a model PoP that answers a different
+ * question and will disagree. Every other row falls back to the hourly model PoP.
+ */
+export function formatForecastProbability(tafProbability:unknown, modelProbability:unknown):string {
+  const taf=normalizeTafProbability(tafProbability);
+  return taf===null?formatPrecipitationDisplay(modelProbability):`PROB${taf}`;
+}
+
 function normalizeTime(value:string|number|Date|null|undefined):{iso:string;milliseconds:number}|null {
   if(value===null||value===undefined||value==="") return null;
   const milliseconds=value instanceof Date?value.getTime():typeof value==="number"?value:Date.parse(value);

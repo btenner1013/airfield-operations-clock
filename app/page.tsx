@@ -14,7 +14,7 @@ import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchRes
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
 import { isFlybyWeatherAllowed } from "./flyby";
 import { parseStandardWind, resolveCurrentWind, resolveCurrentWindDisplay, type CurrentWindRecord } from "./currentWind";
-import { formatPrecipitationDisplay, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
+import { formatForecastProbability, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
 import { resolveLightningDisplay, resolveWxAlertDisplay } from "./alertPresentation";
 
 type Phase = SolarPhase;
@@ -877,7 +877,7 @@ export default function Home() {
                 // The row is a narrow three-up tile, so a phenomenon uses its aviation short form
                 // ("LT TSTMS WITH RAIN"); the long label belongs to the wider Current Weather card.
                 const conditionLabel=f.operationalWeather?(f.operationalWeather.code?f.operationalWeather.shortLabel:skyDisplay.headline):f.description;
-                const precipText=formatPrecipitationDisplay(f.precipitationProbability);
+                const precipText=formatForecastProbability(f.operationalWeather?.probability,f.precipitationProbability);
                 const cigText=skyDisplay.detail;
 
                 return (
