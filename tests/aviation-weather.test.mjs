@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   applyStructuredTaf,
   choosePrimaryOperationalWeather,
@@ -488,4 +489,24 @@ test("sky inheritance never overwrites a group that reported its own sky",()=>{
   // Inheriting sky leaves the phenomenon untouched.
   assert.equal(withInheritedSky(showers,prevailing).code,"-SHRA");
   assert.equal(withInheritedSky(showers,prevailing).condition,"rain");
+});
+
+test("forecast rows use the aviation short form so a long phenomenon cannot overflow the tile",()=>{
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  const css=readFileSync(new URL("../app/layout-tuning.css",import.meta.url),"utf8");
+  // The three-up tile is narrow; the long label belongs to the wider Current Weather card.
+  assert.match(page,/const conditionLabel=f\.operationalWeather\?\(f\.operationalWeather\.code\?f\.operationalWeather\.shortLabel:skyDisplay\.headline\):f\.description;/);
+  // Backstop: even an unforeseen label clips rather than running under the temperature.
+  assert.match(css,/\.forecast-condition \{[^}]*max-width: 100%;[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;/);
+
+  // The worst case the resolver can produce stays well under the long form it replaced.
+  const worst=resolveOperationalWeather({text:"+TSRAGR BKN030CB",sourceKind:"TAF_FM"});
+  assert.equal(worst.label,"HEAVY THUNDERSTORMS WITH RAIN AND HAIL");
+  assert.equal(worst.shortLabel,"HVY TSTMS W/ RAIN & HAIL");
+  assert.ok(worst.shortLabel.length<=24,`short form grew to ${worst.shortLabel.length} chars`);
+
+  // A cloud-only group still shows the readable sky headline, never a raw "BKN050".
+  const cloud=resolveOperationalWeather({text:"P6SM BKN050",sourceKind:"TAF_FM"});
+  assert.equal(cloud.code,null);
+  assert.equal(cloud.shortLabel,"BKN050");
 });

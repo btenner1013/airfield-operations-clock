@@ -874,7 +874,9 @@ export default function Home() {
                   cloudBaseFt:f.operationalWeather.cloudBaseFt,
                   cloudLayers:f.operationalWeather.cloudLayers
                 }:{skyCoverage:coverageFromCondition(f.condition),cloudBaseFt:null});
-                const conditionLabel=f.operationalWeather?(f.operationalWeather.code?f.operationalWeather.label:skyDisplay.headline):f.description;
+                // The row is a narrow three-up tile, so a phenomenon uses its aviation short form
+                // ("LT TSTMS WITH RAIN"); the long label belongs to the wider Current Weather card.
+                const conditionLabel=f.operationalWeather?(f.operationalWeather.code?f.operationalWeather.shortLabel:skyDisplay.headline):f.description;
                 const precipText=formatPrecipitationDisplay(f.precipitationProbability);
                 const cigText=skyDisplay.detail;
 

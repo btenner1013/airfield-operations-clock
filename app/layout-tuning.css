@@ -687,7 +687,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  flex-shrink: 0;
+  /* Never let a long phenomenon run under the temperature. Matches the guard already
+     on .forecast-meta-detail; flex-shrink here only ever applied to the cross axis. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .forecast-meta-detail {
   font-size: clamp(10.5px, 0.7vw, 13px);
