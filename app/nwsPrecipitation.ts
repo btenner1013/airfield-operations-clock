@@ -86,3 +86,15 @@ export function applyNwsPrecipitation<T extends PrecipitationRow>(rows:readonly 
     };
   });
 }
+
+/**
+ * One-line provenance for the footer. The gridpoint is pinned to a fixed grid, so a
+ * re-grid or endpoint change would otherwise downgrade every row to model PoP forever
+ * with nothing on the board saying so.
+ */
+export function describePrecipitationSource(rows:readonly Pick<PrecipitationRow,"precipitationProbability"|"precipitationSource">[]):string {
+  const sourced=rows.filter(row=>row.precipitationProbability!==null&&(row.precipitationSource||"").trim());
+  if(!sourced.length) return "POP UNAVAILABLE";
+  const names=[...new Set(sourced.map(row=>String(row.precipitationSource).trim().toUpperCase()))];
+  return names.length===1&&names[0]===NWS_PRECIPITATION_SOURCE?"POP NWS":`POP ${names.join("/")}`;
+}

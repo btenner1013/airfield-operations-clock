@@ -13,7 +13,7 @@ import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestamp
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
 import { isFlybyWeatherAllowed } from "./flyby";
-import { applyNwsPrecipitation, parseNwsHourlyPrecipitation } from "./nwsPrecipitation";
+import { applyNwsPrecipitation, describePrecipitationSource, parseNwsHourlyPrecipitation } from "./nwsPrecipitation";
 import { parseStandardWind, resolveCurrentWind, resolveCurrentWindDisplay, type CurrentWindRecord } from "./currentWind";
 import { formatForecastProbability, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
 import { resolveLightningDisplay, resolveWxAlertDisplay } from "./alertPresentation";
@@ -584,6 +584,9 @@ export default function Home() {
   const metarDiagnostic=metarState==="UNAVAILABLE"?"METAR UNAVAILABLE":`METAR ${aviationStamp(weather.metarObsIso)} · AGE ${ageStr} · ${metarState}`;
   const tafDiagnostic=tafState==="UNAVAILABLE"?"TAF UNAVAILABLE":`TAF ${aviationStamp(weather.tafIssueIso)} · ${tafState==="CURRENT"?`VALID TO ${aviationStamp(weather.tafValidEndIso)}`:tafState}`;
   const feedDiagnostic=feed==="OK"?`FEED OK · UPDATED ${aviationStamp(weather.lastRefreshSuccessIso)}`:`FEED ${feed} · LAST OK ${aviationStamp(weather.lastRefreshSuccessIso)}`;
+  // PoP silently falls back to the model when the pinned gridpoint stops answering, so the
+  // source is stated here rather than leaving a quiet downgrade invisible on the board.
+  const popDiagnostic=describePrecipitationSource(weather.forecast);
   const birdRisk=debugBird||weather.birdRisk;
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const clockZ=clock.lastCheckedUtc?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(clock.lastCheckedUtc)).replace(":","")+"Z":"—";
@@ -913,7 +916,7 @@ export default function Home() {
       </section>
       <footer>
         <span className={`clock-status clock-${clockClass}`}><i/> {clockText}</span>
-        <span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span></span>
+        <span className={`wx-diagnostics clock-status clock-${wxClass}`}><i/><span>{metarDiagnostic}</span><span>{tafDiagnostic}</span><span>{feedDiagnostic}</span><span>{popDiagnostic}</span></span>
         <span>PRESS F11 FOR FULL SCREEN</span>
       </footer>
     </div>

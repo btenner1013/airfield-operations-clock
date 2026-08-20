@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { NWS_PRECIPITATION_SOURCE, applyNwsPrecipitation, parseNwsHourlyPrecipitation } from "../app/nwsPrecipitation.ts";
+import { NWS_PRECIPITATION_SOURCE, applyNwsPrecipitation, describePrecipitationSource, parseNwsHourlyPrecipitation } from "../app/nwsPrecipitation.ts";
 import { matchPeriodPrecipitation } from "../app/futureWeather.ts";
 
 const FETCHED="2026-08-20T01:20:00.000Z";
@@ -82,4 +82,22 @@ test("the gridpoint is fetched alongside the other feeds and never blocks them",
   assert.match(page,/const nwsSamples=nwsResult\.status==="fulfilled"\?nwsResult\.value:\[\];/);
   // The swap happens before anything reads model.forecast, so the TAF builder aggregates it.
   assert.ok(page.indexOf("applyNwsPrecipitation(modelWeather.forecast,nwsSamples)")<page.indexOf("applyStructuredTaf(model.forecast"));
+});
+
+test("the footer states which source the PoP came from so a fallback is not silent",()=>{
+  const r=(probability,source)=>({precipitationProbability:probability,precipitationSource:source});
+  assert.equal(describePrecipitationSource([r(3,"NWS"),r(48,"NWS")]),"POP NWS");
+  // A gridpoint that stopped answering downgrades every row and now says so.
+  assert.equal(describePrecipitationSource([r(8,"Open-Meteo"),r(17,"Open-Meteo")]),"POP OPEN-METEO");
+  // Partial gridpoint coverage is reported as the mix it is.
+  assert.equal(describePrecipitationSource([r(3,"NWS"),r(17,"Open-Meteo")]),"POP NWS/OPEN-METEO");
+  // Rows with no usable figure never imply a working source.
+  assert.equal(describePrecipitationSource([]),"POP UNAVAILABLE");
+  assert.equal(describePrecipitationSource([r(null,"NWS"),r(null,null)]),"POP UNAVAILABLE");
+});
+
+test("the PoP source is rendered in the footer diagnostics strip",()=>{
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  assert.match(page,/const popDiagnostic=describePrecipitationSource\(weather\.forecast\);/);
+  assert.match(page,/<span>\{feedDiagnostic\}<\/span><span>\{popDiagnostic\}<\/span>/);
 });
