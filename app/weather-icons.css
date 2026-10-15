@@ -1,0 +1,8 @@
+/* Phenomenon-specific icons inherit the existing current/forecast pictogram size.
+   These static source SVGs do not change any clock, card, or typography rules. */
+.wx-pictogram.wxp-phenomenon .wxp-source-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}

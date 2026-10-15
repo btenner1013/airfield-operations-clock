@@ -1,0 +1,25 @@
+/* Weather-only overrides. Original airport imagery, UI and flyby stay intact.
+   Photographic sky and atmosphere/precipitation layers share one animation loop. */
+.display[data-weather-renderer="cinematic"] .cloud-field,
+.display[data-weather-renderer="cinematic"] .obscuration-field,
+.display[data-weather-renderer="cinematic"] .lightning-layer { display:none!important; }
+.display[data-weather-renderer="cinematic"] .sky-base {
+  /* Restore crossfade after the old lightning sheet replaced its transition declaration. */
+  transition:opacity 6s ease,filter 3s ease;
+  animation:none!important;transform:none;
+}
+.display[data-weather-renderer="cinematic"] .photographic-sky-canvas { position:absolute;inset:0;z-index:0;pointer-events:none; }
+/* All flash illumination is spatially contained in the atmosphere canvas. */
+.display[data-weather-renderer="cinematic"] .precip-canvas { z-index:2; }
+/* The original clock-band CSS mask remains on atmosphere/precipitation only. */
+.fxlab-note{margin:8px 0;color:#bed3e0;font-size:10px;line-height:1.5}
+.fxlab-presets{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.fxlab-presets button{border:1px solid #446171;border-radius:4px;background:#142a37;color:#edf6fb;padding:6px 8px;font:inherit;cursor:pointer}
+.fxlab-presets button:hover,.fxlab-presets button:focus-visible{background:#284a5e;outline:1px solid #8ad9ff}
+/* Preview controls remain absent on the normal clock; keep the live reset reachable. */
+.fxlab > header { position: sticky; top: 0; z-index: 1; background: #08141c; }
+.fxlab a:focus-visible, .fxlab button:focus-visible { outline: 2px solid #8ad9ff; outline-offset: 2px; }
+@media (max-width: 720px) {
+  .fxlab button, .fxlab a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; box-sizing: border-box; }
+  .fxlab > header { gap: 6px; flex-wrap: wrap; }
+}

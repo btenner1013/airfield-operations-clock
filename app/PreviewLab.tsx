@@ -1,6 +1,7 @@
 "use client";
 // Preview-only controls and diagnostics. The real feed, clock and scene defaults are untouched.
 import { useEffect, useState } from "react";
+import { WEATHER_DEMOS, type WeatherDemo } from "./weatherController";
 
 type Preset=[label:string,query:string];
 const SNOW:Preset[]=[
@@ -71,9 +72,14 @@ const SOLAR:Preset[]=[
   ["Day (Noon)","debugTime=day"],
   ["Sunrise","debugTime=sunrise"],
   ["Sunset","debugTime=sunset"],
+  ["New Moon","debugTime=night&debugMoonPhase=new"],
   ["Crescent Moon","debugTime=night&debugMoonPhase=crescent"],
   ["Quarter Moon","debugTime=night&debugMoonPhase=quarter"],
+  ["Waxing Gibbous","debugTime=night&debugMoonPhase=gibbous"],
   ["Full Moon","debugTime=night&debugMoonPhase=full"],
+  ["Waning Gibbous","debugTime=night&debugMoonPhase=waning-gibbous"],
+  ["Last Quarter","debugTime=night&debugMoonPhase=last-quarter"],
+  ["Waning Crescent","debugTime=night&debugMoonPhase=waning-crescent"],
 ];
 const FLIGHT_CAT:Preset[]=[
   ["VFR (10SM / 8000FT)","debugVisibility=10&debugCloudBase=8000&debugCloud=FEW"],
@@ -86,22 +92,35 @@ const BWC:Preset[]=[
   ["BWC MODERATE","debugBwc=moderate"],
   ["BWC SEVERE","debugBwc=severe"],
 ];
+const WIND:Preset[]=[
+  ["GUSTING", "debugWindMode=gust"],
+  ["VARIABLE SECTOR", "debugWindMode=sector"],
+  ["VRB", "debugWindMode=variable"],
+  ["CALM", "debugWindMode=calm"],
+  ["NORTH 359°", "debugWind=359&debugWindSpeed=8"],
+];
+const WX_ALERT:Preset[]=[
+  ["NONE", "debugWxAlert=none"],
+  ["INFORMATION", "debugWxAlert=info"],
+  ["CAUTION", "debugWxAlert=caution"],
+  ["WARNING", "debugWxAlert=warning"],
+];
 const FLYBY:Preset[]=[
   ["DAY LTR","debugTime=day&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1"],
   ["NIGHT RTL","debugTime=night&debugFlyby=on&debugFlybyDir=rtl&spawnFlyby=1"],
-  ["TWILIGHT LTR","debugTime=twilight&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1"],
+  ["TWILIGHT LTR","debugTime=sunset&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1"],
   ["SPAWN NOW","debugFlyby=on&spawnFlyby=1"],
   ["FLYBY OFF","debugFlyby=off"],
 ];
 
-export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boolean;paneDrops:boolean|null;onPaneToggle:(v:boolean|null)=>void}){
-  const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(true);
+export default function PreviewLab({active,paneDrops,onPaneToggle,onWeatherDemo,quality,onQuality}:{active:boolean;paneDrops:boolean|null;onPaneToggle:(v:boolean|null)=>void;onWeatherDemo:(v:WeatherDemo)=>void;quality:"full"|"low";onQuality:(v:"full"|"low")=>void}){
+  const [d,setD]=useState<Record<string,string>>({}),[hidden,setHidden]=useState(false),[diag,setDiag]=useState(false);
   useEffect(()=>{if(!active)return;const read=()=>{const m=document.querySelector("main.display") as HTMLElement|null,c=document.querySelector(".precip-canvas") as HTMLElement|null;if(!m)return;setD({
     precip:m.dataset.precipType||"none",secondary:m.dataset.secondaryPrecipType||"none",intensity:m.dataset.precipIntensity||"--",
     vis:m.dataset.visibility||"--",coverage:m.dataset.coverage||"--",tier:m.dataset.tier||"--",scene:m.dataset.wallpaperScene||"--",perf:m.dataset.performance||"--",reduced:m.dataset.reducedMotion==="1"?"yes":"no",
     obsc:m.dataset.obscuration||"none",density:m.dataset.obscurationDensity||"0",horizon:m.dataset.obscurationHorizon||"0",veil:m.dataset.obscurationVeil||"0",layers:m.dataset.activeObscurationLayers||"0",
     wind:`${m.dataset.winddir||"VRB"}deg ${m.dataset.wind||0}kt / vec ${m.dataset.nx??""},${m.dataset.ny??""}`,
-    count:c?.dataset.count||"0",primary:c?.dataset.primaryCount||"0",secondaryCount:c?.dataset.secondaryCount||"0",average:c?.dataset.averageSize||"0",near:c?.dataset.nearCount||"0",band:c?.dataset.verticalBand||"none",modulation:c?.dataset.modulation||"steady",canvas:c?.dataset.active==="1"?"ACTIVE":"idle",fps:c?.dataset.fps||"--",
+    count:c?.dataset.count||"0",primary:c?.dataset.primaryCount||"0",secondaryCount:c?.dataset.secondaryCount||"0",average:c?.dataset.averageSize||"0",near:c?.dataset.nearCount||"0",band:c?.dataset.verticalBand||"none",modulation:c?.dataset.modulation||"steady",canvas:c?.dataset.active==="1"?"ACTIVE":"idle",fps:c?.dataset.fps||"--",renderMs:c?.dataset.renderMs||"--",quality:c?.dataset.quality||"--",adaptive:c?.dataset.adaptive==="1"?" (adaptive)":"",running:c?.dataset.running||"0",
     drops:c?.dataset.dropCount||"0",rolling:c?.dataset.dropRolling||"0",profile:c?.dataset.paneProfile||"none",trails:c?.dataset.trails==="1"?"on":"off",pane:c?.dataset.pane==="1"?"on":"off",
     cssW:c?.dataset.canvasCssWidth||"--",cssH:c?.dataset.canvasCssHeight||"--",bufW:c?.dataset.canvasBufferWidth||"--",bufH:c?.dataset.canvasBufferHeight||"--",dpr:c?.dataset.canvasDpr||"--",
     lightning:`${m.dataset.lightningLevel||"none"} / ${m.dataset.lightningSource||"none"}`,lightningDetail:`${m.dataset.lightningFrequency||"none"} / ${m.dataset.lightningTypes||"none"} / ${m.dataset.lightningDirection||"none"}`,
@@ -110,14 +129,15 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
   if(!active)return null;
   const paneLabel=paneDrops===true?"ON":paneDrops===false?"OFF":"AUTO",cyclePane=()=>onPaneToggle(paneDrops===null?true:paneDrops===true?false:null);
   const links=(items:Preset[])=><nav>{items.map(([label,query])=><a key={label} href={`?${query}&previewWeatherFx=1`}>{label}</a>)}</nav>;
-  return <aside className="fxlab" aria-label="Weather FX Preview"><header><b>WEATHER FX PREVIEW</b><span><button onClick={()=>setDiag(v=>!v)}>{diag?"DIAG-":"DIAG+"}</button><button onClick={()=>setHidden(v=>!v)}>{hidden?"SHOW":"HIDE"}</button></span></header>{!hidden&&<div className="fxlab-body">
-    <div className="fxlab-toggle"><button onClick={cyclePane} className={paneDrops===false?"off":""}>WINDOW DROPLETS: {paneLabel}</button></div>
+  return <aside className="fxlab" aria-label="Weather FX Preview"><header><b>WEATHER FX PREVIEW</b><span><a href="?" title="Clear preview overrides and return to live">LIVE</a><button onClick={()=>setDiag(v=>!v)}>{diag?"DIAG-":"DIAG+"}</button><button onClick={()=>setHidden(v=>!v)}>{hidden?"SHOW":"HIDE"}</button></span></header>{!hidden&&<div className="fxlab-body">
+    <p className="fxlab-note">SIMULATED WEATHER · live observations keep updating independently</p><nav className="fxlab-presets">{WEATHER_DEMOS.map(demo=><button key={demo.label} onClick={()=>onWeatherDemo(demo)}>{demo.label}</button>)}</nav><div className="fxlab-toggle"><button onClick={()=>onQuality(quality==="full"?"low":"full")}>QUALITY: {quality.toUpperCase()} · switch comparison</button></div><div className="fxlab-toggle"><button onClick={cyclePane} className={paneDrops===false?"off":""}>WINDOW DROPLETS: {paneLabel}</button></div>
     {diag&&<dl>
       <div><dt>PRECIP</dt><dd>{d.precip} + {d.secondary} / {d.intensity}</dd></div>
       <div><dt>PARTICLES</dt><dd>{d.count} total / {d.primary}+{d.secondaryCount}</dd></div>
       <div><dt>SIZE</dt><dd>{d.average}px avg / {d.near} near</dd></div>
       <div><dt>BAND / MODULATION</dt><dd>{d.band} / {d.modulation}</dd></div>
       <div><dt>CANVAS</dt><dd>{d.canvas} / {d.fps} fps</dd></div>
+      <div><dt>RENDER / QUALITY</dt><dd>{d.renderMs} ms / {d.quality}{d.adaptive} / loop {d.running}</dd></div>
       <div><dt>OBSCURATION</dt><dd>{d.obsc} / {d.density} / {d.layers}L</dd></div>
       <div><dt>FOG DEPTH</dt><dd>horizon {d.horizon} / veil {d.veil}</dd></div>
       <div><dt>WALLPAPER</dt><dd>{d.scene}</dd></div>
@@ -129,6 +149,6 @@ export default function PreviewLab({active,paneDrops,onPaneToggle}:{active:boole
       <div><dt>WIND</dt><dd>{d.wind}</dd></div><div><dt>PERF / REDUCED</dt><dd>{d.perf} / {d.reduced}</dd></div>
       <div><dt>LIGHTNING</dt><dd>{d.lightning}</dd></div><div><dt>LTG DETAIL</dt><dd>{d.lightningDetail}</dd></div><div><dt>LTG VISUAL</dt><dd>{d.lightningVisual}</dd></div>
     </dl>}
-    <h4>C-17 FLYBY SIMULATOR</h4>{links(FLYBY)}<h4>SOLAR / TIME OF DAY</h4>{links(SOLAR)}<h4>FLIGHT CATEGORY</h4>{links(FLIGHT_CAT)}<h4>BIRD WATCH CONDITION</h4>{links(BWC)}<h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
+    <h4>WIND</h4>{links(WIND)}<h4>WEATHER ALERTS</h4>{links(WX_ALERT)}<h4>C-17 FLYBY SIMULATOR</h4>{links(FLYBY)}<h4>SOLAR / TIME OF DAY</h4>{links(SOLAR)}<h4>FLIGHT CATEGORY</h4>{links(FLIGHT_CAT)}<h4>BIRD WATCH CONDITION</h4>{links(BWC)}<h4>CURRENT LIGHTNING</h4>{links(LIGHTNING)}<h4>SNOW COMPARISON</h4>{links(SNOW)}<h4>FROZEN PRECIPITATION</h4>{links(FROZEN)}<h4>RAIN / WINDOW PANE</h4>{links(RAIN)}<h4>VISIBILITY / OBSCURATION</h4>{links(VISIBILITY)}<h4>SCENE / PERFORMANCE</h4>{links(SCENE)}<nav><a href="?">LIVE</a></nav>
   </div>}</aside>;
 }

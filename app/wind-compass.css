@@ -1,0 +1,52 @@
+/* A readable wind instrument inside the existing card; no rail or clock changes. */
+.wind-card { container-type: inline-size; }
+.wind-card .wind-main-stacked { justify-content: center; gap: 6px; padding-top: 6px; }
+.wind-instrument { width: 100%; color: #eef8fc; }
+.wind-instrument-body { display: grid; grid-template-columns: minmax(68px, 1.05fr) minmax(62px, .9fr); align-items: center; gap: 8px; }
+.wind-dial-wrap { display: flex; justify-content: center; min-width: 0; }
+.wind-dial { display: block; width: 100%; max-width: 122px; overflow: visible; }
+.wind-dial-face { fill: #061016; fill-opacity: .9; stroke: #587a89; stroke-width: 1; }
+.wind-dial-inner { stroke: #6c8b98; stroke-opacity: .25; stroke-width: .6; }
+.wind-dial-tick { stroke: #718c98; stroke-width: .8; }
+.wind-dial-tick.major { stroke: #bdd1dc; stroke-width: 1.1; }
+.wind-dial-cardinals { font: 800 11px/1 Consolas, monospace; text-anchor: middle; fill: #d8e8ee; }
+.wind-dial-north { fill: var(--cyan); }
+.wind-needle { transform-origin: 60px 60px; transition: transform .7s ease-in-out; }
+.wind-from-marker { fill: #f5fbff; stroke: #061016; stroke-width: 1; }
+.wind-flow-line { stroke: var(--cyan); stroke-width: 2.4; stroke-linecap: round; }
+.wind-flow-head { fill: var(--cyan); stroke: var(--cyan); stroke-linejoin: round; }
+.wind-pivot { fill: #061016; stroke: var(--cyan); stroke-width: 1.6; }
+.wind-sector-arc { stroke: #f1bd6d; stroke-width: 4; stroke-linecap: round; opacity: .85; }
+.wind-calm-ring, .wind-calm-center { stroke: #b8d9d5; stroke-width: 1.5; }
+.wind-calm-center { fill: #b8d9d5; }
+.wind-variable-ring { stroke: #f1bd6d; stroke-width: 1.6; stroke-dasharray: 4 5; }
+.wind-dial-state { fill: #b9cbd2; text-anchor: middle; font: 700 13px Consolas, monospace; }
+.wind-reading { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; text-align: left; font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
+.wind-from-label { color: #b8d0dc; font-size: clamp(9px, 4.2cqw, 12px); font-weight: 700; letter-spacing: .05em; white-space: nowrap; }
+.wind-bearing { color: #f5fbff; font-size: clamp(19px, 10cqw, 30px); line-height: 1; font-weight: 800; letter-spacing: -.025em; white-space: nowrap; }
+.wind-speed { display: flex; align-items: baseline; gap: 5px; margin-top: 4px; }
+.wind-speed strong { color: var(--cyan); font-size: clamp(23px, 11.5cqw, 36px); font-weight: 800; line-height: 1; }
+.wind-speed > span { color: #bdd3df; font-size: clamp(10px, 4cqw, 12px); font-weight: 700; }
+.wind-gust { color: #f1bd6d; font-size: clamp(9px, 4.5cqw, 13px); font-weight: 700; white-space: nowrap; }
+.wind-gust strong { font-size: 1.15em; }
+.wind-instrument-detail { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font: 700 clamp(8px, 3.7cqw, 10px)/1.15 Consolas, monospace; letter-spacing: .025em; }
+.wind-direction-key { color: #c1d3dd; }
+.wind-observation { color: #9fb6c2; }
+.wind-state-stale .wind-bearing, .wind-state-stale .wind-observation { color: #f1bd6d; }
+.wind-state-unavailable .wind-bearing, .wind-state-unavailable .wind-speed strong, .wind-state-stale .wind-speed strong { color: #a9bac4; }
+.wind-state-unavailable .wind-dial-cardinals, .wind-state-stale .wind-dial-cardinals { opacity: .5; }
+.wind-needle.is-reduced { transition: none; }
+@media (prefers-reduced-motion: reduce) { .wind-needle { transition: none; } }
+@media (min-width: 2560px), (min-height: 1400px) { .wind-dial { max-width: 142px; } }
+@media (max-height: 700px) and (min-width: 721px) {
+  .wind-card .wind-main-stacked { gap: 2px; padding-top: 3px; }
+  .wind-dial { max-width: 74px; }
+  .wind-instrument-detail { flex-direction: row; justify-content: center; gap: 5px; font-size: 7px; }
+  .wind-bearing { font-size: 18px; }
+  .wind-speed { margin-top: 0; }
+  .wind-speed strong { font-size: 22px; }
+  .wind-gust { font-size: 8px; }
+  .wind-card .wind-flight-meta-centered { height: 25px; }
+  .wind-card .flight-cat-pill { padding: 3px 8px; font-size: 13px; }
+  .wind-card .wind-vis-tag, .wind-card .wind-vis-tag strong { font-size: 13px; }
+}

@@ -25,8 +25,8 @@
 .display[data-lightning-bolt="1"][data-lightning-level="severe"] .lightning-bolt-overlay{opacity:.96}
 
 .sky-base{transition:filter 160ms ease-out}
-.display[data-lightning-pulse="1"] .sky-base{filter:brightness(0.48) contrast(1.18) saturate(0.85);transition:filter 35ms ease-out}
-.display[data-lightning-pulse="2"] .sky-base{filter:brightness(0.62) contrast(1.1) saturate(0.88);transition:filter 35ms ease-out}
+.display:not([data-weather-renderer="cinematic"])[data-lightning-pulse="1"] .sky-base{filter:brightness(0.48) contrast(1.18) saturate(0.85);transition:filter 35ms ease-out}
+.display:not([data-weather-renderer="cinematic"])[data-lightning-pulse="2"] .sky-base{filter:brightness(0.62) contrast(1.1) saturate(0.88);transition:filter 35ms ease-out}
 .display[data-lightning-reduced="1"] .sky-base{filter:none!important;transition:none!important}
 
 /* Reduced motion keeps only a faint, non-animated atmospheric cue. */

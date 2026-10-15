@@ -83,9 +83,9 @@ test("low-performance and reduced-motion paths reduce particle work and motion",
   assert.ok(low.count<full.count&&low.count<=240);assert.ok(reduced.count<full.count&&reduced.speed<full.speed);assert.equal(reduced.near,false);assert.equal(reduced.burst,false);
 });
 
-test("weather effects keep one canvas, one animation loop and no legacy particle DOM",()=>{
+test("weather effects keep two compositing layers, one animation loop and no legacy particle DOM",()=>{
   const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8"),canvas=readFileSync(new URL("../app/PrecipCanvas.tsx",import.meta.url),"utf8"),weather=readFileSync(new URL("../app/weatherFx.ts",import.meta.url),"utf8");
-  assert.equal((page.match(/<PrecipCanvas\b/g)||[]).length,1);assert.equal((canvas.match(/<canvas\b/g)||[]).length,1);assert.equal((canvas.match(/const frame=/g)||[]).length,1);
+  assert.equal((page.match(/<PrecipCanvas\b/g)||[]).length,1);assert.equal((canvas.match(/<canvas\b/g)||[]).length,2);assert.match(canvas,/className="photographic-sky-canvas"/);assert.match(canvas,/className="precip-canvas"/);assert.equal((canvas.match(/const frame=/g)||[]).length,1);
   assert.doesNotMatch(page,/className="(?:rain-field|snow-field|glass-droplets|weather-fx|fog-layer)"/);
   assert.equal((page.match(/className="obscuration-field"/g)||[]).length,1);assert.equal((page.match(/className="sky-base"/g)||[]).length,2);assert.equal((page.match(/className="cloud-field"/g)||[]).length,1);
   assert.doesNotMatch(canvas,/setInterval|setTimeout|useState/);assert.doesNotMatch(weather,/setInterval|setTimeout|requestAnimationFrame|document\./);

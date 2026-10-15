@@ -34,7 +34,7 @@ const WX_TOKEN=/^(?:[+-]|VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:(?:DZ|RA|SN|SG|IC|PL
 
 export function extractAviationPhenomena(text:string):string[] {
   const core=(text||"").toUpperCase().split(/\sRMK\s/)[0], found:string[]=[];
-  for(const token of core.split(/\s+/).map(t=>t.replace(/[.,]$/,""))) if(token!=="NSW"&&(WX_TOKEN.test(token)||/^(?:VC)?(?:TS|SH)$/.test(token))) found.push(token);
+  for(const token of core.split(/\s+/).map(t=>t.replace(/[.,;=]+$/,""))) if(token!=="NSW"&&(WX_TOKEN.test(token)||/^(?:VC)?(?:TS|SH)$/.test(token))) found.push(token);
   return [...new Set(found)];
 }
 
@@ -42,7 +42,7 @@ export function parseAviationSky(text:string):AviationSky {
   const core=(text||"").toUpperCase().split(/\sRMK\s/)[0], layers:CloudLayer[]=[];
   const layer=/\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b/g; let match:RegExpExecArray|null;
   while((match=layer.exec(core))) layers.push({coverage:match[1] as CloudCoverage,baseFt:Number(match[2])*100,summary:match[0]});
-  const vv=core.match(/\bVV(\d{3}|\/{3})\b/); if(vv) layers.push({coverage:"VV",baseFt:vv[1]==="///"?null:Number(vv[1])*100,summary:vv[0]});
+  const vv=core.match(/\bVV(\d{3}|\/{3})(?=\s|[=.,;]|$)/); if(vv) layers.push({coverage:"VV",baseFt:vv[1]==="///"?null:Number(vv[1])*100,summary:vv[0]});
   const ceilings = layers.filter(l => ["BKN", "OVC", "VV"].includes(l.coverage));
   ceilings.sort((a,b) => (a.baseFt??Infinity) - (b.baseFt??Infinity));
   const nonCeilings = layers.filter(l => !["BKN", "OVC", "VV"].includes(l.coverage));
@@ -71,7 +71,7 @@ function categoryFor(code:string):WeatherCategory {
   const c=code.replace(/^[+-]/,"").replace(/^VC/,"");
   if(/TS/.test(c)) return "thunderstorm";
   if(/FC|SQ|GR|GS/.test(c)) return "severe-convection";
-  if(/FZ(?:RA|DZ)/.test(c)) return "freezing-precipitation";
+  if(/FZ(?:RA|DZ|UP)/.test(c)) return "freezing-precipitation";
   if(/SN|SG|PL|IC/.test(c)) return "winter-precipitation";
   if(/RA|DZ|UP|SH/.test(c)) return "liquid-precipitation";
   if(/BR|FG|FU|VA|DU|SA|HZ|PY|PO|DS|SS/.test(c)) return "obscuration";
@@ -87,35 +87,26 @@ function intensityFor(code:string,category:WeatherCategory):"light"|"moderate"|"
 function decodeSingleCode(token: string): { label: string; short: string } {
   const intensity = token.startsWith("+") ? "HEAVY" : token.startsWith("-") ? "LIGHT" : "";
   const clean = token.replace(/^[+-]/, "");
+  const qualified = (label:string, short=label) => ({label:intensity?`${intensity} ${label}`:label,short:intensity?`${intensity === "LIGHT" ? "LT" : "HVY"} ${short}`:short});
+  if(clean.startsWith("VC")&&clean!=="VCTS"&&clean!=="VCSH") {
+    const nearby=decodeSingleCode(clean.slice(2));
+    return {label:`${nearby.label} IN THE VICINITY`,short:`VICINITY ${nearby.short}`};
+  }
   
   if (clean === "FC") return { label: token.startsWith("+") ? "TORNADO" : "FUNNEL CLOUD", short: token.startsWith("+") ? "TORNADO" : "FUNNEL CLOUD" };
   if (clean === "SQ") return { label: "SQUALL", short: "SQUALL" };
-  if (clean === "UP") return { label: "UNKNOWN PRECIPITATION", short: "UNKNOWN PRECIP" };
-  if (clean === "TS") return { label: "THUNDERSTORMS", short: "TSTMS" };
+  if (clean === "UP") return qualified("UNKNOWN PRECIPITATION", "UNKNOWN PRECIP");
+  if (clean === "TS") return qualified("THUNDERSTORMS", "TSTMS");
   if (clean === "VCTS") return { label: "THUNDERSTORMS IN THE VICINITY", short: "VICINITY TSTMS" };
   if (clean.includes("TS")) {
-    const hasHail = /GR/.test(clean);
-    const hasSmallHail = /GS/.test(clean);
-    const hasSnow = /SN/.test(clean);
-    const hasRain = /RA/.test(clean);
-    
     let base = "THUNDERSTORMS";
     let shortBase = "TSTMS";
-    if (hasRain && hasHail) {
-      base += " WITH RAIN AND HAIL";
-      shortBase += " W/ RAIN & HAIL";
-    } else if (hasRain) {
-      base += " WITH RAIN";
-      shortBase += " WITH RAIN";
-    } else if (hasSnow) {
-      base += " WITH SNOW";
-      shortBase += " WITH SNOW";
-    } else if (hasHail) {
-      base += " WITH HAIL";
-      shortBase += " WITH HAIL";
-    } else if (hasSmallHail) {
-      base += " WITH SMALL HAIL";
-      shortBase += " W/ SMALL HAIL";
+    const names:Record<string,string>={RA:"RAIN",SN:"SNOW",PL:"ICE PELLETS",GR:"HAIL",GS:"SMALL HAIL",UP:"UNKNOWN PRECIPITATION"};
+    const parts=[...new Set(clean.replace(/^TS/,"").match(/RA|SN|PL|GR|GS|UP/g)||[])].map(code=>names[code]);
+    if(parts.length) {
+      base+=` WITH ${parts.join(" AND ")}`;
+      const shortParts=parts.map(part=>part==="UNKNOWN PRECIPITATION"?"UNKNOWN PRECIP":part);
+      shortBase+=parts.length>1||parts[0]==="SMALL HAIL"?` W/ ${shortParts.join(" & ")}`:` WITH ${shortParts[0]}`;
     }
     
     const fullLabel = intensity ? `${intensity} ${base}` : base;
@@ -143,7 +134,7 @@ function decodeSingleCode(token: string): { label: string; short: string } {
       short: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} FREEZING RAIN` : "FREEZING RAIN"
     };
   }
-  if (clean === "FZDZ") return { label: "FREEZING DRIZZLE", short: "FREEZING DRIZZLE" };
+  if (clean === "FZDZ") return qualified("FREEZING DRIZZLE");
   
   if (clean === "RA") {
     return {
@@ -171,13 +162,13 @@ function decodeSingleCode(token: string): { label: string; short: string } {
     };
   }
   if (clean === "DRSN") return { label: "DRIFTING SNOW", short: "DRIFTING SNOW" };
-  if (clean === "SG") return { label: "SNOW GRAINS", short: "SNOW GRAINS" };
-  if (clean === "IC") return { label: "ICE CRYSTALS", short: "ICE CRYSTALS" };
-  if (clean === "PL") return { label: "ICE PELLETS", short: "ICE PELLETS" };
-  if (clean === "GR") return { label: "HAIL", short: "HAIL" };
-  if (clean === "GS") return { label: "SMALL HAIL", short: "SMALL HAIL" };
+  if (clean === "SG") return qualified("SNOW GRAINS");
+  if (clean === "IC") return qualified("ICE CRYSTALS");
+  if (clean === "PL") return qualified("ICE PELLETS");
+  if (clean === "GR") return qualified("HAIL");
+  if (clean === "GS") return qualified("SMALL HAIL");
   
-  if (clean === "RASN" || clean === "SNRA") return { label: "RAIN AND SNOW", short: "RAIN AND SNOW" };
+  if (clean === "RASN" || clean === "SNRA") return qualified("RAIN AND SNOW");
   
   if (clean === "BR") return { label: "MIST", short: "MIST" };
   if (clean === "FG") return { label: "FOG", short: "FOG" };
@@ -196,6 +187,16 @@ function decodeSingleCode(token: string): { label: string; short: string } {
   if (clean === "DS") return { label: "DUST STORM", short: "DUST STORM" };
   if (clean === "SS") return { label: "SANDSTORM", short: "SANDSTORM" };
   if (clean === "VA") return { label: "VOLCANIC ASH", short: "VOLCANIC ASH" };
+  if (clean === "PO") return { label: "DUST/SAND WHIRLS", short: "DUST/SAND WHIRLS" };
+  if (clean === "PY") return { label: "SPRAY", short: "SPRAY" };
+
+  // A weather group can contain several precipitation types, with one descriptor.
+  const mixed=clean.match(/^(SH|FZ)?((?:DZ|RA|SN|SG|IC|PL|GR|GS|UP){1,3})$/);
+  if(mixed) {
+    const names:Record<string,string>={DZ:"DRIZZLE",RA:"RAIN",SN:"SNOW",SG:"SNOW GRAINS",IC:"ICE CRYSTALS",PL:"ICE PELLETS",GR:"HAIL",GS:"SMALL HAIL",UP:"UNKNOWN PRECIPITATION"};
+    const parts=[...new Set(mixed[2].match(/.{2}/g)||[])].map(code=>`${mixed[1]==="FZ"&&["DZ","RA","UP"].includes(code)?"FREEZING ":""}${names[code]}`);
+    return qualified(`${parts.join(" AND ")}${mixed[1]==="SH"?" SHOWERS":""}`);
+  }
   
   return { label: token, short: token };
 }
@@ -203,43 +204,47 @@ function decodeSingleCode(token: string): { label: string; short: string } {
 export function resolvePhenomenaLabels(codes: string[]): { label: string; shortLabel: string; secondaryLabel: string | null } {
   if (!codes || !codes.length) return { label: "CLEAR", shortLabel: "CLR", secondaryLabel: null };
   const upperCodes = codes.map(c => c.toUpperCase());
+  const sorted = [...upperCodes].sort((a,b)=>CATEGORY_RANK[categoryFor(b)]-CATEGORY_RANK[categoryFor(a)]||({heavy:3,moderate:2,light:1}[intensityFor(b,categoryFor(b))||"light"]-({heavy:3,moderate:2,light:1}[intensityFor(a,categoryFor(a))||"light"])));
+  const bare=(code:string)=>code.replace(/^[+-]/,"");
+  const secondaryFor=(remaining:string[]):string|null=>{
+    if(!remaining.length) return null;
+    const detail=resolvePhenomenaLabels(remaining);
+    return [...new Set([detail.label,detail.secondaryLabel].filter((value):value is string=>!!value))].join(" · ");
+  };
+  // Mixed winter wording must never conceal a higher-priority tornado or thunderstorm.
+  const mayCombine=CATEGORY_RANK[categoryFor(sorted[0])]<CATEGORY_RANK.thunderstorm;
   
-  const hasFzra = upperCodes.some(c => c.includes("FZRA"));
-  const hasPl = upperCodes.some(c => c.includes("PL"));
-  if (hasFzra && hasPl) {
-    return { label: "FREEZING RAIN AND ICE PELLETS", shortLabel: "FZRA + ICE PELLETS", secondaryLabel: null };
+  const freezingMix=["FZRA","PL","FZRAPL"];
+  const hasFzra = upperCodes.some(c => ["FZRA","FZRAPL"].includes(bare(c)));
+  const hasPl = upperCodes.some(c => ["PL","FZRAPL"].includes(bare(c)));
+  if (mayCombine && hasFzra && hasPl) {
+    const intensity=sorted[0].startsWith("+")?"HEAVY":sorted[0].startsWith("-")?"LIGHT":"";
+    return { label: `${intensity?`${intensity} `:""}FREEZING RAIN AND ICE PELLETS`, shortLabel: `${intensity?`${intensity==="LIGHT"?"LT":"HVY"} `:""}FZRA + ICE PELLETS`, secondaryLabel: secondaryFor(sorted.filter(c=>!freezingMix.includes(bare(c)))) };
   }
   
   const snToken = codes.find(c => c.toUpperCase().replace(/^[+-]/, "") === "SN");
   const hasBlsn = upperCodes.some(c => c === "BLSN");
-  if (snToken && hasBlsn) {
+  if (mayCombine && ["SN","BLSN"].includes(bare(sorted[0])) && snToken && hasBlsn) {
     const intensity = snToken.startsWith("+") ? "HEAVY" : snToken.startsWith("-") ? "LIGHT" : "";
     const base = "SNOW AND BLOWING SNOW";
     const shortBase = "SNOW & BLOWING SNOW";
     return {
       label: intensity ? `${intensity} ${base}` : base,
       shortLabel: intensity ? `${intensity === "LIGHT" ? "LT" : "HVY"} ${shortBase}` : shortBase,
-      secondaryLabel: null
+      secondaryLabel: secondaryFor(sorted.filter(c=>!["SN","BLSN"].includes(bare(c))))
     };
   }
   
   const hasRa = upperCodes.some(c => c.replace(/^[+-]/, "") === "RA");
   const hasSn = upperCodes.some(c => c.replace(/^[+-]/, "") === "SN");
-  const hasRasn = upperCodes.some(c => c === "RASN" || c === "SNRA");
-  if ((hasRa && hasSn) || hasRasn) {
-    return { label: "RAIN AND SNOW", shortLabel: "RAIN AND SNOW", secondaryLabel: null };
+  const hasRasn = upperCodes.some(c => ["RASN","SNRA"].includes(c.replace(/^[+-]/,"")));
+  if (mayCombine && ["RA","SN","RASN","SNRA"].includes(bare(sorted[0])) && ((hasRa && hasSn) || hasRasn)) {
+    const intensity=sorted[0].startsWith("+")?"HEAVY":sorted[0].startsWith("-")?"LIGHT":"";
+    return { label: `${intensity?`${intensity} `:""}RAIN AND SNOW`, shortLabel: `${intensity?`${intensity==="LIGHT"?"LT":"HVY"} `:""}RAIN AND SNOW`, secondaryLabel: secondaryFor(sorted.filter(c=>!["RA","SN","RASN","SNRA"].includes(bare(c)))) };
   }
-  
-  const sorted = [...codes].sort((a,b)=>CATEGORY_RANK[categoryFor(b)]-CATEGORY_RANK[categoryFor(a)]||({heavy:3,moderate:2,light:1}[intensityFor(b,categoryFor(b))||"light"]-({heavy:3,moderate:2,light:1}[intensityFor(a,categoryFor(a))||"light"])));
   const primaryToken = sorted[0];
-  const secondaryToken = sorted[1];
   const primary = decodeSingleCode(primaryToken);
-  
-  let secondaryLabel: string | null = null;
-  if (secondaryToken) {
-    const secDecoded = decodeSingleCode(secondaryToken);
-    secondaryLabel = secDecoded.label;
-  }
+  const secondaryLabel = secondaryFor(sorted.slice(1));
   
   return {
     label: primary.label,
@@ -362,7 +367,14 @@ export function qualifiesForTafHazardBand(weather:OperationalWeather):boolean {
   const visibility=weather.visibilitySm;
   const restrictiveVisibility=visibility!==null&&visibility<3;
   const restrictiveCeiling=weather.cloudBaseFt!==null&&weather.cloudBaseFt<1000&&["BKN","OVC","VV"].includes(weather.cloudCoverage||"");
-  if(/(?:^|\s)(?:[+-]|VC)?(?:TS(?:RA|SN|GR|GS)?|FC|SQ|GR|GS|FZRA|FZDZ|(?:SH|BL|DR)?SN|PL|DS|SS|VA)(?:\s|$)/.test(joined)) return true;
+  // Evaluate complete, already-supported groups instead of a single-phenomenon whitelist.
+  // Compounds such as TSRAGR, SHGR, RASN and FZRAPL retain their constituent hazards.
+  if(codes.some(token=>{
+    const c=token.toUpperCase();
+    if(!(WX_TOKEN.test(c)||/^(?:VC)?TS$/.test(c))) return false;
+    const bare=c.replace(/^[+-]/,"").replace(/^VC/,"");
+    return /^TS/.test(bare)||/FC|SQ|GR|GS|SN|PL|DS|SS|VA/.test(bare)||/^FZ(?:RA|DZ|UP)/.test(bare);
+  })) return true;
   if(/(?:^|\s)\+(?:SH)?RA(?:\s|$)/.test(joined)) return true;
   if(/(?:^|\s)(?:-)?(?:SH)?RA(?:\s|$)/.test(joined)&&visibility!==null&&visibility<=5) return true;
   if(/(?:^|\s)(?:FZ)?(?:MI|BC|PR)?FG(?:\s|$)/.test(joined)) return true;
@@ -423,6 +435,16 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
     if (fromMs > windowStartMs && fromMs <= windowEnd) {
       transitionTimes.add(fromMs);
     }
+  }
+  // An overlay ending is also a weather transition: return to the concurrent
+  // prevailing group instead of displaying TEMPO/PROB weather past its end.
+  for(const p of timeline.overlays) {
+    const toMs=Date.parse(p.toIso);
+    if(toMs<=windowStartMs||toMs>windowEnd||!timeline.prevailing.some(base=>isTafPeriodActive(base,toMs))) continue;
+    const periods=[...timeline.prevailing,...timeline.overlays];
+    const before=choosePrimaryOperationalWeather(periods.filter(period=>isTafPeriodActive(period,toMs-1)).map(period=>period.weather));
+    const after=choosePrimaryOperationalWeather(periods.filter(period=>isTafPeriodActive(period,toMs)).map(period=>period.weather));
+    if(before!==after) transitionTimes.add(toMs);
   }
 
   const sortedTransitions = Array.from(transitionTimes).sort((a,b) => a - b);

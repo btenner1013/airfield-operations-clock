@@ -10,12 +10,12 @@ test("WX alert band consumes one normalized Ops Board display result",()=>{
   assert.match(page,/alertDisplay\.shouldPulse/);
   assert.match(page,/alertDisplay\.shouldFlash/);
   assert.match(page,/alertDisplay\.colorClass\.replace\("alert-",""\)/);
-  assert.match(page,/data-tone=\{hazardTone\}/);
+  assert.match(page,/tone=\{hazardTone\}/);
   assert.doesNotMatch(page,/weather\.wxAlertVisible\?weather\.wxAlertTone:lightning\.tone/);
   assert.doesNotMatch(page,/taf-hazard-band[^\n]+style=\{\{/);
 });
 
-test("clock uses the Ops Board alert palette, font, and timing",()=>{
+test("legacy Ops Board palette and keyframes remain available to the shared warning treatment",()=>{
   assert.match(css,/\.taf-hazard-band\[data-tone="blue"\][^{]*\{[^}]*#35b7ff/);
   assert.match(css,/\.taf-hazard-band\[data-tone="yellow"\][^{]*\{[^}]*#ffcc00/);
   assert.match(css,/\.taf-hazard-band\[data-tone="red"\][^{]*\{[^}]*#ff4444/);

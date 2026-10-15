@@ -1,0 +1,29 @@
+/* Shared alert instrument: source words, tones and motion cadence are unchanged.
+   Labels and report/feed status remain steady while only the warning body animates. */
+.weather-card .ops-warning, .forecast-card .ops-warning { text-align: left; }
+.forecast-card .ops-warning { margin-top: 7px; }
+.ops-warning .ops-warning-text { font-size: clamp(13px, 4.25cqw, 19px) !important; }
+.ops-warning .ops-warning-label { font-size: clamp(8px, 2.5cqw, 10px) !important; }
+.ops-warning .ops-warning-status, .ops-warning .ops-warning-note { font-size: clamp(7px, 2.3cqw, 9px) !important; }
+.ops-warning[data-kind="current"].alert-pulse .ops-warning-body { animation: opsAlertPulse .95s ease-in-out infinite; }
+.ops-warning[data-kind="weather"].alert-pulse .ops-warning-body { animation: opsAlertPulse .82s ease-in-out infinite; }
+.ops-warning.alert-flash .ops-warning-body { animation: opsAlertFlash 1s step-start infinite; }
+[data-reduced-motion="1"] .ops-warning .ops-warning-body { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .ops-warning .ops-warning-body { animation: none !important; }
+}
+@media (min-width: 2560px), (min-height: 1400px) {
+  .ops-warning { padding: 10px 12px !important; gap: 8px !important; }
+  .ops-warning .ops-warning-text { font-size: 24px !important; }
+  .ops-warning .ops-warning-label { font-size: 13px !important; }
+  .ops-warning .ops-warning-status, .ops-warning .ops-warning-note { font-size: 11px !important; }
+  .ops-warning .ops-warning-icon { font-size: 26px !important; }
+}
+@media (max-height: 700px) and (min-width: 721px) {
+  .ops-warning { padding: 4px 6px !important; gap: 3px !important; }
+  .forecast-card .ops-warning { margin-top: 4px; }
+  .ops-warning .ops-warning-text { font-size: 11px !important; }
+  .ops-warning .ops-warning-label { font-size: 7px !important; }
+  .ops-warning .ops-warning-status, .ops-warning .ops-warning-note { font-size: 6px !important; }
+  .ops-warning .ops-warning-icon { font-size: 13px !important; }
+}

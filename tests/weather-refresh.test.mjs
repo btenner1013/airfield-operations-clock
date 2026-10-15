@@ -215,6 +215,13 @@ test("failed wallpaper load does not replace active scene", () => {
 test("parseTimeMinutes correctly parses 24-hour AM times without adding 12 hours", () => {
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(page, /if\s*\(!pm\s*&&\s*!am\s*&&\s*h\s*<\s*7\)\s*h\s*\+=\s*12/);
-  assert.match(page, /DAYLIGHT ELAPSED/);
+  assert.match(page, /<SolarLunarInstrument solar=\{effSolar\} moon=\{moonInfo\}/);
 });
 
+
+
+test("future-dated METAR status uses the same five-minute tolerance as observation instruments",()=>{
+  const now=Date.parse("2026-10-15T19:00:00Z");
+  for(const futureMs of [0,1,5*60000]) assert.deepEqual(classifyMetarFreshness(new Date(now+futureMs).toISOString(),now),{state:"CURRENT",ageMinutes:0});
+  for(const futureMs of [5*60000+1,6*60000,2*3600000]) assert.deepEqual(classifyMetarFreshness(new Date(now+futureMs).toISOString(),now),{state:"UNAVAILABLE",ageMinutes:null});
+});

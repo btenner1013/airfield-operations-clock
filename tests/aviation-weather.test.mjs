@@ -35,7 +35,7 @@ test("shared resolver covers ordered operational phenomenon families",()=>{
     ["+FC TSRA BKN010","severe-convection","TORNADO"],
     ["TSRAGR BKN010","thunderstorm","THUNDERSTORMS WITH RAIN AND HAIL"],
     ["+FZRA OVC008","freezing-precipitation","HEAVY FREEZING RAIN"],
-    ["-RASN BKN012","winter-precipitation","RAIN AND SNOW"],
+    ["-RASN BKN012","winter-precipitation","LIGHT RAIN AND SNOW"],
     ["+RA OVC015","liquid-precipitation","HEAVY RAIN"],
     ["2SM BR BKN005","obscuration","MIST"],
   ];
@@ -491,12 +491,14 @@ test("sky inheritance never overwrites a group that reported its own sky",()=>{
   assert.equal(withInheritedSky(showers,prevailing).condition,"rain");
 });
 
-test("forecast rows use the aviation short form so a long phenomenon cannot overflow the tile",()=>{
+test("forecast rows retain the aviation short form and secondary phenomenon detail",()=>{
   const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
   const css=readFileSync(new URL("../app/layout-tuning.css",import.meta.url),"utf8");
-  // The three-up tile is narrow; the long label belongs to the wider Current Weather card.
-  assert.match(page,/const conditionLabel=f\.operationalWeather\?\(f\.operationalWeather\.code\?f\.operationalWeather\.shortLabel:skyDisplay\.headline\):f\.description;/);
-  // Backstop: even an unforeseen label clips rather than running under the temperature.
+  // The primary stays compact while any supplied secondary phenomenon remains visible.
+  assert.match(page,/const conditionLabel=f\.operationalWeather\?\(f\.operationalWeather\.code\?/);
+  assert.match(page,/f\.operationalWeather\.shortLabel/);
+  assert.match(page,/f\.operationalWeather\.secondaryLabel \? ` · \$\{f\.operationalWeather\.secondaryLabel\}`/);
+  // The inherited clamp is superseded by scoped instrument wrapping in information-bar.css.
   assert.match(css,/\.forecast-condition \{[^}]*max-width: 100%;[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;/);
 
   // The worst case the resolver can produce stays well under the long form it replaced.

@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync,readdirSync } from "node:fs";
 import { join } from "node:path";
-import { compactLightningDisplay,createLightningScheduler,lightningAnimationEligible,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
+import { fileURLToPath } from "node:url";
+import { compactLightningDisplay,createLightningScheduler,lightningAnimationEligible,lightningForAnimation,lightningQuietRange,parseCurrentLightning } from "../app/lightning.ts";
 import { resolveLightningDisplay } from "../app/alertPresentation.ts";
 
 const metar=body=>parseCurrentLightning(`METAR KMEM 201853Z 18008KT 10SM ${body} 30/20 A2992`);
@@ -76,7 +77,7 @@ test("the live ops feed animates an observed field thunderstorm the same as a di
 });
 
 test("quiet ranges remain irregular, level-specific, and operationally restrained",()=>{
-  assert.deepEqual(lightningQuietRange("distant"),[20000,45000]);assert.deepEqual(lightningQuietRange("vicinity"),[10000,25000]);assert.deepEqual(lightningQuietRange("station"),[7000,18000]);assert.deepEqual(lightningQuietRange("severe"),[4000,12000]);
+  assert.deepEqual(lightningQuietRange("distant"),[20000,45000]);assert.deepEqual(lightningQuietRange("vicinity"),[10000,25000]);assert.deepEqual(lightningQuietRange("station"),[5000,12000]);assert.deepEqual(lightningQuietRange("severe"),[3000,7000]);
 });
 
 class FakeTimers {
@@ -108,7 +109,7 @@ test("one scheduler cancels hidden timers and restores only a future cluster",()
   scheduler.start();assert.equal(scheduler.pendingCount(),1);assert.equal(visibility.listeners.size,1);assert.equal(states.at(-1).pulse,0);
   visibility.visibilityState="hidden";visibility.fire();assert.equal(scheduler.pendingCount(),0);assert.equal(states.at(-1).active,false);
   visibility.visibilityState="visible";visibility.fire();assert.equal(scheduler.pendingCount(),1);assert.equal(states.at(-1).pulse,0);
-  timers.advance(6999);assert.equal(states.at(-1).pulse,0);timers.advance(1);assert.equal(states.at(-1).pulse,1);
+  timers.advance(4999);assert.equal(states.at(-1).pulse,0);timers.advance(1);assert.equal(states.at(-1).pulse,1);
   scheduler.stop();assert.equal(scheduler.pendingCount(),0);assert.equal(visibility.listeners.size,0);assert.equal(scheduler.isStopped(),true);
 });
 
@@ -130,16 +131,39 @@ test("integration keeps current lightning on METAR authority and TAF forecast-on
   assert.match(page,/currentLightning=parseCurrentLightning\(raw\)/);assert.doesNotMatch(page,/parseCurrentLightning\(rawTaf\)/);assert.match(page,/currentLightning:metar\?\.currentLightning\?\?model\.currentLightning/);
   assert.equal((page.match(/useLightningScheduler\(mainRef/g)||[]).length,1);assert.doesNotMatch(hook,/requestAnimationFrame|setInterval/);assert.match(hook,/visibilityTarget:document/);
   assert.doesNotMatch(css,/@keyframes/);assert.match(css,/\.lightning-awareness\{[^}]*font-family:Arial,sans-serif!important/);assert.match(css,/\.lightning-awareness\{[^}]*animation:none!important/);assert.match(css,/\.lightning-awareness\.alert-pulse\{animation:opsAlertPulse \.95s/);assert.match(css,/\.lightning-awareness\.alert-flash\{animation:opsAlertFlash 1s/);assert.ok(layout.lastIndexOf('".\/lightning.css"')>layout.lastIndexOf('".\/clock.css"'));
-  assert.doesNotMatch(page,/taf-hazard-band[^\n]+style=\{\{[^}]*#ffcc00/);assert.match(page,/data-tone=\{hazardTone\}/);
-  const roots=[new URL("../app",import.meta.url),new URL("../public",import.meta.url)];const source=[];for(const root of roots)for(const file of readdirSync(root)){if(/\.(?:ts|tsx|css|json|js)$/.test(file))source.push(readFileSync(join(root.pathname.slice(1),file),"utf8"));}
+  assert.doesNotMatch(page,/taf-hazard-band[^\n]+style=\{\{[^}]*#ffcc00/);assert.match(page,/tone=\{hazardTone\}/);
+  const roots=[new URL("../app",import.meta.url),new URL("../public",import.meta.url)];const source=[];for(const root of roots)for(const file of readdirSync(root)){if(/\.(?:ts|tsx|css|json|js)$/.test(file))source.push(readFileSync(join(fileURLToPath(root),file),"utf8"));}
   const forbidden=["manual","alert.json"].join("_");const closure=["FLT","LINE","CLOSED"].join(" ");assert.ok(source.every(text=>!text.includes(forbidden)&&!text.includes(closure)));
 });
 
 test("a quiet lightning report renders no awareness row at all",()=>{
   const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
   // The row is an exception line: "NONE" must never occupy space in Current Weather.
-  assert.match(page,/\{lightningDisplay\.severity!=="none"&&\(\s*<small className=\{`lightning-awareness/);
+  assert.match(page,/\{lightningDisplay\.severity!=="none"&&\(\s*<OperationalWarning kind="current"/);
   assert.equal(resolveLightningDisplay({text:null,level:"none",tone:"green"}).severity,"none");
   assert.equal(resolveLightningDisplay({text:"⚡ DSNT NE",level:"distant",tone:"yellow"}).severity,"caution");
   assert.equal(resolveLightningDisplay({text:"⛈️ TS OVR FIELD",level:"station",tone:"red"}).severity,"warning");
+});
+
+
+test("cached lightning expires visually during a sustained feed outage without mutating labels",()=>{
+  const now=Date.parse("2026-10-15T12:00:00Z");
+  const report={...station,sourceTime:"2026-10-15T10:44:00Z",isStale:false};
+  assert.equal(lightningForAnimation(report,null,now).isStale,true);
+  assert.equal(report.isStale,false);
+  assert.equal(lightningForAnimation({...report,sourceTime:"2026-10-15T11:30:00Z"},null,now).isStale,false);
+  assert.equal(lightningForAnimation({...report,sourceTime:null},"2026-10-15T11:30:00Z",now).isStale,false);
+  assert.equal(lightningForAnimation({...report,sourceTime:null},null,now).isStale,true);
+  assert.equal(lightningForAnimation({...report,source:"debug"},null,now).isStale,false);
+});
+
+
+test("even continuous severe animation keeps at most two pulse onsets in any second",()=>{
+  const timers=new FakeTimers(),events=[];
+  const report={...metar("+TSRA BKN015CB"),frequency:"continuous"};
+  const scheduler=createLightningScheduler(report,{random:()=>0,setTimer:timers.set,clearTimer:timers.clear,onState:s=>{if(s.pulse>0)events.push(timers.now);}});
+  scheduler.start();timers.advance(60000);scheduler.stop();
+  assert.ok(events.length>20);
+  for(const at of events)assert.ok(events.filter(t=>t>=at&&t<at+1000).length<=2);
+  assert.equal(timers.tasks.size,0);
 });

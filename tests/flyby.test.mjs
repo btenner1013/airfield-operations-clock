@@ -52,7 +52,7 @@ test("the launch decision is made once at spawn, never re-read mid-transit",()=>
   // A skipped slot must re-arm, otherwise blocked weather ends the schedule permanently.
   assert.match(page,/else setFlybySlot\(slot => slot \+ 1\);/);
   assert.match(page,/\}, \[activeFlyby, debugFlybyEnabled, triggerSpawn, flybySlot\]\);/);
-  // Cadence is deliberately unchanged: a 15-30s gap around a 12-18s transit.
+  // Launch gap stays 15–30s; the user-requested brisker transit is 9–13s.
   assert.match(page,/const delayMs = 15000 \+ Math\.random\(\) \* 15000;/);
-  assert.match(page,/const duration = 12 \+ Math\.random\(\) \* 6;/);
+  assert.match(page,/const duration = 9 \+ Math\.random\(\) \* 4;/);
 });

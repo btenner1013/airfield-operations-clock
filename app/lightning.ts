@@ -71,11 +71,11 @@ export function parseCurrentLightning(rawMetar:string):LightningReport {
   if (/^\s*TAF\b/i.test(rawMetar || "")) return {...NO_LIGHTNING};
   const upper=(rawMetar||"").toUpperCase();
   const split=upper.split(/\sRMK\s/,2), body=split[0]||"", remarks=split[1]||"", bodyTokens=cleanTokens(body);
-  const bodyThunder=bodyTokens.filter(token=>/^[+-]?TS(?:RA|SN|GR|GS){0,3}$/.test(token));
+  const bodyThunder=bodyTokens.filter(token=>/^[+-]?TS(?:RA|SN|PL|GR|GS|UP){0,3}$/.test(token));
   const severe=bodyThunder.find(token=>token.startsWith("+"));
   if(severe) return bodyReport(severe,"severe");
   if(bodyThunder.length) return bodyReport(bodyThunder[0],"station");
-  const vicinity=bodyTokens.find(token=>/^VCTS(?:RA|SN|GR|GS){0,3}$/.test(token));
+  const vicinity=bodyTokens.find(token=>/^VCTS(?:RA|SN|PL|GR|GS|UP){0,3}$/.test(token));
   if(vicinity) return bodyReport(vicinity,"vicinity");
 
   const remarkTokens=cleanTokens(remarks), lightningIndex=remarkTokens.findIndex(token=>/^LTG(?:IC|CC|CG|CA)*$/.test(token));
@@ -130,7 +130,7 @@ export type LightningSchedulerOptions={
 export type LightningScheduler={start:()=>void;stop:()=>void;pendingCount:()=>number;isStopped:()=>boolean};
 
 export function lightningQuietRange(level:LightningLevel, frequency:LightningFrequency=null):[number,number] {
-  let range:[number,number] = level==="distant"?[20000,45000]:level==="vicinity"?[10000,25000]:level==="station"?[7000,18000]:level==="severe"?[4000,12000]:[0,0];
+  let range:[number,number] = level==="distant"?[20000,45000]:level==="vicinity"?[10000,25000]:level==="station"?[5000,12000]:level==="severe"?[3000,7000]:[0,0];
   if(frequency==="frequent") return [Math.round(range[0]*0.45),Math.round(range[1]*0.45)];
   if(frequency==="continuous") return [Math.round(range[0]*0.22),Math.round(range[1]*0.22)];
   return range;
@@ -149,6 +149,15 @@ export function lightningAnimationEligible(report:LightningReport):boolean {
   return /^(?:VCTS|[+-]?TS)/.test(report.code||"");
 }
 
+/** Visual freshness only: cached storm reports must not flash indefinitely after an outage. */
+export function lightningForAnimation(report:LightningReport, fallbackObservation:string|null, nowMs:number):LightningReport {
+  if(report.source==="debug"||report.level==="none") return report;
+  const source=report.sourceTime?Date.parse(report.sourceTime):NaN;
+  const observed=Number.isFinite(source)?source:fallbackObservation?Date.parse(fallbackObservation):NaN;
+  const stale=!Number.isFinite(observed)||!Number.isFinite(nowMs)||nowMs-observed>75*60000||observed-nowMs>5*60000;
+  return stale?{...report,isStale:true}:report;
+}
+
 export function createLightningScheduler(report:LightningReport,options:LightningSchedulerOptions):LightningScheduler {
   const random=options.random||Math.random,setTimer=options.setTimer||setTimeout,clearTimer=options.clearTimer||clearTimeout,target=options.visibilityTarget;
   const animationEligible=lightningAnimationEligible(report);
@@ -162,10 +171,13 @@ export function createLightningScheduler(report:LightningReport,options:Lightnin
     if(stopped||!visible()){emit(false);return;} cluster++;
     const doublePulse=options.flashTest||random()<(report.level==="distant"?.25:report.level==="vicinity"?.52:report.level==="station"?.68:.85);
     const boltEligible=report.level==="station"||report.level==="severe"||(report.level==="distant"&&report.frequency==="frequent");
-    const bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.62:report.level==="distant"?.22:.38));
-    emit(true,1,bolt);later(()=>emit(true,0,false),115);
-    if(doublePulse){later(()=>emit(true,2,bolt&&(report.level==="severe"||report.level==="station")),235);later(()=>emit(true,0,false),345);}
-    later(()=>{emit(true,0,false);if(!options.flashTest)scheduleQuiet();},doublePulse?455:225);
+    const bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.82:report.level==="distant"?.22:.55));
+    const firstDuration=options.flashTest?115:90+Math.round(random()*65);
+    const secondStart=options.flashTest?235:firstDuration+95+Math.round(random()*85);
+    const secondDuration=options.flashTest?110:70+Math.round(random()*75);
+    emit(true,1,bolt);later(()=>emit(true,0,false),firstDuration);
+    if(doublePulse){later(()=>emit(true,2,bolt&&(report.level==="severe"||report.level==="station")),secondStart);later(()=>emit(true,0,false),secondStart+secondDuration);}
+    later(()=>{emit(true,0,false);if(!options.flashTest)scheduleQuiet();},doublePulse?secondStart+secondDuration+110:firstDuration+110);
   };
   const onVisibility=()=>{clearAll();emit(false);if(visible()&&!stopped)scheduleQuiet();};
   return {

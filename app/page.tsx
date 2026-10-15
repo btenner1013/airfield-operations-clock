@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
-import { buildFxSpec, buildObscurationSpec, classifyEffect, type Intensity } from "./weatherFx";
+import type { Intensity } from "./weatherFx";
+import { buildWeatherEffects, type WeatherDemo } from "./weatherController";
 import PrecipCanvas from "./PrecipCanvas";
 import PreviewLab from "./PreviewLab";
-import { NO_LIGHTNING, compactLightningDisplay, debugLightningReport, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningReport, type LightningTone } from "./lightning";
+import { NO_LIGHTNING, compactLightningDisplay, lightningForAnimation, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningReport, type LightningTone } from "./lightning";
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, parseAviationSky, parseStructuredTaf, resolveOperationalWeather } from "./aviationWeatherPriority";
 import { classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
@@ -14,7 +15,16 @@ import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchRes
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
 import { isFlybyWeatherAllowed } from "./flyby";
 import { applyNwsPrecipitation, describePrecipitationSource, parseNwsHourlyPrecipitation } from "./nwsPrecipitation";
-import { parseStandardWind, resolveCurrentWind, resolveCurrentWindDisplay, type CurrentWindRecord } from "./currentWind";
+import { parseStandardWind, resolveCurrentWind, type CurrentWindRecord } from "./currentWind";
+import WindInstrument from "./WindInstrument";
+import WeatherIcon from "./WeatherIcon";
+import SolarLunarInstrument from "./SolarLunarInstrument";
+import BirdWatchGlyph from "./BirdWatchGlyph";
+import OperationalWarning from "./OperationalWarning";
+import { describeForecastSources } from "./forecastPresentation";
+import { currentWeatherPresentation, currentLightningPresentation, lightningReportForDisplay } from "./currentWeatherPresentation";
+import { modelWeatherFromCode } from "./modelWeather";
+import { resolveMoonPreview, showLunarInformation } from "./solarLunar";
 import { formatForecastProbability, normalizeFutureSkyDisplay, normalizePrecipitationProbability } from "./futureWeather";
 import { resolveLightningDisplay, resolveWxAlertDisplay } from "./alertPresentation";
 
@@ -98,19 +108,8 @@ function getMoonPhase(date: Date): { phase: number; name: string } {
   return { phase: norm, name };
 }
 function bearingToCardinal(deg:number):string { const pts=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]; return pts[Math.round(deg/22.5)%16]; }
-function mapCode(code:number, wind:number): Pick<Weather,"condition"|"description"> {
-  if(code===0) return {condition:"clear",description:"Clear"};
-  if(code<=2) return {condition:"partly-cloudy",description:"Partly cloudy"};
-  if(code===3) return {condition:"overcast",description:"Overcast"};
-  if(code===45||code===48) return {condition:"fog",description:code===48?"Freezing fog":"Fog"};
-  if(code>=95) return {condition:"thunderstorm",description:code>=96?"Thunderstorm, hail":"Thunderstorm"};
-  if((code>=71&&code<=77)||code===85||code===86) return {condition:"snow",description:code===77?"Snow grains":code===75||code===86?"Heavy snow":"Snow"};
-  if(code===56||code===57) return {condition: code===57?"heavy-rain":"rain",description:"Freezing drizzle"};
-  if(code===66||code===67) return {condition: code===67?"heavy-rain":"rain",description:"Freezing rain"};
-  if(code>=51&&code<=55) return {condition:"rain",description:code===51?"Light drizzle":"Drizzle"};
-  if(code>=61&&code<=65) return {condition: (code===65||wind>20)?"heavy-rain":"rain",description:(code===65||wind>20)?"Heavy rain":"Rain"};
-  if(code>=80&&code<=82) return {condition: (code===82||wind>20)?"heavy-rain":"rain",description:(code===82||wind>20)?"Heavy rain":"Rain showers"};
-  return {condition:"overcast",description:"Cloudy"};
+function mapCode(code:number, _wind:number) {
+  return modelWeatherFromCode(code);
 }
 function coverageFromCondition(c:Theme):CloudCoverage { return c==="overcast"?"OVC":c==="partly-cloudy"?"SCT":c==="clear"?"CLR":c==="fog"?"OVC":"BKN"; }
 function phenomenaFromCondition(c:Theme):string[] { return c==="heavy-rain"?["+RA"]:c==="rain"?["RA"]:c==="snow"?["SN"]:c==="thunderstorm"?["TSRA"]:c==="fog"?["FG"]:[]; }
@@ -145,7 +144,6 @@ function cloudVector(dirDeg:number|null, speedKt:number, gustKt:number|null):{nx
   if(gustKt&&gustKt>s) dur=Math.round(dur*(1-Math.min(0.12,(gustKt-s)/200))); // gusts nudge slightly faster
   return {nx,ny,dur};
 }
-function detectPerf():"full"|"low" { if(typeof navigator==="undefined") return "full"; const c=navigator.hardwareConcurrency||8, m=(navigator as {deviceMemory?:number}).deviceMemory||8; return (c<=4||m<=4)?"low":"full"; }
 function signedCelsius(token:string) { return token.startsWith("M")?-Number(token.slice(1)):Number(token); }
 function cToF(c:number) { return Math.round((c*9/5)+32); }
 function parseMetar(raw:string) {
@@ -156,6 +154,7 @@ function parseMetar(raw:string) {
 // own. A single utc_offset_seconds applied to the whole series silently shifts every hour
 // after a DST transition, which the strict PoP period match then drops as unmatched.
 function localClock(epochSeconds:number):string {
+  if(!Number.isFinite(epochSeconds)) return "--:--";
   const date=new Date(Number(epochSeconds)*1000);
   if(!Number.isFinite(date.getTime())) return "--:--";
   const parts=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:CONFIG.timeZone,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(date).map(x=>[x.type,x.value]));
@@ -176,7 +175,7 @@ async function getModelWeather(signal?:AbortSignal):Promise<Weather> {
   const modelWindToken=windSpeedKt===0?"00000KT":`${String(normalizedDirection).padStart(3,"0")}${String(windSpeedKt).padStart(2,"0")}KT`;
   const currentWind=parseStandardWind(modelWindToken,"MODEL",currentIso)??FALLBACK_WIND;
   const solarDays:SolarDay[]=j.daily.time.map((seconds:number,i:number)=>({date:dateKey(new Date(Number(seconds)*1000),CONFIG.timeZone),sunriseLocal:tm(j.daily.sunrise[i]),sunsetLocal:tm(j.daily.sunset[i])}));
-  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,currentWind,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:currentIso,forecast,operationalWeather:null,currentLightning:{...NO_LIGHTNING},tafHazards:[],wxAlertText:"",wxAlertTone:"none",wxAlertPulse:false,wxAlertFlash:false,wxAlertVisible:false,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:phenomenaFromCondition(mapped.condition),metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,metarFetchStatus:"UNKNOWN",tafFetchStatus:"UNKNOWN",bwcFetchStatus:"UNKNOWN",feedStatus:"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:null};
+  return {temperatureF:Math.round(j.current.temperature_2m),feelsLikeF:Math.round(j.current.apparent_temperature),...mapped,currentWind,humidity:Math.round(j.current.relative_humidity_2m),sunriseLocal:solarDays[0]?.sunriseLocal||"--:--",sunsetLocal:solarDays[0]?.sunsetLocal||"--:--",solarDays,observationTime:currentIso,forecast,operationalWeather:null,currentLightning:{...NO_LIGHTNING},tafHazards:[],wxAlertText:"",wxAlertTone:"none",wxAlertPulse:false,wxAlertFlash:false,wxAlertVisible:false,birdRisk:"UNAVAILABLE",birdBasis:"—",birdUpdated:"—",source:"MODEL",cloudCoverage:coverageFromCondition(mapped.condition),cloudBaseFt:null,visibilitySm:null,phenomena:mapped.phenomena,metarObsIso:null,tafIssueIso:null,tafValidStartIso:null,tafValidEndIso:null,metarFetchStatus:"UNKNOWN",tafFetchStatus:"UNKNOWN",bwcFetchStatus:"UNKNOWN",feedStatus:"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:null};
 }
 function isOpsBoardWeather(value:unknown):value is OpsBoardWeather { return !!value&&typeof value==="object"&&(typeof (value as OpsBoardWeather).metar==="string"||typeof (value as OpsBoardWeather).taf==="string"); }
 function upstreamStatus(value:string|undefined) { return (value||"UNKNOWN").trim().toUpperCase(); }
@@ -244,10 +243,6 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   weather.currentLightning=resolveCurrentLightning(ops,weather.currentLightning);
   return {weather,metarValid,tafValid,modelValid,windValid,feedReached:true};
 }
-function WeatherIcon({condition,night=false}:{condition:Theme;night?:boolean}) {
-  const theme=condition==="clear"&&night?"night":condition;
-  return <i className={`wx-pictogram wxp-${theme} ${night?"wxp-nighttime":""}`} aria-hidden="true"><span className="wxp-sun"/><span className="wxp-moon"/><span className="wxp-cloud"/><span className="wxp-precip"><b/><b/><b/></span><span className="wxp-flakes"><b>✦</b><b>✦</b><b>✦</b></span><span className="wxp-bolt"/><span className="wxp-fog-lines"><b/><b/><b/></span></i>;
-}
 function isNightAt(time:string,sunrise:string,sunset:string) {
   const parse=(v:string)=>{
     const clean = v.replace(/[^0-9:]/g, "");
@@ -286,7 +281,11 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   const today=dateKey(now,CONFIG.timeZone), current=Number(nowParts.hour)*60+Number(nowParts.minute)+Number(nowParts.second||0)/60;
   const todayIndex=Math.max(0,days.findIndex(d=>d.date===today)), todaySolar=days[todayIndex]||{date:today,sunriseLocal:fallbackRise,sunsetLocal:fallbackSet};
   const todaySet=parseTimeMinutes(todaySolar.sunsetLocal), afterSunset=current>todaySet, selected=afterSunset?(days[todayIndex+1]||todaySolar):todaySolar;
-  const rise=parseTimeMinutes(selected.sunriseLocal), set=parseTimeMinutes(selected.sunsetLocal);
+  // Tomorrow supplies the next event captions and night endpoint, not today's day/night boundary.
+  const rise=parseTimeMinutes(todaySolar.sunriseLocal), set=todaySet;
+  const validSolarWindow=[todaySolar,selected].every(day=>
+    [day.sunriseLocal,day.sunsetLocal].every(value=>typeof value==="string"&&/^(?:(?:[01]?\d|2[0-3]):[0-5]\d|(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM))$/i.test(value.trim()))&&
+    parseTimeMinutes(day.sunsetLocal)>parseTimeMinutes(day.sunriseLocal));
   
   const daylight = current >= rise && current <= set;
   const activeObject = daylight ? "sun" : "moon";
@@ -312,7 +311,7 @@ function solarWindow(now:Date,nowParts:Record<string,string>,days:SolarDay[],fal
   }
   const safeX = Number.isFinite(markerX) ? markerX : 100;
   const safeY = Number.isFinite(markerY) ? markerY : 40;
-  return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress, markerX:safeX, markerY:safeY, isTomorrow:afterSunset};
+  return {phase, activeObject, sunrise:selected.sunriseLocal, sunset:selected.sunsetLocal, label:daylight?"DAYLIGHT":"MOON", daylight, progress:validSolarWindow?progress:NaN, markerX:safeX, markerY:safeY, isTomorrow:afterSunset};
 }
 function zStamp(value:string) {
   if (!value || value === "—") return "—";
@@ -349,7 +348,7 @@ export default function Home() {
     if (activeFlybyRemovalRef.current) window.clearTimeout(activeFlybyRemovalRef.current);
     const dir = forcedDir || debugFlybyDir || (Math.random() > 0.5 ? "ltr" : "rtl");
     const top = 9 + Math.random() * 7; // constrained to upper sky/header 9%-16%
-    const duration = 12 + Math.random() * 6; // fast 12s-18s transit
+    const duration = 9 + Math.random() * 4; // brisk 9s-13s transit
     const newId = Date.now();
     setActiveFlyby({ id: newId, top, direction: dir, duration });
     activeFlybyRemovalRef.current = window.setTimeout(() => {
@@ -381,20 +380,20 @@ export default function Home() {
   useEffect(()=>{
     const q=new URLSearchParams(location.search), sim=q.get("debugWeather") as Theme|null, simPhase=q.get("debugTime"), simBird=q.get("debugBwc")?.toUpperCase(), simMoon=q.get("debugMoonPhase"); if(sim&&DEBUG_THEMES.includes(sim)) setDebug(sim); if(simPhase==="day"||simPhase==="night"||simPhase==="sunrise"||simPhase==="sunset") setDebugPhase(simPhase); if(simBird==="LOW"||simBird==="MODERATE"||simBird==="SEVERE") setDebugBird(simBird); if(simMoon) setDebugMoon(simMoon);
     if(q.has("debugWeather")||q.has("debugTime")||q.has("debugBwc")||q.has("debugMoonPhase")||q.has("sim")||q.has("demo")) setShowSim(true);
-    const cc=q.get("debugCloud")?.toUpperCase(); if(cc&&["CLR","FEW","SCT","BKN","OVC","VV"].includes(cc)) setDebugCloud(cc as CloudCoverage);
+    const cc=q.get("debugCloud")?.toUpperCase().replace(/^SKC$/,"CLR"); if(cc&&["CLR","FEW","SCT","BKN","OVC","VV"].includes(cc)) setDebugCloud(cc as CloudCoverage);
     const cb=q.get("debugCloudBase"); if(cb!==null&&cb!=="") setDebugCloudBase(Number(cb));
     const wd=q.get("debugWind"); if(wd!==null&&wd!=="") setDebugWind(Number(wd));
     const ws=q.get("debugWindSpeed"); if(ws!==null&&ws!=="") setDebugWindSpeed(Number(ws));
     const windMode=q.get("debugWindMode"); if(windMode==="variable"||windMode==="calm"||windMode==="directional"||windMode==="gust"||windMode==="sector") setDebugWindMode(windMode);
     const wxAlert=q.get("debugWxAlert"); if(wxAlert==="none"||wxAlert==="info"||wxAlert==="caution"||wxAlert==="warning") setDebugWxAlert(wxAlert);
     if(q.get("debugFutureWeather")==="regression") setDebugFutureWeather(true);
-    const pf=q.get("debugPerformance"); setPerf(pf==="low"?"low":pf==="full"?"full":detectPerf());
+    const pf=q.get("debugPerformance"); setPerf(pf==="low"?"low":"full");
     const ph=q.get("debugPhenomena"); if(ph!==null&&ph!=="") setDebugPhenomena(ph);
     const it=q.get("debugIntensity"); if(it==="light"||it==="moderate"||it==="heavy") setDebugIntensity(it);
     const vv=q.get("debugVisibility"); if(vv!==null&&vv!=="") setDebugVisibility(Number(vv));
     const gu=q.get("debugGust"); if(gu!==null&&gu!=="") setDebugGust(Number(gu));
     const rm=q.get("debugReducedMotion"); setReduced(rm==="1"?true:rm==="0"?false:matchMedia("(prefers-reduced-motion: reduce)").matches);
-    if(q.get("previewWeatherFx")==="1") setShowPreview(true);
+    if(q.get("previewWeatherFx")==="1"||q.get("weatherDemo")==="1") setShowPreview(true);
     const pd=q.get("debugPaneDrops"); if(pd==="on") setPaneDrops(true); else if(pd==="off") setPaneDrops(false);
     const ltg=q.get("debugLightning"); if(ltg) setDebugLightning(ltg);
     const fb=q.get("debugFlyby"); if(fb==="off") setDebugFlybyEnabled(false); else if(fb==="on") setDebugFlybyEnabled(true);
@@ -436,7 +435,6 @@ export default function Home() {
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
   const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solar.phase);
   
-  const displayTheme=debug||weather.condition;
   const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:weather.condition;
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
   const sceneModel=buildScene(weather,condition,phase,!!debug);
@@ -459,7 +457,6 @@ export default function Home() {
     raw:"DEBUG"
   }:null;
   const effectiveWind=modeWind??numericWind??weather.currentWind;
-  const windDisplay=resolveCurrentWindDisplay(effectiveWind);
   const effWindDir=effectiveWind.directionDegrees;
   const effWindSpd=effectiveWind.speedKt;
   const effGust=effectiveWind.gustKt;
@@ -470,11 +467,20 @@ export default function Home() {
   // the single-canvas particle spec. Reduced motion suppresses animated precipitation particles.
   const effPhenomena=debugPhenomena!=null?debugPhenomena.toUpperCase().split(/\s+/).filter(Boolean):sceneModel.phenomena;
   const effVisibility=debugVisibility!=null?debugVisibility:sceneModel.visibilitySm;
-  const fxBase=classifyEffect(effPhenomena);
-  const fx={...fxBase,intensity:(debugIntensity||fxBase.intensity)};
-  const fxSpec=buildFxSpec(fx,cloudVec.nx,effWindSpd,perf,phase==="night",reduced,paneDrops,effVisibility);
-  const obscuration=buildObscurationSpec(fx,effVisibility,cloudVec.nx,effWindSpd,perf,reduced);
-  
+  const currentPresentation=currentWeatherPresentation({
+    condition:weather.condition,description:weather.description,operationalWeather:weather.operationalWeather,
+    simulated:Boolean((debug && !(["night","sunrise","sunset"] as Theme[]).includes(debug)) || debugPhenomena !== null || debugCloud !== null || debugCloudBase !== null),
+    phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
+  });
+  const lightning=currentLightningPresentation({preview:debugLightning,simulated:currentPresentation.simulated,phenomena:effPhenomena,live:weather.currentLightning});
+  const visualLightning=lightningForAnimation(lightning,weather.metarObsIso,now.getTime());
+  const lightningPoint=lightningPlacement(lightning),flashTest=debugLightning==="flash-test";
+  const {fx,spec:fxSpec,obscuration,atmosphere}=buildWeatherEffects({
+    phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
+    windDirection:effWindDir,windSpeed:effWindSpd,gust:effGust,lightning:visualLightning,night:phase==="night",
+    quality:perf,reduced,intensity:debugIntensity,paneDrops,available:condition!=="neutral"||!!debugPhenomena,
+  });
+
   // Solar phase (day, sunset, night, sunrise) strictly controls solar lighting.
   // High broken/overcast thin cirrus ceilings (effBase >= 12,000 FT) use the phase-appropriate
   // bright high-cloud / hazy night scene, reserving dark gloomy overcast scenes for genuinely low ceilings (< 5,000 FT).
@@ -486,8 +492,8 @@ export default function Home() {
   }
 
   const scene=sceneForEffects(visualBaseScene,obscuration.type,effVisibility,phase,effCoverage);
-  const lightning=debugLightningReport(debugLightning)??weather.currentLightning??NO_LIGHTNING, lightningPoint=lightningPlacement(lightning), flashTest=debugLightning==="flash-test";
-  const lightningDisplay=resolveLightningDisplay({text:lightning.awareness?compactLightningDisplay(lightning.awareness):"NONE",level:lightning.level,tone:lightning.tone,pulse:lightning.pulse,flash:lightning.flash,isStale:lightning.isStale,isUnavailable:lightning.isUnavailable,sourceTime:lightning.sourceTime,reducedMotion:reduced});
+  const displayLightning=lightningReportForDisplay(lightning,weather.metarObsIso,now.getTime());
+  const lightningDisplay=resolveLightningDisplay({text:lightning.awareness?compactLightningDisplay(lightning.awareness):"NONE",level:lightning.level,tone:lightning.tone,pulse:lightning.pulse,flash:lightning.flash,isStale:displayLightning.isStale,isUnavailable:lightning.isUnavailable,sourceTime:displayLightning.sourceTime,reducedMotion:reduced});
   const debugAlert=debugWxAlert?({
     none:{text:"NONE",tone:"none",pulse:false,flash:false,visible:false},
     info:{text:"🌧️ VCSH PSBL 29 JUL 05–06Z",tone:"blue",pulse:false,flash:false,visible:true},
@@ -505,7 +511,7 @@ export default function Home() {
     return {time:String(iso).slice(11,16),iso:String(iso),temperatureF:Number(temperatureF),condition:operationalWeather.condition,description:operationalWeather.label,precipitationProbability:Number(precipitationProbability),precipitationSource:"Open-Meteo",precipitationValidTime:String(iso),precipitationFetchedAt:"2026-08-05T19:00:00.000Z",precipitationAgeMinutes:0,source:"TAF" as const,operationalWeather};
   });
   const displayForecast=debugFutureWeather?regressionForecast:weather.forecast;
-  useLightningScheduler(mainRef,lightning,reduced,flashTest);
+  useLightningScheduler(mainRef,visualLightning,reduced,flashTest);
   const sceneStyle={...cloudStyle,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction,"--lightning-x":`${lightningPoint.x}%`,"--lightning-y":`${lightningPoint.y}%`} as unknown as CSSProperties;
   
   // Crossfade the wallpaper between two ping-pong layers using a race-safe state machine.
@@ -596,20 +602,25 @@ export default function Home() {
   const flightCat = getFlightCategory(effVisibility, effBase, effCoverage);
   const flybyAllowed = isFlybyWeatherAllowed(weather, flightCat);
   useEffect(()=>{ flybyAllowedRef.current = flybyAllowed; },[flybyAllowed]);
-  const moonInfo = useMemo(() => {
-    const m = getMoonPhase(now);
-    if (debugMoon) {
-      m.name = `${debugMoon.toUpperCase()} MOON`;
-      if (debugMoon === "crescent") m.phase = 0.12;
-      else if (debugMoon === "quarter") m.phase = 0.25;
-      else if (debugMoon === "full") m.phase = 0.50;
-    }
-    return m;
-  }, [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
+  const moonInfo = useMemo(() => resolveMoonPreview(getMoonPhase(now), debugMoon), [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
 
+  const applyWeatherDemo=(demo:WeatherDemo)=>{
+    setDebug(demo.condition);setDebugCloud(demo.coverage);setDebugCloudBase(demo.coverage==="CLR"?null:demo.coverage==="SCT"?6000:1800);
+    setDebugPhenomena(demo.phenomena);setDebugIntensity(null);setDebugVisibility(demo.visibility);
+    setDebugWind(250);setDebugWindSpeed(demo.speed);setDebugGust(demo.gust??demo.speed);setDebugWindMode(null);setDebugLightning(demo.lightning);
+    setShowSim(true);
+  };
   const activeWallpaper=active==="a"?aScene:bScene;
-  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}
+    data-weather-renderer="cinematic" data-coverage={effCoverage} data-tier={cloudTierV}
+    data-perf={perf} data-performance={perf} data-reduced-motion={reduced?"1":"0"}
+    data-precip-type={fx.precip} data-secondary-precip-type={fx.secondaryPrecip} data-precip-intensity={fx.intensity}
+    data-vicinity={fx.vicinity?"1":"0"} data-visibility={effVisibility??"unknown"}
+    data-obscuration={obscuration.type} data-obscuration-density={obscuration.density.toFixed(2)}
+    data-obscuration-horizon={obscuration.horizon.toFixed(2)} data-obscuration-veil={obscuration.veil.toFixed(2)}
+    data-active-obscuration-layers={obscuration.layers} data-obscuration-direction={obscuration.direction}
+    data-winddir={effWindDir??"VRB"} data-wind={effWindSpd} data-nx={atmosphere.windX.toFixed(2)} data-ny={atmosphere.windY.toFixed(2)}>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} atmosphere={atmosphere} backgroundSrc={`${imageBase}/assets/backgrounds/${activeWallpaper}.png`} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong><strong>JULIAN {julian4(now)}</strong></div></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
@@ -618,202 +629,39 @@ export default function Home() {
       </section>
       <section className="info">
         <article className="sun-card panel">
-          <div className="panel-title">
-            <span>SOLAR WINDOW</span>
-          </div>
-          <div className="solar-layout">
-            <div className="solar-graphic-wrap">
-              <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="solar-svg">
-                <defs>
-                  <radialGradient id="sunCoreGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#ffffff" /><stop offset="20%" stopColor="#ffffff" /><stop offset="45%" stopColor="#fffae6" /><stop offset="70%" stopColor="#ffe680" /><stop offset="100%" stopColor="rgba(255, 204, 0, 0)" /></radialGradient>
-                  <radialGradient id="sunOuterHalo" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(255, 255, 255, 0.4)" /><stop offset="100%" stopColor="rgba(255, 140, 0, 0)" /></radialGradient>
-                  <radialGradient id="moonBody" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#f1f5f9" /><stop offset="45%" stopColor="#cbd5e1" /><stop offset="75%" stopColor="#64748b" /><stop offset="100%" stopColor="#0f172a" /></radialGradient>
-                  <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="rgba(226, 232, 240, 0.35)" /><stop offset="70%" stopColor="rgba(148, 163, 184, 0.1)" /><stop offset="100%" stopColor="rgba(148, 163, 184, 0)" /></radialGradient>
-                </defs>
-                <path d="M 12 76 A 88 56 0 0 1 188 76" fill="none" className="solar-arc-bg" strokeWidth="1.5" strokeDasharray="3, 3" />
-                <path d="M 188 76 A 88 56 0 0 1 12 76" fill="none" className="lunar-arc-bg" strokeWidth="1.2" strokeDasharray="2, 4" opacity="0.6" />
-                <line x1="8" y1="76" x2="192" y2="76" stroke="rgba(180, 211, 221, 0.25)" strokeWidth="1" strokeDasharray="4, 2" />
-                {effSolar.daylight ? (() => {
-                  const isSunrise = effSolar.progress <= 15;
-                  const isSunset = effSolar.progress >= 85;
-                  const sunIntensity = Math.max(0, 1 - Math.abs(effSolar.progress - 50) / 50);
-
-                  if (isSunrise) {
-                    return (
-                      <g className="sun-group-sunrise">
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="rgba(255, 140, 0, 0.35)" />
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="rgba(255, 165, 0, 0.55)" />
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="8" fill="#ff8c00" stroke="#ffaa00" strokeWidth="1.2" />
-                      </g>
-                    );
-                  }
-
-                  if (isSunset) {
-                    return (
-                      <g className="sun-group-sunset">
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="18" fill="rgba(255, 51, 51, 0.35)" />
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="12" fill="rgba(239, 68, 68, 0.55)" />
-                        <circle cx={effSolar.markerX} cy={effSolar.markerY} r="8" fill="#ff3333" stroke="#ff6666" strokeWidth="1.2" />
-                      </g>
-                    );
-                  }
-
-                  // Midday Sun with radiating solar rays
-                  const rayAngles = [0, 45, 90, 135, 180, 225, 270, 315];
-                  const sunRadius = 7 + 3 * sunIntensity;
-
-                  return (
-                    <g className="sun-group-midday">
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={14 + 10 * sunIntensity} fill="url(#sunOuterHalo)" className="sun-pulse-halo" opacity={sunIntensity} />
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={16 + 8 * sunIntensity} fill="url(#sunGlow)" opacity={0.4 + 0.6 * sunIntensity} />
-                      {rayAngles.map((angle) => {
-                        const rad = (angle * Math.PI) / 180;
-                        const r1 = sunRadius + 4;
-                        const r2 = sunRadius + 10;
-                        const x1 = effSolar.markerX + Math.cos(rad) * r1;
-                        const y1 = effSolar.markerY + Math.sin(rad) * r1;
-                        const x2 = effSolar.markerX + Math.cos(rad) * r2;
-                        const y2 = effSolar.markerY + Math.sin(rad) * r2;
-                        return (
-                          <line
-                            key={angle}
-                            x1={x1.toFixed(1)}
-                            y1={y1.toFixed(1)}
-                            x2={x2.toFixed(1)}
-                            y2={y2.toFixed(1)}
-                            stroke="#ffd700"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            opacity="0.85"
-                          />
-                        );
-                      })}
-                      <circle cx={effSolar.markerX} cy={effSolar.markerY} r={sunRadius} fill="#ffffff" stroke="#ffea79" strokeWidth="1.2" opacity="0.95" />
-                    </g>
-                  );
-                })() : (() => {
-                  const p = moonInfo.phase; // 0..1 (0=New, 0.25=First Qtr, 0.3=Waxing Gibbous, 0.5=Full)
-                  const isWaxing = p <= 0.5;
-                  const isWaning = p > 0.5;
-                  const isFull = p >= 0.485 && p <= 0.515;
-                  const isNew = p < 0.015 || p > 0.985;
-                  // Calculate shadow rx sweep for elliptical shadow overlay
-                  const shadowRatio = isWaxing ? Math.abs(0.25 - p) / 0.25 : Math.abs(0.75 - p) / 0.25;
-                  const shadowRx = Math.round(14 * shadowRatio);
-                  const isGibbous = (p > 0.255 && p < 0.485) || (p > 0.515 && p < 0.735);
-                  const sweep = (isWaxing && p < 0.25) || (isWaning && p > 0.75) ? 0 : 1;
-
-                  return (
-                    <g transform={`translate(${effSolar.markerX.toFixed(1)}, ${effSolar.markerY.toFixed(1)})`}>
-                      <circle r="26" fill="url(#moonGlow)" />
-                      <circle r="14" fill="url(#moonBody)" stroke="#94a3b8" strokeWidth="0.8" />
-                      <circle cx="-3" cy="-3" r="3.5" fill="#475569" opacity="0.3" />
-                      <circle cx="4" cy="4" r="2.5" fill="#475569" opacity="0.25" />
-                      <circle cx="2" cy="-5" r="2" fill="#475569" opacity="0.2" />
-                      {isNew && <circle r="14" fill="#0b131e" opacity="0.94" />}
-                      {!isFull && !isNew && (
-                        isWaxing ? (
-                          p <= 0.25 ? (
-                            <path d={`M 0 -14 A 14 14 0 0 0 0 14 A ${shadowRx} 14 0 0 ${sweep} 0 -14 Z`} fill="#0b131e" opacity="0.9" />
-                          ) : (
-                            <path d={`M 0 -14 A 14 14 0 0 0 0 14 A ${shadowRx} 14 0 0 1 0 -14 Z`} fill="#0b131e" opacity="0.9" />
-                          )
-                        ) : (
-                          p <= 0.75 ? (
-                            <path d={`M 0 -14 A 14 14 0 0 1 0 14 A ${shadowRx} 14 0 0 1 0 -14 Z`} fill="#0b131e" opacity="0.9" />
-                          ) : (
-                            <path d={`M 0 -14 A 14 14 0 0 1 0 14 A ${shadowRx} 14 0 0 0 0 -14 Z`} fill="#0b131e" opacity="0.9" />
-                          )
-                        )
-                      )}
-                    </g>
-                  );
-                })()}
-              </svg>
-            </div>
-            <div className="solar-subtitle">
-              <strong>{effSolar.daylight ? `${Math.round(effSolar.progress)}% DAYLIGHT ELAPSED` : `MOON - ${moonInfo.name}`}</strong>
-            </div>
-            <div className="solar-times-row">
-              <div className="solar-time solar-rise"><span>SUNRISE</span><strong>{solar.sunrise.endsWith("L") ? solar.sunrise : `${solar.sunrise}L`}</strong><small>{effSolar.isTomorrow ? "TOMORROW" : "TODAY"}</small></div>
-              <div className="solar-time solar-set"><span>SUNSET</span><strong>{solar.sunset.endsWith("L") ? solar.sunset : `${solar.sunset}L`}</strong><small>{effSolar.isTomorrow ? "TOMORROW" : "TODAY"}</small></div>
-            </div>
-          </div>
+          <div className="panel-title"><span>{showLunarInformation(effSolar) ? "SOLAR / LUNAR" : "SOLAR"}</span><b>LOCAL</b></div>
+          <SolarLunarInstrument solar={effSolar} moon={moonInfo} />
         </article>
         <article className="weather-card panel">
           <div className="panel-title">
-            <span>CURRENT WEATHER</span>
+            <span>{currentPresentation.simulated ? "PREVIEW WEATHER" : "CURRENT WEATHER"}</span>
             <b className={`metar-title-badge health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : metarState.toLowerCase()}`}>
-              {feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
+              {currentPresentation.simulated ? "SIMULATED" : feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
             </b>
           </div>
-          <div className="weather-user-spec-layout">
-            <div className="weather-table-left">
-              <div className="weather-table-row weather-row-temp">
-                <strong className="weather-spec-temp-centered">{weather.temperatureF ?? "--"}°<small className="temp-unit-f">F</small></strong>
-              </div>
-              <div className="weather-table-row weather-row-feels">
-                <span className="weather-spec-feels">FEELS LIKE <strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></span>
-              </div>
-              <div className="weather-table-row weather-row-cond">
-                <b className="weather-spec-cond">{debug?displayTheme.replace("-"," "):weather.description}{weather.operationalWeather?.secondaryLabel && <span className="weather-modifier"> · {weather.operationalWeather.secondaryLabel}</span>}</b>
-              </div>
-              <div className="weather-table-row weather-row-humidity">
-                <div className="weather-spec-humidity">
-                  HUMIDITY <strong>{weather.humidity}%</strong>
-                </div>
-              </div>
-              <div className="weather-table-row weather-row-ceiling">
-                <div className="weather-ceiling-badge">
-                  <span className="ceiling-label">CEILING</span>
-                  <strong className="ceiling-value">{weather.cloudCoverage && ["BKN","OVC","VV"].includes(weather.cloudCoverage) && weather.cloudBaseFt !== null ? `${weather.cloudCoverage} ${weather.cloudBaseFt.toLocaleString()} FT` : "UNLIMITED (UNL)"}</strong>
-                </div>
-              </div>
-              {/* Lightning awareness is an exception line: no lightning reported means no row at all. */}
-              {lightningDisplay.severity!=="none"&&(
-                <small className={`lightning-awareness${lightningDisplay.shouldPulse?" alert-pulse":""}${lightningDisplay.shouldFlash?" alert-flash":""}`} data-tone={lightningDisplay.colorClass.replace("lightning-","")} data-stale={lightningDisplay.isStale||undefined} data-source-time={lightningDisplay.sourceTime||undefined}>
-                  <span>{lightningDisplay.text}</span>
-                </small>
-              )}
+          <div className="current-weather-instrument">
+            <div className="current-weather-hero">
+              <strong className="current-temperature">{weather.temperatureF ?? "--"}°<small>F</small></strong>
+              <span className="current-weather-glyph"><WeatherIcon condition={currentPresentation.condition} codes={currentPresentation.codes} night={!effSolar.daylight || phase === "night"} /></span>
             </div>
-            <div className="weather-table-right">
-              <span className="weather-glyph-right"><WeatherIcon condition={condition} night={!effSolar.daylight || phase === "night"} /></span>
+            <b className="current-condition">{currentPresentation.label}{currentPresentation.secondaryLabel && <span className="weather-modifier"> · {currentPresentation.secondaryLabel}</span>}</b>
+            <div className="current-weather-stats">
+              <div><span>FEELS LIKE</span><strong>{weather.feelsLikeF??weather.temperatureF}°F</strong></div>
+              <div><span>HUMIDITY</span><strong>{weather.humidity}%</strong></div>
+              <div className="current-ceiling"><span>CEILING</span><strong>{currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}</strong></div>
             </div>
+            {/* Lightning remains an exception: no report means no row. */}
+            {lightningDisplay.severity!=="none"&&(
+              <OperationalWarning kind="current" text={lightningDisplay.text} tone={lightningDisplay.colorClass.replace("lightning-", "")}
+                pulse={lightningDisplay.shouldPulse} flash={lightningDisplay.shouldFlash} stale={lightningDisplay.isStale}
+                sourceTime={lightningDisplay.sourceTime} sourceStamp={aviationStamp(lightningDisplay.sourceTime)} preview={lightning.source === "debug"} />
+            )}
           </div>
         </article>
         <article className="wind-card panel">
           <div className="panel-title"><span>WIND & FLIGHT CAT</span></div>
           <div className="wind-main-stacked">
-            <div className="wind-speed-row">
-              <strong data-wind-type={effectiveWind.directionType} data-wind-source={effectiveWind.source} data-wind-time={effectiveWind.observedAt||undefined}>{windDisplay.primary}</strong>
-              {windDisplay.secondary&&<small className="wind-variability">{windDisplay.secondary}</small>}
-            </div>
-            <div className="compass-wrap-centered">
-              <div className={`compass-dial${windDisplay.neutral?" compass-neutral":""}`}>
-                <svg className="compass-ticks" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                  <circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="1.2" opacity="0.4" />
-                  <circle cx="50" cy="50" r="42" stroke="var(--line)" strokeWidth="0.5" strokeDasharray="1.5, 3" />
-                  <line x1="50" y1="2" x2="50" y2="8" stroke="var(--cyan)" strokeWidth="2" />
-                  <line x1="50" y1="92" x2="50" y2="98" stroke="var(--muted)" strokeWidth="1.2" />
-                  <line x1="2" y1="50" x2="8" y2="50" stroke="var(--muted)" strokeWidth="1.2" />
-                  <line x1="92" y1="50" x2="98" y2="50" stroke="var(--muted)" strokeWidth="1.2" />
-                  <circle cx="50" cy="50" r="4" fill="var(--cyan)" box-shadow="0 0 6px var(--cyan)" />
-                </svg>
-                <span className="compass-label compass-n">N</span>
-                <span className="compass-label compass-e">E</span>
-                <span className="compass-label compass-s">S</span>
-                <span className="compass-label compass-w">W</span>
-                {windDisplay.showArrow&&windDisplay.arrowRotationDegrees!==null&&(
-                  <div className="compass-arrow" style={{transform:`rotate(${windDisplay.arrowRotationDegrees}deg)`}}>
-                    <svg viewBox="0 0 100 100" className="compass-arrow-svg" fill="none" stroke="currentColor">
-                      <path d="M50 10 L60 38 L50 32 L40 38 Z" fill="var(--cyan)" stroke="var(--cyan)" strokeWidth="1.5" strokeLinejoin="round" />
-                      <line x1="50" y1="32" x2="50" y2="78" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round" />
-                      <circle cx="50" cy="78" r="2.5" fill="var(--cyan)" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            </div>
+            <WindInstrument wind={effectiveWind} nowMs={now.getTime()} reduced={reduced} />
             <div className="wind-flight-meta-centered">
               <span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{flightCat.cat}</span>
               <span className="wind-vis-tag">VIS <strong>{effVisibility ?? 10} SM</strong></span>
@@ -821,23 +669,24 @@ export default function Home() {
           </div>
         </article>
         <article className={`bird-card panel risk-${birdClass}`}>
-          <div className="panel-title"><span>BIRD WATCH CONDITION</span><b>AHAS</b></div>
-          <div className="bird-main-stacked">
-            <div className="bird-glyph-row">
-              <span className="bird-icon-symbol" aria-label="Bird hazard icon">𓅪</span>
-            </div>
-            <div className="bird-severity-row">
-              <strong className="bird-severity">{birdRisk}</strong>
+          <div className="panel-title"><span>BIRD WATCH</span><b>AHAS</b></div>
+          <div className="bird-watch-instrument">
+            <div className="bird-watch-reading">
+              <BirdWatchGlyph />
+              <div><span className="bird-watch-label">CONDITION</span><strong className="bird-severity">{birdRisk}</strong></div>
             </div>
             {(() => {
               const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);
               const calendarStampStr = formatBwcCalendarStamp(bwcIso, birdStamp);
               const ageStr = bwcIso ? calculateBirdObservationAge(bwcIso, now) : "";
               return (
-                <>
-                  {bwcIso && ageStr && <div className="bird-age">{ageStr}</div>}
+                <div className="bird-watch-update">
+                  <div className="bird-observation-age" data-age-state={!ageStr ? "unavailable" : ageStr.startsWith("FUTURE OBS") ? "future" : "elapsed"}>
+                    <span className="bird-watch-label">OBSERVATION AGE</span>
+                    <div className="bird-age">{ageStr || "AGE UNAVAILABLE"}</div>
+                  </div>
                   <div className="bird-timestamp">{calendarStampStr}</div>
-                </>
+                </div>
               );
             })()}
           </div>
@@ -845,39 +694,36 @@ export default function Home() {
         {(() => {
           const hasHazard=alertDisplay.severity!=="none";
           const hazardTone=alertDisplay.colorClass.replace("alert-","");
+          // Strictly filter Future Weather to upcoming future hours (iso > now). Only display pure future blocks (1, 2, or 3).
+          const displayList = displayForecast.filter(f => {
+            const t = new Date(f.iso).getTime();
+            return f.time !== "NOW" && Number.isFinite(t) && (debugFutureWeather||t > now.getTime());
+          });
+
+          const seenLabels = new Set<string>();
+          const uniqueList = displayList.filter(f => {
+            const d = new Date(f.iso);
+            const label = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2,"0")}Z` : f.time;
+            if (seenLabels.has(label)) return false;
+            seenLabels.add(label);
+            return true;
+          });
+
+          const forecastSource=describeForecastSources(uniqueList.slice(0, 3));
           return (
             <article className={`forecast-card panel ${hasHazard ? "has-taf-hazard" : ""}`}>
               <div className="panel-title">
-                <span>FUTURE WEATHER · NEXT 9 HOURS</span>
-                <b>TAF</b>
+                <span>FUTURE WEATHER <small>UPCOMING · ZULU</small></span>
+                <b className="forecast-source-badge" title={forecastSource.detail}>{forecastSource.label}</b>
               </div>
               {hasHazard && (
-                <div className={`taf-hazard-band ${alertDisplay.shouldPulse ? "alert-pulse" : ""} ${alertDisplay.shouldFlash ? "alert-flash" : ""}`} data-tone={hazardTone}>
-                  <em>
-                    {alertDisplay.icon&&<span className="taf-alert-icon" aria-hidden="true">{alertDisplay.icon}</span>}
-                    <span>{alertDisplay.text}</span>
-                  </em>
-                </div>
+                <OperationalWarning kind="weather" text={alertDisplay.text} icon={alertDisplay.icon} tone={hazardTone}
+                  pulse={alertDisplay.shouldPulse} flash={alertDisplay.shouldFlash} preview={Boolean(debugAlert)} feedStatus={feed} />
               )}
           <div className="forecast-list">
             {(() => {
               if (!displayForecast.length) return <div className="forecast-empty">FORECAST UNAVAILABLE</div>;
               
-              // Strictly filter Future Weather to upcoming future hours (iso > now). Only display pure future blocks (1, 2, or 3).
-              const displayList = displayForecast.filter(f => {
-                const t = new Date(f.iso).getTime();
-                return f.time !== "NOW" && Number.isFinite(t) && (debugFutureWeather||t > now.getTime());
-              });
-
-              const seenLabels = new Set<string>();
-              const uniqueList = displayList.filter(f => {
-                const d = new Date(f.iso);
-                const label = Number.isFinite(d.getTime()) ? `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2,"0")}Z` : f.time;
-                if (seenLabels.has(label)) return false;
-                seenLabels.add(label);
-                return true;
-              });
-
               if (!uniqueList.length) return <div className="forecast-empty">NO UPCOMING FORECAST SLOTS</div>;
 
               return uniqueList.slice(0, 3).map((f, i) => {
@@ -890,21 +736,21 @@ export default function Home() {
                   cloudBaseFt:f.operationalWeather.cloudBaseFt,
                   cloudLayers:f.operationalWeather.cloudLayers
                 }:{skyCoverage:coverageFromCondition(f.condition),cloudBaseFt:null});
-                // The row is a narrow three-up tile, so a phenomenon uses its aviation short form
+                // Each of the three rows uses the phenomenon's aviation short form
                 // ("LT TSTMS WITH RAIN"); the long label belongs to the wider Current Weather card.
-                const conditionLabel=f.operationalWeather?(f.operationalWeather.code?f.operationalWeather.shortLabel:skyDisplay.headline):f.description;
+                const conditionLabel=f.operationalWeather?(f.operationalWeather.code?`${f.operationalWeather.shortLabel}${f.operationalWeather.secondaryLabel ? ` · ${f.operationalWeather.secondaryLabel}` : ""}`:skyDisplay.headline):f.description;
                 const precipText=formatForecastProbability(f.operationalWeather?.probability,f.precipitationProbability);
                 const cigText=skyDisplay.detail;
 
                 return (
                   <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
                     <time className="forecast-time">{timeLabel}</time>
-                    <span className="forecast-icon"><WeatherIcon condition={f.condition} night={isNightAt(f.iso || f.time, solar.sunrise, solar.sunset)} /></span>
+                    <span className="forecast-icon"><WeatherIcon condition={f.condition} codes={f.operationalWeather?.codes ?? f.phenomena} night={isNightAt(f.iso || f.time, solar.sunrise, solar.sunset)} /></span>
                     <div className="forecast-content-col">
                       <b className="forecast-condition">{conditionLabel}</b>
-                      <span className="forecast-meta-detail">{precipText}{cigText ? ` · ${cigText}` : ""}</span>
+                      <span className="forecast-meta-detail"><span className="forecast-probability">{precipText}</span>{cigText && <span>{cigText}</span>}</span>
                     </div>
-                    <strong className="forecast-temp">{f.temperatureF}°</strong>
+                    <strong className="forecast-temp">{f.temperatureF}°<small>F</small></strong>
                   </div>
                 );
               });
@@ -920,6 +766,6 @@ export default function Home() {
         <span>PRESS F11 FOR FULL SCREEN</span>
       </footer>
     </div>
-    <PreviewLab active={showPreview} paneDrops={paneDrops} onPaneToggle={setPaneDrops}/>
+    <PreviewLab active={showPreview} paneDrops={paneDrops} onPaneToggle={setPaneDrops} onWeatherDemo={applyWeatherDemo} quality={perf} onQuality={setPerf}/>
   </main>;
 }

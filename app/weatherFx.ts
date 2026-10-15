@@ -19,6 +19,9 @@ export type EffectState = {
   shower: boolean;
   liquidPresent: boolean;
   vicinityLiquid: boolean;
+  precipVicinity?: boolean;
+  secondaryPrecipVicinity?: boolean;
+  obscurationVicinity?: boolean;
 };
 
 const PRECIP_RANK: PrecipType[] = ["hail","small-hail","ice-pellets","freezing-rain","freezing-drizzle","snow-shower","snow","blowing-snow","drifting-snow","snow-grains","ice-crystals","rain","drizzle","none"];
@@ -26,24 +29,27 @@ const OBSC_RANK: ObscurationType[] = ["volcanic-ash","dust-storm","sandstorm","f
 
 function tokenPrecips(token:string):PrecipType[] {
   const out:PrecipType[]=[];
-  if(/FZRA/.test(token)) out.push("freezing-rain");
-  else if(/FZDZ/.test(token)) out.push("freezing-drizzle");
-  else if(/GR/.test(token)&&!/GS/.test(token)) out.push("hail");
-  else if(/GS/.test(token)) out.push("small-hail");
-  else if(/PL/.test(token)) out.push("ice-pellets");
-  else if(/BLSN/.test(token)) out.push("blowing-snow");
-  else if(/DRSN/.test(token)) out.push("drifting-snow");
-  else if(/SG/.test(token)) out.push("snow-grains");
-  else if(/\bIC\b/.test(token)) out.push("ice-crystals");
-  else if(/SHSN/.test(token)) out.push("snow-shower");
-  else if(/SN/.test(token)) out.push("snow");
-  if(!/FZDZ/.test(token)&&/DZ/.test(token)) out.push("drizzle");
-  if(!/FZRA/.test(token)&&/RA/.test(token)) out.push("rain");
-  if(/\bUP\b/.test(token)) out.push("rain");
+  const clean=token.replace(/^[+-]/,"").replace(/^VC/,"");
+  const descriptor=clean.match(/^(?:MI|PR|BC|DR|BL|SH|TS|FZ)/)?.[0]||"";
+  const body=clean.slice(descriptor.length);
+  if(!/^(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP){1,3}$/.test(body)) return out;
+  const parts=new Set(body.match(/.{2}/g));
+  if(parts.has("GR")) out.push("hail");
+  if(parts.has("GS")) out.push("small-hail");
+  if(parts.has("PL")) out.push("ice-pellets");
+  if(parts.has("SN")) out.push(descriptor==="BL"?"blowing-snow":descriptor==="DR"?"drifting-snow":descriptor==="SH"?"snow-shower":"snow");
+  if(parts.has("SG")) out.push("snow-grains");
+  if(parts.has("IC")) out.push("ice-crystals");
+  if(parts.has("DZ")) out.push(descriptor==="FZ"?"freezing-drizzle":"drizzle");
+  if(parts.has("RA")) out.push(descriptor==="FZ"?"freezing-rain":"rain");
+  // Preserve the existing generic rain effect for unidentified precipitation,
+  // including automated SHUP/TSUP; the displayed wording still says UNKNOWN.
+  if(parts.has("UP")) out.push(descriptor==="FZ"?"freezing-rain":"rain");
   return [...new Set(out)];
 }
 
 function tokenObscuration(token:string):ObscurationType {
+  token=token.replace(/^[+-]/,"").replace(/^VC/,"");
   if(/FZFG/.test(token)) return "freezing-fog";
   if(/MIFG/.test(token)) return "shallow-fog";
   if(/BCFG/.test(token)) return "patchy-fog";
@@ -67,24 +73,29 @@ function tokenObscuration(token:string):ObscurationType {
 
 export function classifyEffect(phenomena:string[]):EffectState {
   const precip=new Set<PrecipType>();
-  let obscuration:ObscurationType="none",anyVicinity=false,anyOnStation=false,shower=false,hasPlus=false,hasMinus=false,liquidPresent=false,vicinityLiquid=false;
+  const localPrecip=new Set<PrecipType>();
+  let obscuration:ObscurationType="none",anyVicinity=false,anyOnStation=false,shower=false,localShower=false,hasPlus=false,hasMinus=false,hasModerate=false,liquidPresent=false,vicinityLiquid=false,localLiquid=false,obscurationVicinity=false;
   for(const raw of phenomena) {
     const token=(raw||"").toUpperCase();
     const precipTypes=tokenPrecips(token),obsc=tokenObscuration(token),meaningful=precipTypes.length>0||obsc!=="none"||/SH|TS/.test(token);
-    precipTypes.forEach(type=>precip.add(type));
-    if(obsc!=="none"&&OBSC_RANK.indexOf(obsc)<OBSC_RANK.indexOf(obscuration)) obscuration=obsc;
+    precipTypes.forEach(type=>{precip.add(type);if(!token.startsWith("VC")) localPrecip.add(type);});
+    if(obsc!=="none"&&OBSC_RANK.indexOf(obsc)<OBSC_RANK.indexOf(obscuration)) {obscuration=obsc;obscurationVicinity=token.startsWith("VC");}
+    else if(obsc===obscuration&&!token.startsWith("VC")) obscurationVicinity=false;
     if(meaningful) token.startsWith("VC")?anyVicinity=true:anyOnStation=true;
-    if(/SH/.test(token)) shower=true;
+    if(/SH/.test(token)) {shower=true;if(!token.startsWith("VC")) localShower=true;}
     const tokenHasLiquid=precipTypes.some(type=>type==="rain"||type==="drizzle"||type==="freezing-rain"||type==="freezing-drizzle")||/^VC(?:TS)?SH/.test(token);
-    if(tokenHasLiquid){liquidPresent=true;if(token.startsWith("VC"))vicinityLiquid=true;}
-    if(token.startsWith("+")) hasPlus=true;
-    if(token.startsWith("-")) hasMinus=true;
+    if(tokenHasLiquid){liquidPresent=true;if(token.startsWith("VC"))vicinityLiquid=true;else localLiquid=true;}
+    if(precipTypes.length||/SH/.test(token)) {
+      if(token.startsWith("+")) hasPlus=true;
+      else if(token.startsWith("-")) hasMinus=true;
+      else if(!token.startsWith("VC")) hasModerate=true;
+    }
   }
-  if(!precip.size&&shower) precip.add("rain");
+  if(!precip.size&&shower) {precip.add("rain");if(localShower)localPrecip.add("rain");}
   const ordered=[...precip].sort((a,b)=>PRECIP_RANK.indexOf(a)-PRECIP_RANK.indexOf(b));
   const primary=ordered[0]||"none",secondary=ordered.find(type=>type!==primary)||"none";
-  const intensity:Intensity=hasPlus?"heavy":hasMinus&&!hasPlus?"light":primary==="none"?"light":"moderate";
-  return {precip:primary,secondaryPrecip:secondary,obscuration,intensity,vicinity:anyVicinity&&!anyOnStation,shower,liquidPresent,vicinityLiquid};
+  const intensity:Intensity=hasPlus?"heavy":hasModerate?"moderate":hasMinus?"light":primary==="none"?"light":"moderate";
+  return {precip:primary,secondaryPrecip:secondary,obscuration,intensity,vicinity:anyVicinity&&!anyOnStation,shower:localPrecip.size>0?localShower:shower,liquidPresent,vicinityLiquid:vicinityLiquid&&!localLiquid,precipVicinity:primary!=="none"&&!localPrecip.has(primary),secondaryPrecipVicinity:secondary!=="none"&&!localPrecip.has(secondary),obscurationVicinity};
 }
 
 export type FxShape="streak"|"flake"|"grain"|"crystal"|"pellet"|"hail";
@@ -141,8 +152,8 @@ export function buildFxSpec(fx:EffectState,windNx:number,windSpeedKt:number,perf
   const hasLiquid=fx.liquidPresent||LIQUID.includes(fx.precip)||LIQUID.includes(fx.secondaryPrecip);
   const paneOn=paneOverride!==null?paneOverride:hasLiquid;
   if(fx.precip==="none"&&!paneOn) return null;
-  const primary=particleClass(fx.precip,fx.intensity,drift,perf,night,reduced,fx.vicinity);
-  const secondary=fx.secondaryPrecip!=="none"?particleClass(fx.secondaryPrecip,fx.intensity,drift,perf,night,reduced,fx.vicinity,true):null;
+  const primary=particleClass(fx.precip,fx.intensity,drift,perf,night,reduced,fx.precipVicinity??fx.vicinity);
+  const secondary=fx.secondaryPrecip!=="none"?particleClass(fx.secondaryPrecip,fx.intensity,drift,perf,night,reduced,fx.secondaryPrecipVicinity??fx.vicinity,true):null;
   const max=perf==="low"?240:520,total=primary.count+(secondary?.count||0);
   if(total>max){const scale=max/total;primary.count=Math.round(primary.count*scale);if(secondary)secondary.count=Math.round(secondary.count*scale);}
   const restriction=visibilityRestriction(visibilitySm);
@@ -169,7 +180,7 @@ export function buildObscurationSpec(fx:EffectState,visibilitySm:number|null,win
   if(fx.obscuration==="shallow-fog"){density=.42+restriction*.45;horizon=.48+restriction*.42;veil=restriction*.05;}
   if(fx.obscuration==="patchy-fog"){density=.44+restriction*.45;horizon=.46+restriction*.42;veil=restriction*.06;}
   if(fx.obscuration==="partial-fog"){density=.42+restriction*.45;horizon=.45+restriction*.42;veil=restriction*.12;}
-  if(fx.vicinity){density*=.3;horizon*=.35;veil*=.3;}if(perf==="low"){density*=.82;veil*=.8;}density=clamp(density,0,.92);
+  if(fx.obscurationVicinity??fx.vicinity){density*=.3;horizon*=.35;veil*=.3;}if(perf==="low"){density*=.82;veil*=.8;}density=clamp(density,0,.92);
   let layers=perf==="low"?Math.min(2,density>.45?2:1):density>.55?3:density>.2?2:1;
   if(fx.obscuration==="mist"||fx.obscuration==="shallow-fog"||fx.obscuration==="partial-fog") layers=1;
   if(fx.obscuration==="patchy-fog") layers=Math.min(2,layers);

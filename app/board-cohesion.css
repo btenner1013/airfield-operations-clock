@@ -1,0 +1,16 @@
+/* Shared outer-card finish only. Clock/header/footer and instrument internals retain
+   their accepted styles. No changes to the five-card rail order or scroll behavior. */
+.info > .panel {
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgba(13, 26, 34, .96), rgba(5, 13, 19, .9));
+  box-shadow: inset 0 1px rgba(203, 229, 239, .06), 0 4px 18px rgba(0, 0, 0, .13);
+}
+.info > .panel > .panel-title { font-family: Consolas, monospace; letter-spacing: .1em; gap: 6px; }
+.bird-watch-glyph { max-width: 100%; height: auto; }
+/* The legacy 150px cap could clip wrapped alerts and even the approved compact
+   solar dial. Let content establish the rail height instead of hiding information. */
+@media (max-height: 700px) {
+  .info { max-height: none; }
+  .info > .panel { padding: 8px 10px; }
+  .info > .panel > .panel-title { padding-bottom: 5px; }
+}

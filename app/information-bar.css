@@ -1,0 +1,135 @@
+/* Refined bottom instruments. Wind, the rail geometry, clocks and weather scene are untouched. */
+.sun-card, .weather-card, .bird-card, .forecast-card {
+  background: linear-gradient(145deg, rgba(13, 26, 34, .96), rgba(5, 13, 19, .9));
+  box-shadow: inset 0 1px rgba(203, 229, 239, .06), 0 4px 18px rgba(0, 0, 0, .13);
+  border-top-color: rgba(132, 175, 193, .5);
+}
+.sun-card { border-top-color: rgba(241, 189, 109, .58); }
+.sun-card .panel-title, .weather-card .panel-title, .bird-card .panel-title, .forecast-card .panel-title { flex-shrink: 0; letter-spacing: .1em; gap: 6px; }
+.weather-card .panel-title { flex-wrap: wrap; row-gap: 5px; }
+.weather-card .metar-title-badge { padding: 3px 5px; border: 1px solid currentColor; border-radius: 3px; font: 700 clamp(8px, 2.65cqw, 10px)/1.1 Consolas, monospace !important; letter-spacing: .025em !important; text-shadow: none !important; }
+.current-weather-instrument { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0; padding-top: 8px; }
+.current-weather-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; }
+.current-temperature { color: #f5f9fa; font: 800 clamp(40px, 17cqw, 76px)/.95 Consolas, monospace; letter-spacing: -.075em; }
+.current-temperature small { color: #b1c9d6; font-size: .36em; letter-spacing: 0; margin-left: 2px; }
+.current-weather-glyph { font-size: clamp(48px, 21cqw, 82px); display: flex; align-items: center; justify-content: center; padding-right: 7px; }
+.current-condition { color: #edf4f7; font: 800 clamp(12px, 4.5cqw, 19px)/1.2 Consolas, monospace; text-transform: uppercase; letter-spacing: .035em; overflow-wrap: anywhere; }
+.current-condition .weather-modifier { color: #bfd1db; font-weight: 600; }
+.current-weather-stats { display: grid; grid-template-columns: .78fr .78fr 1.5fr; margin-top: auto; gap: 8px; border-top: 1px solid rgba(180, 211, 221, .16); padding-top: 9px; }
+.current-weather-stats > div { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; min-width: 0; }
+.current-weather-stats > div + div { border-left: 1px solid rgba(180, 211, 221, .14); padding-left: 9px; }
+.current-weather-stats span { color: #adc4d0; font: 700 clamp(8px, 3cqw, 11px)/1.1 Consolas, monospace; letter-spacing: .04em; }
+.current-weather-stats strong { color: #edf5f8; font: 800 clamp(15px, 5.5cqw, 22px)/1.1 Consolas, monospace; }
+.current-weather-stats .current-ceiling strong { font-size: clamp(10px, 3.7cqw, 16px); line-height: 1.25; overflow-wrap: anywhere; }
+
+.bird-card { container-type: inline-size; --bird-tone: #a6bdca; }
+.bird-card.risk-low { --bird-tone: #72dbbd; }
+.bird-card.risk-moderate { --bird-tone: #f3b765; }
+.bird-card.risk-severe { --bird-tone: #ff7676; }
+.bird-card .panel-title b { color: #9fb6c2; font-family: Consolas, monospace; }
+.bird-watch-instrument { display: flex; flex: 1; flex-direction: column; justify-content: space-between; gap: 14px; padding-top: 12px; min-height: 0; }
+.bird-watch-reading { display: grid; grid-template-columns: minmax(38px, .7fr) minmax(0, 1.3fr); align-items: center; gap: 8px; flex: 1; }
+.bird-watch-glyph { display: block; width: clamp(44px, 33cqw, 76px); max-height: 76px; color: var(--bird-tone); flex-shrink: 0; }
+.bird-watch-reading > div { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
+.bird-watch-label { color: #a9c1ce; font: 700 clamp(8px, 4.5cqw, 11px)/1 Consolas, monospace; letter-spacing: .09em; }
+.bird-watch-reading .bird-severity { color: var(--bird-tone); font: 800 clamp(11px, 8cqw, 24px)/1.05 Consolas, monospace; letter-spacing: .015em; max-width: 100%; overflow-wrap: anywhere; white-space: normal; text-align: left; text-shadow: none; }
+.bird-card.risk-unknown .bird-severity { font-size: clamp(9px, 6cqw, 17px); }
+.bird-watch-update { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.bird-observation-age { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; box-sizing: border-box; padding: 8px 6px; border: 1px solid rgba(146, 195, 219, .5); border-radius: 5px; background: #16303e; box-shadow: inset 0 1px rgba(207, 236, 248, .07); }
+.bird-observation-age .bird-watch-label { color: #b7cfde; font-size: clamp(7px, 3.6cqw, 10px); letter-spacing: .11em; }
+.bird-watch-update .bird-age { color: #f2f8fb; font: 800 clamp(14px, 9.5cqw, 30px)/1.1 Consolas, monospace; letter-spacing: .015em; text-shadow: none; overflow-wrap: anywhere; }
+.bird-observation-age[data-age-state="future"] .bird-age { color: #f3c17c; font-size: clamp(11px, 7.2cqw, 23px); }
+.bird-observation-age[data-age-state="unavailable"] .bird-age { color: #c1d3df; font-size: clamp(11px, 7.2cqw, 23px); }
+.bird-watch-update .bird-timestamp { color: #aec4d0; font: 700 clamp(8px, 4.8cqw, 13px)/1.2 Consolas, monospace; letter-spacing: .035em; overflow-wrap: anywhere; }
+/* Reuse the original alert cadence for the source-drawn bird as well as the risk text.
+   The observation age stays steady; this is a fade pulse, not a hard flash. */
+.bird-card.risk-severe .bird-watch-glyph { animation: bwcPulse 1.2s infinite ease-in-out; }
+[data-reduced-motion="1"] .bird-card.risk-severe .bird-watch-glyph,
+[data-reduced-motion="1"] .bird-card.risk-severe .bird-severity { animation: none !important; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .bird-card.risk-severe .bird-watch-glyph, .bird-card.risk-severe .bird-severity { animation: none !important; opacity: 1; }
+}
+
+.forecast-card { container-type: inline-size; }
+.forecast-card .panel-title > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.forecast-card .panel-title small { color: #9bb5c4; font-size: .8em; letter-spacing: .04em; }
+.forecast-card .panel-title b { color: #a9c8db; font-family: Consolas, monospace; }
+.forecast-card .forecast-source-badge { border: 1px solid #446374; border-radius: 3px; padding: 3px 5px; flex-shrink: 0; white-space: nowrap; font: 700 clamp(7px, 2.3cqw, 10px)/1.1 Consolas, monospace; letter-spacing: .01em; }
+.forecast-card .forecast-list { flex: 1; gap: 6px; padding-top: 8px; min-height: 0; }
+.forecast-card .forecast-item-tile { display: grid; grid-template-columns: max-content 30px minmax(0, 1fr) max-content; gap: 8px; align-items: center; box-sizing: border-box; padding: 8px 9px; border: 1px solid rgba(140, 180, 198, .19); border-radius: 4px; background: rgba(4, 13, 20, .56); box-shadow: none; flex: 1; }
+.forecast-card .forecast-time { color: #bcdceb !important; font: 800 clamp(11px, 3.7cqw, 16px)/1 Consolas, monospace !important; letter-spacing: -.03em; }
+.forecast-card .forecast-icon { display: flex; justify-content: center; align-items: center; }
+.forecast-card .forecast-icon .wx-pictogram { font-size: 30px; }
+.forecast-card .forecast-content-col { gap: 4px; align-items: flex-start; }
+.forecast-card .forecast-condition { color: #eef5f8; font: 800 clamp(10px, 3.3cqw, 15px)/1.15 Consolas, monospace; letter-spacing: .015em; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-overflow: clip; }
+.forecast-card .forecast-meta-detail { display: flex; flex-wrap: wrap; gap: 3px 7px; color: #a6bfcd; font: 700 clamp(8px, 2.65cqw, 12px)/1.2 Consolas, monospace; letter-spacing: .01em; white-space: normal; overflow: visible; text-align: left; }
+.forecast-probability { color: #b5d7e8; }
+.forecast-card .forecast-temp { font: 800 clamp(16px, 5cqw, 23px)/1 Consolas, monospace !important; letter-spacing: -.04em; }
+.forecast-card .forecast-temp small { color: #a6bfcd; font-size: .55em; margin-left: 1px; }
+.forecast-card .forecast-empty { margin: auto; padding: 18px 8px; font: 700 11px/1.5 Consolas, monospace; color: #a7bfcd; text-align: center; }
+.forecast-card .forecast-item-tile[data-category="thunderstorm"] .forecast-condition, .forecast-card .forecast-item-tile[data-category="severe-convection"] .forecast-condition { color: #ffac98; }
+.forecast-card .forecast-item-tile[data-category="freezing-precipitation"] .forecast-condition, .forecast-card .forecast-item-tile[data-category="winter-precipitation"] .forecast-condition { color: #b8e4ff; }
+@container (max-width: 315px) {
+  .forecast-card .forecast-item-tile { grid-template-columns: max-content 24px minmax(0, 1fr) max-content; gap: 5px; padding: 7px 6px; }
+  .forecast-card .forecast-icon .wx-pictogram { font-size: 25px; }
+  .forecast-card .forecast-meta-detail { font-size: 8px; }
+}
+@media (min-width: 2560px), (min-height: 1400px) {
+  .current-weather-instrument { gap: 10px; }
+  .current-temperature { font-size: clamp(76px, 14cqw, 100px); }
+  .current-condition { font-size: clamp(20px, 3.8cqw, 27px); }
+  .current-weather-stats span { font-size: 14px; }
+  .current-weather-stats strong { font-size: 30px; }
+  .current-weather-stats .current-ceiling strong { font-size: 21px; }
+  .weather-card .metar-title-badge { font-size: 12px !important; }
+  .bird-watch-glyph { width: 92px; max-height: 92px; }
+  .bird-watch-label { font-size: 14px; }
+  .bird-watch-reading .bird-severity { font-size: clamp(24px, 7.5cqw, 32px); }
+  .bird-card.risk-unknown .bird-severity { font-size: clamp(17px, 5.5cqw, 24px); }
+  .bird-observation-age { padding: 10px 8px; gap: 7px; }
+  .bird-observation-age .bird-watch-label { font-size: 12px; }
+  .bird-watch-update .bird-age { font-size: 32px; }
+  .bird-observation-age[data-age-state="future"] .bird-age, .bird-observation-age[data-age-state="unavailable"] .bird-age { font-size: 24px; }
+  .bird-watch-update .bird-timestamp { font-size: 17px; }
+  .forecast-card .forecast-list { gap: 8px; }
+  .forecast-card .forecast-item-tile { grid-template-columns: max-content 42px minmax(0, 1fr) max-content; padding: 10px 12px; gap: 12px; }
+  .forecast-card .forecast-time { font-size: 20px !important; }
+  .forecast-card .forecast-icon .wx-pictogram { font-size: 42px; }
+  .forecast-card .forecast-condition { font-size: 19px; }
+  .forecast-card .forecast-meta-detail { font-size: 15px; }
+  .forecast-card .forecast-temp { font-size: 30px !important; }
+}
+@media (max-height: 700px) and (min-width: 721px) {
+  .current-weather-instrument { gap: 4px; padding-top: 3px; }
+  .current-weather-hero { min-height: 31px; }
+  .current-temperature { font-size: 32px; }
+  .current-weather-glyph { font-size: 34px; }
+  .current-condition { font-size: 10px; }
+  .current-weather-stats { padding-top: 4px; gap: 5px; }
+  .current-weather-stats > div { gap: 2px; }
+  .current-weather-stats > div + div { padding-left: 5px; }
+  .current-weather-stats span { font-size: 7px; }
+  .current-weather-stats strong { font-size: 12px; }
+  .current-weather-stats .current-ceiling strong { font-size: 8px; }
+  .bird-watch-instrument { gap: 5px; padding-top: 5px; }
+  .bird-watch-reading { grid-template-columns: 40px minmax(0, 1fr); gap: 6px; }
+  .bird-watch-glyph { width: 40px; }
+  .bird-watch-reading > div { align-items: flex-start; gap: 3px; }
+  .bird-watch-reading .bird-severity { font-size: 14px; text-align: left; }
+  .bird-card.risk-unknown .bird-severity { font-size: 10px; }
+  .bird-watch-label { font-size: 7px; }
+  .bird-watch-update { gap: 3px; }
+  .bird-observation-age { padding: 4px; gap: 3px; border-radius: 3px; }
+  .bird-observation-age .bird-watch-label { font-size: 6px; }
+  .bird-watch-update .bird-age { font-size: 14px; }
+  .bird-observation-age[data-age-state="future"] .bird-age, .bird-observation-age[data-age-state="unavailable"] .bird-age { font-size: 10px; }
+  .bird-watch-update .bird-timestamp { font-size: 8px; }
+  .forecast-card .forecast-list { gap: 3px; padding-top: 3px; }
+  .forecast-card .forecast-item-tile { padding: 3px 5px; gap: 5px; grid-template-columns: max-content 20px minmax(0, 1fr) max-content; }
+  .forecast-card .forecast-time { font-size: 9px !important; }
+  .forecast-card .forecast-icon .wx-pictogram { font-size: 21px; }
+  .forecast-card .forecast-condition { font-size: 9px; }
+  .forecast-card .forecast-meta-detail { font-size: 7px; gap: 2px 4px; }
+  .forecast-card .forecast-content-col { gap: 2px; }
+  .forecast-card .forecast-temp { font-size: 13px !important; }
+}

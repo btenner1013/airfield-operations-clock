@@ -15,6 +15,7 @@ export type Forecast = {
   precipitationFetchedAt:string|null;
   precipitationAgeMinutes:number|null;
   source:"TAF"|"MODEL";
+  phenomena?:string[];
   operationalWeather:OperationalWeather|null;
 };
 export type SolarDay = { date:string; sunriseLocal:string; sunsetLocal:string };

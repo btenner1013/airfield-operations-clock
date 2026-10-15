@@ -1,0 +1,37 @@
+/* Original circular day/night concept, refined inside the existing solar card. */
+.sun-card { container-type: inline-size; }
+.sun-card .panel-title { gap: 6px; }
+.sun-card .panel-title b { color: #9fb6c2; font-family: Consolas, monospace; letter-spacing: .04em; }
+.solar-lunar-instrument { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 5px; padding-top: 5px; font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
+.solar-dial-wrap { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; }
+.solar-lunar-dial { display: block; width: 100%; max-width: 236px; height: 122px; overflow: visible; }
+.solar-lunar-dial .lunar-disc { overflow: visible; }
+.solar-lunar-caption { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; flex-shrink: 0; }
+.solar-lunar-caption strong { color: #e4eff4; font-size: clamp(9px, 5.5cqw, 15px); font-weight: 800; line-height: 1.05; letter-spacing: .035em; }
+.solar-lunar-caption small { color: #8faebb; font-size: clamp(6px, 3.4cqw, 9px); font-weight: 700; line-height: 1; letter-spacing: .045em; }
+.solar-lunar-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex-shrink: 0; border-top: 1px solid rgba(180, 211, 221, .16); padding-top: 7px; gap: 8px; }
+.solar-lunar-times > div { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.solar-lunar-times > div + div { border-left: 1px solid rgba(180, 211, 221, .16); padding-left: 10px; }
+.solar-lunar-times span { color: #b1c5ce; font-size: clamp(8px, 4.2cqw, 11px); font-weight: 700; letter-spacing: .085em; }
+.solar-lunar-times strong { color: #f1bd6d; font-size: clamp(16px, 9.1cqw, 26px); line-height: 1; font-weight: 800; letter-spacing: -.035em; white-space: nowrap; }
+.solar-lunar-times small { color: #a8bfcd; font-size: clamp(7px, 3.8cqw, 10px); font-weight: 700; letter-spacing: .075em; }
+@media (min-width: 2560px), (min-height: 1400px) {
+  .solar-lunar-instrument { gap: 7px; padding-top: 7px; }
+  .solar-lunar-dial { max-width: 300px; height: 160px; }
+  .solar-lunar-caption strong { font-size: clamp(15px, 5cqw, 21px); }
+  .solar-lunar-caption small { font-size: 11px; }
+  .solar-lunar-times span { font-size: 14px; }
+  .solar-lunar-times small { font-size: 12px; }
+  .solar-lunar-times strong { font-size: clamp(26px, 8cqw, 36px); }
+}
+@media (max-height: 700px) and (min-width: 721px) {
+  .solar-lunar-instrument { gap: 2px; padding-top: 2px; }
+  .solar-lunar-dial { height: 56px; }
+  .solar-lunar-caption { gap: 2px; }
+  .solar-lunar-caption strong { font-size: 8px; }
+  .solar-lunar-caption small { display: none; }
+  .solar-lunar-times { padding-top: 4px; }
+  .solar-lunar-times > div { gap: 2px; }
+  .solar-lunar-times span, .solar-lunar-times small { font-size: 7px; }
+  .solar-lunar-times strong { font-size: 15px; }
+}

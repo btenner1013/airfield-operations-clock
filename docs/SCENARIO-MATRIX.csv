@@ -1,0 +1,97 @@
+scenario,preset,query,label,icon,primary_particles,secondary_particles,obscuration,lightning,quality,reduced,status
+preset-1,GUSTING,?debugWindMode=gust&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-2,VARIABLE SECTOR,?debugWindMode=sector&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-3,VRB,?debugWindMode=variable&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-4,CALM,?debugWindMode=calm&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-5,NORTH 359°,?debugWind=359&debugWindSpeed=8&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-6,NONE,?debugWxAlert=none&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-7,INFORMATION,?debugWxAlert=info&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-8,CAUTION,?debugWxAlert=caution&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-9,WARNING,?debugWxAlert=warning&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-10,DAY LTR,?debugTime=day&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-11,NIGHT RTL,?debugTime=night&debugFlyby=on&debugFlybyDir=rtl&spawnFlyby=1&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-12,TWILIGHT LTR,?debugTime=sunset&debugFlyby=on&debugFlybyDir=ltr&spawnFlyby=1&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-13,SPAWN NOW,?debugFlyby=on&spawnFlyby=1&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-14,FLYBY OFF,?debugFlyby=off&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-15,Day (Noon),?debugTime=day&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-16,Sunrise,?debugTime=sunrise&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-17,Sunset,?debugTime=sunset&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-18,New Moon,?debugTime=night&debugMoonPhase=new&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-19,Crescent Moon,?debugTime=night&debugMoonPhase=crescent&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-20,Quarter Moon,?debugTime=night&debugMoonPhase=quarter&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-21,Waxing Gibbous,?debugTime=night&debugMoonPhase=gibbous&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-22,Full Moon,?debugTime=night&debugMoonPhase=full&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-23,Waning Gibbous,?debugTime=night&debugMoonPhase=waning-gibbous&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-24,Last Quarter,?debugTime=night&debugMoonPhase=last-quarter&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-25,Waning Crescent,?debugTime=night&debugMoonPhase=waning-crescent&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain wxp-nighttime,rain,none,mist,none,full,0,PASS
+preset-26,VFR (10SM / 8000FT),?debugVisibility=10&debugCloudBase=8000&debugCloud=FEW&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-27,MVFR (4SM / 2000FT),?debugVisibility=4&debugCloudBase=2000&debugCloud=BKN&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-28,IFR (2SM / 800FT),?debugVisibility=2&debugCloudBase=800&debugCloud=OVC&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-29,LIFR (0.5SM / 200FT),?debugVisibility=.5&debugCloudBase=200&debugCloud=VV&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-30,BWC LOW,?debugBwc=low&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-31,BWC MODERATE,?debugBwc=moderate&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-32,BWC SEVERE,?debugBwc=severe&previewWeatherFx=1,RAIN · MIST,wx-pictogram wxp-rain ,rain,none,mist,none,full,0,PASS
+preset-33,NO LIGHTNING,?debugWeather=clear&debugLightning=none&debugTime=day&previewWeatherFx=1,CLEAR,wx-pictogram wxp-clear ,none,none,none,none,full,0,PASS
+preset-34,DISTANT OCNL IC,?debugWeather=partly-cloudy&debugLightning=distant-ocnl-ic&debugTime=day&previewWeatherFx=1,SCATTERED CLOUDS,wx-pictogram wxp-partly-cloudy ,none,none,none,distant,full,0,PASS
+preset-35,DISTANT FRQ CG,?debugWeather=partly-cloudy&debugLightning=distant-frq-cg&debugTime=night&previewWeatherFx=1,SCATTERED CLOUDS,wx-pictogram wxp-partly-cloudy wxp-nighttime,none,none,none,distant,full,0,PASS
+preset-36,VCTS,?debugWeather=thunderstorm&debugPhenomena=VCTS&debugLightning=vcts&debugTime=day&previewWeatherFx=1,THUNDERSTORMS IN THE VICINITY,wx-pictogram wxp-thunderstorm ,none,none,none,vicinity,full,0,PASS
+preset-37,TS,?debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=ts&debugTime=night&previewWeatherFx=1,THUNDERSTORMS,wx-pictogram wxp-thunderstorm wxp-nighttime,none,none,none,station,full,0,PASS
+preset-38,TSRA,?debugWeather=thunderstorm&debugPhenomena=TSRA&debugLightning=tsra&debugTime=night&previewWeatherFx=1,THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,station,full,0,PASS
+preset-39,+TSRA,?debugWeather=thunderstorm&debugPhenomena=%2BTSRA&debugLightning=severe&debugIntensity=heavy&debugTime=night&previewWeatherFx=1,HEAVY THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,severe,full,0,PASS
+preset-40,TSGR,?debugWeather=thunderstorm&debugPhenomena=TSGR&debugLightning=tsgr&debugTime=day&previewWeatherFx=1,THUNDERSTORMS WITH HAIL,wx-pictogram wxp-thunderstorm ,hail,none,none,station,full,0,PASS
+preset-41,REDUCED MOTION,?debugWeather=thunderstorm&debugPhenomena=TSRA&debugLightning=reduced&debugReducedMotion=1&debugTime=night&previewWeatherFx=1,THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,station,full,1,PASS
+preset-42,FLASH TEST,?debugWeather=thunderstorm&debugPhenomena=TS&debugLightning=flash-test&debugTime=night&previewWeatherFx=1,THUNDERSTORMS,wx-pictogram wxp-thunderstorm wxp-nighttime,none,none,none,station,full,0,PASS
+preset-43,-SN,?debugWeather=snow&debugPhenomena=-SN&debugIntensity=light&debugTime=day&previewWeatherFx=1,LIGHT SNOW,wx-pictogram wxp-snow ,snow,none,none,none,full,0,PASS
+preset-44,SN,?debugWeather=snow&debugPhenomena=SN&debugIntensity=moderate&debugTime=day&previewWeatherFx=1,SNOW,wx-pictogram wxp-snow ,snow,none,none,none,full,0,PASS
+preset-45,+SN,?debugWeather=snow&debugPhenomena=%2BSN&debugIntensity=heavy&debugVisibility=.75&debugTime=night&previewWeatherFx=1,HEAVY SNOW,wx-pictogram wxp-snow wxp-nighttime,snow,none,none,none,full,0,PASS
+preset-46,SHSN,?debugWeather=snow&debugPhenomena=SHSN&debugIntensity=moderate&debugTime=day&previewWeatherFx=1,SNOW SHOWERS,wx-pictogram wxp-snow ,snow-shower,none,none,none,full,0,PASS
+preset-47,BLSN,?debugWeather=snow&debugPhenomena=BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day&previewWeatherFx=1,BLOWING SNOW,wx-pictogram wxp-phenomenon wxp-blowing-snow ,blowing-snow,none,none,none,full,0,PASS
+preset-48,SN BLSN,?debugWeather=snow&debugPhenomena=SN%20BLSN&debugWind=280&debugWindSpeed=28&debugVisibility=1&debugTime=day&previewWeatherFx=1,SNOW AND BLOWING SNOW,wx-pictogram wxp-phenomenon wxp-blowing-snow ,snow,blowing-snow,none,none,full,0,PASS
+preset-49,DRSN,?debugWeather=snow&debugPhenomena=DRSN&debugWind=280&debugWindSpeed=15&debugVisibility=4&debugTime=day&previewWeatherFx=1,DRIFTING SNOW,wx-pictogram wxp-phenomenon wxp-drifting-snow ,drifting-snow,none,none,none,full,0,PASS
+preset-50,SG,?debugWeather=snow&debugPhenomena=SG&debugTime=day&previewWeatherFx=1,SNOW GRAINS,wx-pictogram wxp-phenomenon wxp-snow-grains ,snow-grains,none,none,none,full,0,PASS
+preset-51,IC,?debugWeather=snow&debugPhenomena=IC&debugTime=night&previewWeatherFx=1,ICE CRYSTALS,wx-pictogram wxp-phenomenon wxp-ice-crystals wxp-nighttime,ice-crystals,none,none,none,full,0,PASS
+preset-52,PL,?debugWeather=snow&debugPhenomena=PL&debugTime=day&previewWeatherFx=1,ICE PELLETS,wx-pictogram wxp-phenomenon wxp-ice-pellets ,ice-pellets,none,none,none,full,0,PASS
+preset-53,GS,?debugWeather=thunderstorm&debugPhenomena=GS&debugTime=day&previewWeatherFx=1,SMALL HAIL,wx-pictogram wxp-phenomenon wxp-small-hail ,small-hail,none,none,none,full,0,PASS
+preset-54,GR,?debugWeather=thunderstorm&debugPhenomena=GR&debugTime=day&previewWeatherFx=1,HAIL,wx-pictogram wxp-phenomenon wxp-hail ,hail,none,none,none,full,0,PASS
+preset-55,-DZ,?debugWeather=rain&debugPhenomena=-DZ&debugIntensity=light&debugTime=day&previewWeatherFx=1,LIGHT DRIZZLE,wx-pictogram wxp-phenomenon wxp-drizzle ,drizzle,none,none,none,full,0,PASS
+preset-56,DZ,?debugWeather=rain&debugPhenomena=DZ&debugIntensity=moderate&debugTime=day&previewWeatherFx=1,DRIZZLE,wx-pictogram wxp-phenomenon wxp-drizzle ,drizzle,none,none,none,full,0,PASS
+preset-57,-RA,?debugWeather=rain&debugPhenomena=-RA&debugIntensity=light&debugTime=day&previewWeatherFx=1,LIGHT RAIN,wx-pictogram wxp-rain ,rain,none,none,none,full,0,PASS
+preset-58,RA,?debugWeather=rain&debugPhenomena=RA&debugIntensity=moderate&debugTime=day&previewWeatherFx=1,RAIN,wx-pictogram wxp-rain ,rain,none,none,none,full,0,PASS
+preset-59,+RA,?debugWeather=heavy-rain&debugPhenomena=%2BRA&debugIntensity=heavy&debugVisibility=1.5&debugTime=night&previewWeatherFx=1,HEAVY RAIN,wx-pictogram wxp-heavy-rain wxp-nighttime,rain,none,none,none,full,0,PASS
+preset-60,SHRA,?debugWeather=rain&debugPhenomena=SHRA&debugTime=day&previewWeatherFx=1,RAIN SHOWERS,wx-pictogram wxp-rain ,rain,none,none,none,full,0,PASS
+preset-61,TSRA,?debugWeather=thunderstorm&debugPhenomena=TSRA&debugTime=night&previewWeatherFx=1,THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,station,full,0,PASS
+preset-62,VCSH,?debugWeather=rain&debugPhenomena=VCSH&debugTime=day&previewWeatherFx=1,SHOWERS IN THE VICINITY,wx-pictogram wxp-phenomenon wxp-unknown-precipitation ,rain,none,none,none,full,0,PASS
+preset-63,FZRA,?debugWeather=rain&debugPhenomena=FZRA&debugTime=night&previewWeatherFx=1,FREEZING RAIN,wx-pictogram wxp-phenomenon wxp-freezing-rain wxp-nighttime,freezing-rain,none,none,none,full,0,PASS
+preset-64,RASN,?debugWeather=snow&debugPhenomena=RASN&debugTime=day&previewWeatherFx=1,RAIN AND SNOW,wx-pictogram wxp-phenomenon wxp-rain-snow ,snow,rain,none,none,full,0,PASS
+preset-65,BR 5SM,?debugWeather=fog&debugPhenomena=BR&debugVisibility=5&debugTime=day&previewWeatherFx=1,MIST,wx-pictogram wxp-fog ,none,none,mist,none,full,0,PASS
+preset-66,FG 2SM,?debugWeather=fog&debugPhenomena=FG&debugVisibility=2&debugTime=day&previewWeatherFx=1,FOG,wx-pictogram wxp-fog ,none,none,fog,none,full,0,PASS
+preset-67,FG 1SM,?debugWeather=fog&debugPhenomena=FG&debugVisibility=1&debugTime=day&previewWeatherFx=1,FOG,wx-pictogram wxp-fog ,none,none,fog,none,full,0,PASS
+preset-68,FG .5SM,?debugWeather=fog&debugPhenomena=FG&debugVisibility=.5&debugTime=night&previewWeatherFx=1,FOG,wx-pictogram wxp-fog wxp-nighttime,none,none,fog,none,full,0,PASS
+preset-69,MIFG,?debugWeather=fog&debugPhenomena=MIFG&debugVisibility=2&debugTime=day&previewWeatherFx=1,SHALLOW FOG,wx-pictogram wxp-fog ,none,none,shallow-fog,none,full,0,PASS
+preset-70,BCFG,?debugWeather=fog&debugPhenomena=BCFG&debugVisibility=2&debugTime=day&previewWeatherFx=1,PATCHES OF FOG,wx-pictogram wxp-fog ,none,none,patchy-fog,none,full,0,PASS
+preset-71,PRFG,?debugWeather=fog&debugPhenomena=PRFG&debugVisibility=1&debugTime=day&previewWeatherFx=1,PARTIAL FOG,wx-pictogram wxp-fog ,none,none,partial-fog,none,full,0,PASS
+preset-72,FZFG,?debugWeather=fog&debugPhenomena=FZFG&debugVisibility=.5&debugTime=night&previewWeatherFx=1,FREEZING FOG,wx-pictogram wxp-phenomenon wxp-freezing-fog wxp-nighttime,none,none,freezing-fog,none,full,0,PASS
+preset-73,HZ,?debugWeather=fog&debugPhenomena=HZ&debugVisibility=4&debugTime=day&previewWeatherFx=1,HAZE,wx-pictogram wxp-phenomenon wxp-haze ,none,none,haze,none,full,0,PASS
+preset-74,FU,?debugWeather=fog&debugPhenomena=FU&debugVisibility=3&debugTime=day&previewWeatherFx=1,SMOKE,wx-pictogram wxp-phenomenon wxp-smoke ,none,none,smoke,none,full,0,PASS
+preset-75,BLDU,?debugWeather=fog&debugPhenomena=BLDU&debugVisibility=1&debugWind=260&debugWindSpeed=30&debugTime=day&previewWeatherFx=1,BLOWING DUST,wx-pictogram wxp-phenomenon wxp-blowing-dust ,none,none,blowing-dust,none,full,0,PASS
+preset-76,BLSA,?debugWeather=fog&debugPhenomena=BLSA&debugVisibility=1&debugWind=250&debugWindSpeed=30&debugTime=day&previewWeatherFx=1,BLOWING SAND,wx-pictogram wxp-phenomenon wxp-blowing-sand ,none,none,blowing-sand,none,full,0,PASS
+preset-77,DS,?debugWeather=fog&debugPhenomena=DS&debugVisibility=.5&debugWind=250&debugWindSpeed=35&debugTime=day&previewWeatherFx=1,DUST STORM,wx-pictogram wxp-phenomenon wxp-dust-storm ,none,none,dust-storm,none,full,0,PASS
+preset-78,SS,?debugWeather=fog&debugPhenomena=SS&debugVisibility=.5&debugWind=250&debugWindSpeed=35&debugTime=day&previewWeatherFx=1,SANDSTORM,wx-pictogram wxp-phenomenon wxp-sandstorm ,none,none,sandstorm,none,full,0,PASS
+preset-79,VA,?debugWeather=fog&debugPhenomena=VA&debugVisibility=2&debugTime=day&previewWeatherFx=1,VOLCANIC ASH,wx-pictogram wxp-phenomenon wxp-volcanic-ash ,none,none,volcanic-ash,none,full,0,PASS
+preset-80,Clear day,?debugWeather=clear&debugTime=day&previewWeatherFx=1,CLEAR,wx-pictogram wxp-clear ,none,none,none,none,full,0,PASS
+preset-81,Clear night,?debugWeather=clear&debugTime=night&previewWeatherFx=1,CLEAR,wx-pictogram wxp-night wxp-nighttime,none,none,none,none,full,0,PASS
+preset-82,Sunrise,?debugWeather=clear&debugTime=sunrise&previewWeatherFx=1,CLEAR,wx-pictogram wxp-clear ,none,none,none,none,full,0,PASS
+preset-83,Sunset,?debugWeather=clear&debugTime=sunset&previewWeatherFx=1,CLEAR,wx-pictogram wxp-clear ,none,none,none,none,full,0,PASS
+preset-84,Low performance,?debugWeather=snow&debugPhenomena=%2BSN&debugIntensity=heavy&debugPerformance=low&debugTime=day&previewWeatherFx=1,HEAVY SNOW,wx-pictogram wxp-snow ,snow,none,none,none,low,0,PASS
+preset-85,Reduced motion,?debugWeather=snow&debugPhenomena=SN&debugReducedMotion=1&debugTime=day&previewWeatherFx=1,SNOW,wx-pictogram wxp-snow ,snow,none,none,none,full,1,PASS
+button-Clear,Clear,callback; debugTime=night preserved,CLEAR,wx-pictogram wxp-night wxp-nighttime,none,none,none,none,full,0,PASS
+button-Partly cloudy,Partly cloudy,callback; debugTime=night preserved,SCATTERED CLOUDS,wx-pictogram wxp-partly-cloudy wxp-nighttime,none,none,none,none,full,0,PASS
+button-Overcast,Overcast,callback; debugTime=night preserved,OVERCAST CEILING,wx-pictogram wxp-overcast wxp-nighttime,none,none,none,none,full,0,PASS
+button-Light rain,Light rain,callback; debugTime=night preserved,LIGHT RAIN,wx-pictogram wxp-rain wxp-nighttime,rain,none,none,none,full,0,PASS
+button-Heavy rain,Heavy rain,callback; debugTime=night preserved,HEAVY RAIN,wx-pictogram wxp-heavy-rain wxp-nighttime,rain,none,none,none,full,0,PASS
+button-Thunderstorm,Thunderstorm,callback; debugTime=night preserved,THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,station,full,0,PASS
+button-Severe thunderstorm,Severe thunderstorm,callback; debugTime=night preserved,HEAVY THUNDERSTORMS WITH RAIN,wx-pictogram wxp-thunderstorm wxp-nighttime,rain,none,none,severe,full,0,PASS
+button-Fog,Fog,callback; debugTime=night preserved,FOG,wx-pictogram wxp-fog wxp-nighttime,none,none,fog,none,full,0,PASS
+button-Snow,Snow,callback; debugTime=night preserved,SNOW,wx-pictogram wxp-snow wxp-nighttime,snow,none,none,none,full,0,PASS
+button-Blowing snow,Blowing snow,callback; debugTime=night preserved,SNOW AND BLOWING SNOW,wx-pictogram wxp-phenomenon wxp-blowing-snow wxp-nighttime,snow,blowing-snow,none,none,full,0,PASS
+button-High winds,High winds,callback; debugTime=night preserved,SCATTERED CLOUDS,wx-pictogram wxp-partly-cloudy wxp-nighttime,none,none,none,none,full,0,PASS

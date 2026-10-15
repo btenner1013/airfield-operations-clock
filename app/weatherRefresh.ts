@@ -68,6 +68,7 @@ export function classifyMetarFreshness(observedIso:string|null, nowMs:number):Me
   const observed=observedIso?Date.parse(observedIso):NaN;
   if(!Number.isFinite(observed)||!Number.isFinite(nowMs)) return {state:"UNAVAILABLE",ageMinutes:null};
   const elapsed=nowMs-observed;
+  if(elapsed < -5*60000) return {state:"UNAVAILABLE",ageMinutes:null};
   return {state:elapsed<=METAR_CURRENT_MS?"CURRENT":"STALE",ageMinutes:Math.max(0,Math.floor(elapsed/60000))};
 }
 

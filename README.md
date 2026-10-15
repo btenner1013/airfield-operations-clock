@@ -13,7 +13,9 @@ The project uses no secret API keys and no backend. The clock always follows the
 
 ## Weather source and resilience
 
-Weather comes from the public Open-Meteo forecast API for the KMEM coordinates. The provider normalization lives in `app/page.tsx`, so another provider can replace `getWeather()` without changing the display components. A successful observation is retained in browser storage. If the feed fails, both clocks continue, the last observation is shown as cached/stale, and a neutral state is used if no observation exists.
+The public KMEM Ops Board feed supplies current METAR conditions, ATIS/METAR wind and lightning, TAF future weather, and AHAS bird risk. Open-Meteo supplies supporting temperature, humidity, solar times, and model fallback data. Hourly precipitation probability prefers the NWS KMEM gridpoint, with explicitly labeled Open-Meteo fallback. TAF forecasts never trigger current weather effects.
+
+Provider normalization lives in `app/page.tsx`. Weather refreshes every two minutes and on wake/reconnection, with independent last-valid observations retained in browser storage. Feed failures remain visible in the diagnostics while both clocks continue. The cinematic renderer reads normalized observations without changing the fetch, cache, or clock lifecycles.
 
 ## Four-digit Julian date
 
@@ -23,11 +25,17 @@ The status panel uses the common aviation `YDDD` form: the final digit of the lo
 
 For complete details on supported query parameters, presets, and interactive testing controls, see the **[Preview Lab & Simulator Guide](docs/PREVIEW-LAB.md)**.
 
+Open `?weatherDemo=1` for the cinematic weather comparison buttons, quality switch, and rendering diagnostics. See **[Cinematic Weather](docs/CINEMATIC-WEATHER.md)** for architecture, condition examples, performance limits, and verification notes.
+
 Append one of these query strings to simulate a theme:
 
 `?debugWeather=clear`, `partly-cloudy`, `overcast`, `rain`, `heavy-rain`, `thunderstorm`, `snow`, `fog`, `night`, `sunrise`, or `sunset`.
 
-Remove the query string to return to live weather. The simulator bar appears only while simulation is active. Operating-system reduced-motion preferences stop weather motion and lightning. The full surface shifts by one pixel on a long interval for burn-in protection.
+Remove the query string or use the Preview Lab's LIVE link to return to live weather. Demo controls appear only when requested. Operating-system reduced-motion preferences stop weather motion and lightning. The full surface shifts by one pixel on a long interval for burn-in protection.
+
+## Bottom information instruments
+
+The solar/lunar, current weather, bird watch and future-weather cards now have clearer readings and grouping alongside the accepted wind instrument. The original circular solar-lunar dial is restored with clearer markings and depth. The moon graphic and all phase information appear only at night, with correct waxing/waning geometry. See the **[Information Bar guide](docs/INFORMATION-BAR.md)** for data boundaries and preview examples, plus the **[scenario audit](docs/SCENARIO-VERIFICATION.md)** for supported-phenomenon fixes and verification limits.
 
 ## Local testing
 
@@ -35,4 +43,8 @@ Install Node.js 22 or newer, run `npm ci`, then `npm run dev`. For a GitHub Page
 
 ## Configuration
 
-Site/location settings are grouped in the `CONFIG` object near the top of `app/page.tsx`. Update the airport code, display name, coordinates, IANA time zone, or weather refresh interval there. Open-Meteo condition normalization and visual themes remain separate through `mapCode()` and the CSS `theme-*` classes.
+Site/location settings are grouped in the `CONFIG` object near the top of `app/page.tsx`. Update the airport code, display name, coordinates, IANA time zone, or weather refresh interval there. Observation normalization remains separate from visual behavior in `app/weatherController.ts` and the CSS `theme-*` classes.
+
+### Frozen precipitation motion
+
+Hail/pellet arrivals now remain steady through separate small decaying impacts, with depth-scattered contact points and compact ice shapes. Full-height snow/precipitation starts at distributed cycle positions. See `docs/FROZEN-PRECIPITATION-MOTION.md` for tests, bounded resources, actual native temporal review and limitations.
