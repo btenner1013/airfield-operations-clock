@@ -69,7 +69,7 @@ test("LOW, MODERATE, SEVERE, HIGH and unknown retain the production risk mapping
     assert.ok(html.includes(`class="bird-severity">${risk}`));
     assert.match(html, /class="bird-watch-glyph"/);
   }
-  for (const [risk, color] of [["low", "#72dbbd"], ["moderate", "#f3b765"], ["severe", "#ff7676"]]) assert.ok(css.includes(`.bird-card.risk-${risk} { --bird-tone: ${color}; }`));
+  for (const [risk, color] of [["low", "#72dbbd"], ["moderate", "#ffd07a"], ["severe", "#ff7676"]]) assert.ok(css.includes(`.bird-card.risk-${risk} { --bird-tone: ${color}; }`));
   assert.match(css, /\.bird-card \{[^}]*--bird-tone: #a6bdca/);
   assert.match(css, /\.bird-watch-glyph \{[^}]*color: var\(--bird-tone\)/);
   assert.match(css, /\.bird-watch-reading \.bird-severity \{[^}]*color: var\(--bird-tone\)/);
@@ -90,4 +90,28 @@ test("severe bird and text reuse the original 1.2-second fade; age is not animat
 test("both OS and explicit reduced-motion state disable the severe bird and text pulse", () => {
   assert.match(css, /\[data-reduced-motion="1"\] \.bird-card\.risk-severe \.bird-watch-glyph,\s*\[data-reduced-motion="1"\] \.bird-card\.risk-severe \.bird-severity \{ animation: none !important; opacity: 1; \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.bird-card\.risk-severe \.bird-watch-glyph, \.bird-card\.risk-severe \.bird-severity \{ animation: none !important; opacity: 1; \}/);
+});
+
+
+test("condition emphasis is larger while the longest known label retains room beside the goose", () => {
+  assert.match(css, /grid-template-columns: minmax\(32px, \.5fr\) minmax\(0, 1\.5fr\)/);
+  assert.match(css, /font: 900 clamp\(14px, 10\.4cqw, 32px\)/);
+  assert.match(css, /font-size: clamp\(14px, 9\.5cqw, 42px\)/);
+  assert.match(css, /font-size: clamp\(13px, 10\.4cqw, 18px\)/);
+  assert.match(css, /\.bird-watch-reading \.bird-severity \{[^}]*white-space: nowrap/);
+  assert.match(css, /\.bird-card\.risk-unknown \.bird-severity \{[^}]*white-space: normal; overflow-wrap: anywhere/);
+  const clamp=(lo,value,hi)=>Math.max(lo,Math.min(hi,value));
+  // Conservative .62em glyph width plus tracking, using the source grid/clamps.
+  // Covers the small desktop track above the1080px horizontal-rail breakpoint.
+  for(const content of [110,120,130,150,180,230,280,330,440]){
+    const font=clamp(14,content*.104,32), right=content-6-Math.max(32,(content-6)*.25);
+    assert.ok(font*(8*.62+7*.01)<=right, `MODERATE fits ${content}px content track`);
+    assert.ok(font>=clamp(11,content*.08,24)*1.2, `${content}px condition is visibly larger`);
+    const small=clamp(13,content*.104,18), compactRight=content-42;
+    assert.ok(small*(8*.62+7*.01)<=compactRight, `compact MODERATE fits ${content}px content track`);
+  }
+  for(const content of [110,130,150,180,200,250,300,360,440,550]){
+    const font=clamp(14,content*.095,42),right=(content-6)*.75;
+    assert.ok(font*(8*.62+7*.01)<=right, `TV or narrow-tall label fits ${content}px`);
+  }
 });
