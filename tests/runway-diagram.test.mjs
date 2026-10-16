@@ -46,11 +46,11 @@ test('stale and absent data render four gray runways without operational arrows 
   assert.doesNotMatch(html,/data-operation=|runway-closure/);
  }
 });
-test('diagram occupies header right and single local-date group moves below both clocks',()=>{
+test('diagram occupies header right and Julian group sits below both clocks',()=>{
  const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
  assert.ok(page.indexOf('<RunwayPlacement')<page.indexOf('<section className="clocks"'));
- assert.ok(page.indexOf('<div className="header-date">')>page.indexOf('<article className="clock zulu"'));
- assert.equal((page.match(/className="header-date"/g)||[]).length,1);
+ assert.ok(page.indexOf('<div className="header-date julian-date">')>page.indexOf('<article className="clock zulu"'));
+ assert.equal((page.match(/className="header-date julian-date"/g)||[]).length,1);
  assert.match(css,/right:0;top:0/);assert.match(css,/min-height:clamp/);
  assert.match(css,/\.clocks > \.header-date \{\s*display:flex/);
  assert.doesNotMatch(css,/grid-template|background:|animation:|\.clock time/);
@@ -65,4 +65,22 @@ test('header placement stays above clock labels and right of branding',()=>{
  assert.equal(geometry.runwayPlacementHeight(200,205,1200,800),0);
  assert.equal(geometry.runwayPlacementHeight(50,400,800,790),0);
  assert.equal(geometry.runwayPlacementHeight(NaN,200,1200,800),0);
+});
+
+test('each clock has exactly one larger date and Julian retains local-calendar rollover',()=>{
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ assert.equal((page.match(/\{dateLine\(local\)\}/g)||[]).length,1);
+ assert.equal((page.match(/\{dateLine\(utc\)\}/g)||[]).length,1);
+ assert.doesNotMatch(page,/LOCAL DATE/);
+ assert.match(css,/font-size:clamp\(14px,1\.3vw,25px\)/);
+ const functions=page.slice(page.indexOf('function parts('),page.indexOf('function getMoonPhase('));
+ const compiled=ts.transpileModule(functions+'\nmodule.exports={parts,dateLine,julian4};',{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+ const mod={exports:{}};new Function('module','CONFIG',compiled)(mod,{timeZone:'America/Chicago'});
+ const {parts,dateLine,julian4}=mod.exports;
+ const now=new Date('2027-01-01T02:00:00Z');
+ assert.match(dateLine(parts(now,'America/Chicago')),/31 DEC 2026/);
+ assert.match(dateLine(parts(now,'UTC')),/01 JAN 2027/);
+ assert.equal(julian4(now),'6365');
+ assert.equal(julian4(new Date('2027-01-01T06:00:00Z')),'7001');
 });

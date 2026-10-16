@@ -16,7 +16,7 @@
 .runway-strip { stroke-width:5.5px; }
 .runway-diagram .runway-arrow-outline { stroke:#001018;stroke-width:6px;stroke-linecap:round;stroke-linejoin:round; }
 .runway-diagram .runway-arrow { stroke-width:3px;stroke-linecap:round;stroke-linejoin:round; }
-/* A single local-date/Julian group below both clocks. Per-zone dates remain. */
+/* One date per clock; local-basis Julian day centered beneath both. */
 .clocks { padding-bottom:64px; }
 .clocks > .header-date {
   display:flex;position:absolute;left:0;right:0;bottom:12px;
@@ -28,4 +28,13 @@
   .runway-placement { position:relative;top:auto;right:auto;margin-left:auto; }
   .clocks { padding-bottom:88px; }
   .clocks > .header-date { padding:0 8px;gap:6px 14px; }
+}
+
+.clock .clock-foot span {
+  font-size:clamp(14px,1.3vw,25px);line-height:1.35;letter-spacing:.07em;
+}
+.clock .clock-foot { gap:12px; }
+@media (max-width:1100px) {
+  .clock .clock-foot { flex-wrap:wrap; }
+  .clock .clock-foot span { text-align:right;margin-left:auto; }
 }

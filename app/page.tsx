@@ -624,7 +624,7 @@ export default function Home() {
       <section className="clocks" aria-label="Local and Zulu clocks">
         <article className="clock local"><div className="clock-head"><span>LOCAL</span><b><i/> ON STATION</b></div><time>{localTime}</time><div className="clock-foot"><strong>{local.timeZoneName||"LOCAL"}</strong><span>{dateLine(local)}</span></div></article>
         <article className="clock zulu"><div className="clock-head"><span>ZULU</span><b><i/> UNIVERSAL</b></div><time>{utcTime}<em>Z</em></time><div className="clock-foot"><strong>UTC</strong><span>{dateLine(utc)}</span></div></article>
-        <div className="header-date"><small>LOCAL DATE</small><strong>{dateLine(local)}</strong><strong>JULIAN {julian4(now)}</strong></div>
+        <div className="header-date julian-date"><strong>JULIAN {julian4(now)}</strong></div>
       </section>
       <section className="info">
         <article className="sun-card panel">
