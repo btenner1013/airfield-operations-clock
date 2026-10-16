@@ -5,20 +5,21 @@ import { useEffect, useRef } from "react";
 import type { FxSpec, PaneSpec, ParticleClassSpec } from "./weatherFx";
 import { createAtmosphereRenderer, type AtmosphereSpec } from "./atmosphereRenderer";
 import { createPhotographicSky } from "./photographicSky";
+import type { SkyPhase } from "./skyLighting";
 import { advanceFrozenImpact, createFrozenImpact, frozenContactHeight, frozenImpactOpacity, frozenShowerOpacity, MAX_FROZEN_IMPACTS, type FrozenImpact } from "./frozenPrecipitation";
 
 type Particle={x:number;y:number;v:number;vx:number;len:number;size:number;phase:number;depth:number;seed:number;group:0|1;age:number;kind:string};
 type Drop={x:number;y:number;r:number;rMax:number;vy:number;vx:number;trailY:number;rolling:boolean;wob:number;age:number;rollAfter:number};
 const DPR_CAP=1.5;
 
-export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night}:{spec:FxSpec|null;atmosphere:AtmosphereSpec;backgroundSrc:string;paused?:boolean;night?:boolean}) {
+export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night,phase}:{spec:FxSpec|null;atmosphere:AtmosphereSpec;backgroundSrc:string;paused?:boolean;night?:boolean;phase?:SkyPhase}) {
   const ref=useRef<HTMLCanvasElement|null>(null),skyRef=useRef<HTMLCanvasElement|null>(null),specRef=useRef<FxSpec|null>(spec),pausedRef=useRef(!!paused),nightRef=useRef(!!night);
-  const atmosphereRef=useRef(atmosphere);atmosphereRef.current=atmosphere;
+  const atmosphereRef=useRef(atmosphere);atmosphereRef.current={...atmosphere,phase};
   specRef.current=spec;pausedRef.current=!!paused;nightRef.current=!!night;
   // page.tsx renders once per clock second, so object identity is not a weather-change signal.
   // A value signature prevents those clock renders from reseeding the complete particle field.
   const specSignature=spec?JSON.stringify(spec):"none";
-  const atmosphereSignature=JSON.stringify(atmosphere);
+  const atmosphereSignature=JSON.stringify({...atmosphere,phase});
   const impacts=useRef<FrozenImpact[]>([]);
   const particles=useRef<Particle[]>([]),drops=useRef<Drop[]>([]),raf=useRef(0),dims=useRef({w:0,h:0});
   const photoRef=useRef<HTMLImageElement|null>(null),photoReadyAt=useRef<number|null>(null);

@@ -24,7 +24,7 @@ import WeatherIcon from "./WeatherIcon";
 import SolarLunarInstrument from "./SolarLunarInstrument";
 import BirdWatchGlyph from "./BirdWatchGlyph";
 import CurrentWeatherTrend from "./CurrentWeatherTrend";
-import { advanceCurrentTrendHistory, resolveCurrentWeatherTrends, type CurrentTrendHistory } from "./currentWeatherTrends";
+import { normalizeCurrentOpsWeather, resolveCurrentWeatherReadings } from "./currentWeatherTrends";
 import OperationalWarning from "./OperationalWarning";
 import { describeForecastSources, formatForecastWind } from "./forecastPresentation";
 import { currentWeatherPresentation, currentLightningPresentation, lightningReportForDisplay } from "./currentWeatherPresentation";
@@ -237,7 +237,7 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   });
   const windValid=currentWind!==null;
   const healthy=metarValid&&tafValid&&metarFetchStatus==="OK"&&tafFetchStatus==="OK";
-  const weather:Weather={...model,runwayOperations:normalizeRunwayOperations(ops),temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
+  const weather:Weather={...model,currentOpsWeather:normalizeCurrentOpsWeather(ops),runwayOperations:normalizeRunwayOperations(ops),temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
   weather.currentLightning=resolveCurrentLightning(ops,weather.currentLightning);
   return {weather,metarValid,tafValid,modelValid,windValid,feedReached:true};
 }
@@ -335,9 +335,6 @@ export default function Home() {
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"), exact=q.get("debugExactTime"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, exact: exact!=null&&exact!==""?Number(exact):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
   const {now,status:clock}=useSystemClock(clockDebug);
-  const [currentTrendHistory,setCurrentTrendHistory]=useState<CurrentTrendHistory>({previous:null,current:null});
-  const currentTrendClockRef=useRef({nowMs:0,simulated:false});
-  currentTrendClockRef.current={nowMs:now.getTime(),simulated:clock.source==="PREVIEW"};
   
   // Spawning controls for single C-17 photo flyby
   const activeFlybyRemovalRef = useRef<number | null>(null);
@@ -420,13 +417,10 @@ export default function Home() {
         const prior=weatherRef.current, feedStatus=result.feedReached?result.weather.feedStatus:(navigator.onLine?"DEGRADED":"OFFLINE");
         const validFeedSnapshot=result.feedReached&&(result.metarValid||result.tafValid||result.windValid);
         const candidate={...result.weather,feedStatus,requestStatus:"IDLE" as const,lastRefreshAttemptIso:prior.lastRefreshAttemptIso,lastRefreshSuccessIso:validFeedSnapshot?atIso:prior.lastRefreshSuccessIso,feedError:result.feedReached?result.weather.feedError:(result.weather.feedError||"FEED UNREACHABLE")};
-        // Only the successful incoming observation can advance this session-only history.
-        if(currentTrendClockRef.current.simulated) setCurrentTrendHistory({previous:null,current:null});
-        else setCurrentTrendHistory(history=>advanceCurrentTrendHistory(history,result,currentTrendClockRef.current.nowMs));
         const merged=mergeWeather(prior,{...result,weather:candidate}); commit(merged);
         try{const stored=serializeWeatherCache(merged,atIso);if(stored)localStorage.setItem("kmem-weather",stored);}catch{}
       },
-      onError:(_error,_reason,_atIso,timedOut)=>{ setCurrentTrendHistory({previous:null,current:null}); commit({...weatherRef.current,forecast:weatherRef.current.forecast.map(row=>({...row,forecastWind:null})),requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}); },
+      onError:(_error,_reason,_atIso,timedOut)=>{ commit({...weatherRef.current,currentOpsWeather:null,forecast:weatherRef.current.forecast.map(row=>({...row,forecastWind:null})),requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}); },
       timeoutMs:12000
     });
     const removeLifecycle=installWeatherRefreshLifecycle(reason=>{void coordinator.refresh(reason);},CONFIG.weatherRefreshMinutes*60000);
@@ -479,7 +473,8 @@ export default function Home() {
     simulated:Boolean((debug && !(["night","sunrise","sunset"] as Theme[]).includes(debug)) || debugPhenomena !== null || debugCloud !== null || debugCloudBase !== null || debugVisibility !== null || debugIntensity !== null),
     phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
   });
-  const currentTrends=resolveCurrentWeatherTrends(currentTrendHistory,{...weather,cloudCoverage:effCoverage,cloudBaseFt:effBase,visibilitySm:effVisibility},now.getTime(),currentPresentation.simulated||clock.source==="PREVIEW");
+  const currentReadings=resolveCurrentWeatherReadings(weather,now.getTime(),currentPresentation.simulated||clock.source==="PREVIEW");
+  const currentTrends=currentReadings.trends;
   const lightning=currentLightningPresentation({preview:debugLightning,simulated:currentPresentation.simulated,phenomena:effPhenomena,live:weather.currentLightning});
   const visualLightning=lightningForAnimation(lightning,weather.metarObsIso,now.getTime());
   const lightningPoint=lightningPlacement(lightning),flashTest=debugLightning==="flash-test";
@@ -605,7 +600,9 @@ export default function Home() {
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
   const clockText=formatClockStatus(clock);
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
-  const flightCat = getFlightCategory(effVisibility, effBase, effCoverage, currentPresentation.simulated || (metarState === "CURRENT" && !!weather.operationalWeather && weather.operationalWeather.skyCondition !== "unavailable"));
+  const flightCat = currentReadings.usesOps
+    ? getFlightCategory(currentReadings.visibility?.value??null,currentReadings.ceiling?.value.kind==="height"?currentReadings.ceiling.value.feet:null,currentReadings.ceiling?.value.kind==="height"?"BKN":"CLR",!!currentReadings.ceiling&&!!currentReadings.visibility)
+    : getFlightCategory(effVisibility, effBase, effCoverage, currentPresentation.simulated || (metarState === "CURRENT" && !!weather.operationalWeather && weather.operationalWeather.skyCondition !== "unavailable"));
   const flybyAllowed = isFlybyWeatherAllowed(weather, flightCat);
   useEffect(()=>{ flybyAllowedRef.current = flybyAllowed; },[flybyAllowed]);
   const moonInfo = useMemo(() => resolveMoonPreview(getMoonPhase(now), debugMoon), [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), debugMoon]);
@@ -626,7 +623,7 @@ export default function Home() {
     data-obscuration-horizon={obscuration.horizon.toFixed(2)} data-obscuration-veil={obscuration.veil.toFixed(2)}
     data-active-obscuration-layers={obscuration.layers} data-obscuration-direction={obscuration.direction}
     data-winddir={effWindDir??"VRB"} data-wind={effWindSpd} data-nx={atmosphere.windX.toFixed(2)} data-ny={atmosphere.windY.toFixed(2)}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas spec={fxSpec} atmosphere={atmosphere} backgroundSrc={`${imageBase}/assets/backgrounds/${activeWallpaper}.png`} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas phase={phase} spec={fxSpec} atmosphere={atmosphere} backgroundSrc={`${imageBase}/assets/backgrounds/${activeWallpaper}.png`} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><RunwayPlacement snapshot={weather.runwayOperations} nowMs={now.getTime()} /></header>
       <section className="clocks" aria-label="Local and Zulu clocks">
@@ -641,21 +638,21 @@ export default function Home() {
         </article>
         <article className="weather-card panel">
           <div className="panel-title">
-            <span>{currentPresentation.simulated ? "PREVIEW WEATHER" : metarState === "STALE" ? "LAST OBSERVATION" : "CURRENT WEATHER"}</span>
+            <span>{currentPresentation.simulated ? "PREVIEW WEATHER" : currentReadings.usesOps ? "CURRENT WEATHER" : metarState === "STALE" ? "LAST OBSERVATION" : "CURRENT WEATHER"}</span>
             <b className={`metar-title-badge health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : metarState.toLowerCase()}`}>
               {currentPresentation.simulated ? "SIMULATED" : feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
             </b>
           </div>
           <div className="current-weather-instrument">
             <div className="current-weather-hero">
-              <strong className="current-temperature">{!currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small><CurrentWeatherTrend metric="temperature" comparison={currentTrends.temperature} /></strong>
+              <strong className="current-temperature" title={currentReadings.temperature?.title}>{currentReadings.usesOps ? currentReadings.temperature?.display??"--" : !currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small><CurrentWeatherTrend metric="temperature" comparison={currentTrends.temperature} /></strong>
               <span className="current-weather-glyph"><WeatherIcon condition={currentPresentation.condition} codes={currentPresentation.codes} night={!effSolar.daylight || phase === "night"} /></span>
             </div>
             <b className="current-condition">{currentPresentation.label}{currentPresentation.secondaryLabel && <span className="weather-modifier"> · {currentPresentation.secondaryLabel}</span>}</b>
             <div className="current-weather-stats">
               <div><span>FEELS LIKE</span><strong>{!modelMetricsAvailable ? "—" : weather.feelsLikeF}°F</strong></div>
               <div><span>HUMIDITY</span><strong>{!modelMetricsAvailable ? "—" : weather.humidity}%</strong></div>
-              <div className="current-ceiling"><span>CEILING</span><strong>{currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
+              <div className="current-ceiling"><span>CEILING</span><strong title={currentReadings.ceiling?.title}>{currentReadings.usesOps ? currentReadings.ceiling?.display??"UNAVAILABLE" : currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
             </div>
             {/* Lightning remains an exception: no report means no row. */}
             {lightningDisplay.severity!=="none"&&(
@@ -670,8 +667,8 @@ export default function Home() {
           <div className="wind-main-stacked">
             <WindInstrument wind={effectiveWind} nowMs={now.getTime()} reduced={reduced} />
             <div className="wind-flight-meta-centered">
-              <span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{!currentPresentation.simulated && metarState === "STALE" ? "STALE" : flightCat.cat}</span>
-              <span className="wind-vis-tag">VIS <strong>{effVisibility ?? "—"} SM<CurrentWeatherTrend metric="visibility" comparison={currentTrends.visibility} /></strong></span>
+              <span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{!currentReadings.usesOps && !currentPresentation.simulated && metarState === "STALE" ? "STALE" : flightCat.cat}</span>
+              <span className="wind-vis-tag">VIS <strong title={currentReadings.visibility?.title}>{currentReadings.usesOps ? currentReadings.visibility?.display??"— SM" : `${effVisibility ?? "—"} SM`}<CurrentWeatherTrend metric="visibility" comparison={currentTrends.visibility} /></strong></span>
             </div>
           </div>
         </article>

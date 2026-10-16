@@ -11,6 +11,20 @@
 .display[data-weather-renderer="cinematic"] .photographic-sky-canvas { position:absolute;inset:0;z-index:0;pointer-events:none; }
 /* All flash illumination is spatially contained in the atmosphere canvas. */
 .display[data-weather-renderer="cinematic"] .precip-canvas { z-index:2; }
+/* Cloudy golden hour is shaded within the sky renderer. The legacy sunset disc
+   was centered on the runway and painted over the photographic cloud deck.
+   Keep the same contrast scrim, without that unoccluded orange wash. Clear,
+   scattered and high-cirrus sunset photography retain their existing glow. */
+.display[data-weather-renderer="cinematic"].theme-overcast.phase-sunset[data-wallpaper-scene="overcast-day"][data-coverage="BKN"][data-obscuration="none"] .sky::after,
+.display[data-weather-renderer="cinematic"].theme-overcast.phase-sunset[data-wallpaper-scene="overcast-day"][data-coverage="OVC"][data-obscuration="none"] .sky::after,
+.display[data-weather-renderer="cinematic"].theme-overcast.phase-sunset[data-wallpaper-scene="overcast-day"][data-coverage="VV"][data-obscuration="none"] .sky::after {
+  background:linear-gradient(180deg,rgba(15,8,28,.2),transparent 48%,rgba(8,3,4,.66));
+}
+/* A small low-sky glint sits below the moving cloud alpha, away from the runway.
+   Closed decks keep the neutral scrim above; BKN alone retains warm breaks. */
+.display[data-weather-renderer="cinematic"].theme-overcast.phase-sunset[data-wallpaper-scene="overcast-day"][data-coverage="BKN"][data-obscuration="none"] .sky::after {
+  background:radial-gradient(ellipse 20% 7% at 70% 38%,rgba(238,151,94,.14),transparent 75%),linear-gradient(180deg,rgba(15,8,28,.2),transparent 48%,rgba(8,3,4,.66));
+}
 /* The original clock-band CSS mask remains on atmosphere/precipitation only. */
 .fxlab-note{margin:8px 0;color:#bed3e0;font-size:10px;line-height:1.5}
 .fxlab-presets{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}

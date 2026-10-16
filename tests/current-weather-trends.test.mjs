@@ -5,139 +5,173 @@ import {createRequire} from 'node:module';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import ts from 'typescript';
-import {parseAviationSky,resolveOperationalWeather} from '../app/aviationWeatherPriority.ts';
-import {currentTrendObservation,advanceCurrentTrendHistory,resolveCurrentWeatherTrends,compareCeiling,compareVisibility} from '../app/currentWeatherTrends.ts';
-const now=Date.parse('2026-10-16T20:05:00Z'),empty=()=>({previous:null,current:null});
-function weather(time='1954',fields='10SM BKN030 17/07',overrides={}) {
- const raw=`METAR KMEM 16${time}Z 35010KT ${fields} A3022`,sky=parseAviationSky(raw),temp=fields.match(/(?:^|\s)(M?\d{2})\//)?.[1];
- return {source:'METAR',rawMetar:raw,metarObsIso:`2026-10-16T${time.slice(0,2)}:${time.slice(2)}:00.000Z`,metarFetchStatus:'OK',cloudCoverage:sky.cloudCoverage,cloudBaseFt:sky.cloudBaseFt,visibilitySm:sky.visibilitySm,temperatureF:temp?Math.round((temp.startsWith('M')?-Number(temp.slice(1)):Number(temp))*9/5+32):80,condition:'overcast',operationalWeather:resolveOperationalWeather({text:raw,...sky,sourceKind:'METAR'}),requestStatus:'IDLE',feedStatus:'OK',...overrides};
+import {normalizeCurrentOpsWeather,normalizeReportedTrend,resolveCurrentWeatherReadings} from '../app/currentWeatherTrends.ts';
+import {getFlightCategory} from '../app/currentSky.ts';
+import {mergeWeather} from '../app/weatherRefresh.ts';
+const now=Date.parse('2026-10-16T22:56:00Z');
+function payload(overrides={}) {
+ return {
+  allFeedsUpdatedZ:'2026-10-16 22:55Z',trendLookbackHours:3,trendReferenceSource:'3HR_HISTORY',trendReferenceTimestampZ:'2026-10-16T19:55:42Z',trendSampleCount:22,
+  metar:'METAR KMEM 162154Z 35011G20KT 10SM BKN065 17/03 A3025',metarObservedZ:'2026-10-16T21:54:00Z',metarFetchStatus:'WARN_SOURCE',metarAgeMinutes:62,
+  atisObservedZ:'2026-10-16T22:54:00Z',atisFetchStatus:'OK',atisAgeMinutes:2,atisSourceIsCurrent:true,lastKnownGoodUsed:{metar:false,atis:false},
+  obsFieldSources:{ceiling:'METAR',visibility:'ATIS',tempDp:'ATIS'},ceilingFt:6500,ceilingDisplay:'6500 FT',metarCeilingFt:6500,atisCeilingFt:null,
+  visibilitySm:10,visibilityDisplay:'10 SM',metarVisibilitySm:10,atisVisibilitySm:10,tempC:17,
+  ceilingTrend:'↓',ceilingTrendText:'FALLING',visibilityTrend:'→',visibilityTrendText:'STEADY',tempTrend:'▲',tempTrendText:'RISING',...overrides,
+ };
 }
-const result=w=>({weather:w,feedReached:true,metarValid:true});
-const sample=(...args)=>currentTrendObservation(weather(...args),now);
-const history=(a,b)=>advanceCurrentTrendHistory(advanceCurrentTrendHistory(empty(),result(a),now),result(b),now);
-const directions=t=>Object.fromEntries(Object.entries(t).map(([k,v])=>[k,v?.direction??null]));
+const weather=(data=payload(),overrides={})=>({currentOpsWeather:normalizeCurrentOpsWeather(data),requestStatus:'IDLE',feedStatus:'DEGRADED',...overrides});
+const read=(data=payload(),at=now,overrides={})=>resolveCurrentWeatherReadings(weather(data,overrides),at);
+const directions=t=>Object.fromEntries(Object.entries(t.trends).map(([k,v])=>[k,v?.direction??null]));
 const none={ceiling:null,visibility:null,temperature:null};
+const expected={ceiling:'down',visibility:'steady',temperature:'up'};
+const fields=r=>({ceiling:r.ceiling?.display??null,visibility:r.visibility?.display??null,temperature:r.temperature?.display??null});
 
-test('first load, cache-only state and repeated same observations never invent steady arrows',()=>{
- const a=weather(),h=advanceCurrentTrendHistory(empty(),result(a),now);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(empty(),a,now)),none);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,a,now)),none);
- assert.equal(advanceCurrentTrendHistory(h,result(a),now),h);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,a,now)),none);
+test('initial successful JSON snapshot shows canonical readings and reported trends without any session baseline',()=>{
+ const current=read();
+ assert.deepEqual(fields(current),{ceiling:'6,500 FT',visibility:'10 SM',temperature:'63'});
+ assert.deepEqual(directions(current),expected);assert.equal(current.usesOps,true);
+ assert.equal(current.trends.ceiling.referenceAt,'2026-10-16T19:55:42.000Z');
+ assert.match(current.ceiling.title,/METAR.*WARN_SOURCE/);assert.match(current.temperature.title,/ATIS/);
+ assert.deepEqual(directions(read()),expected); // unchanged fetches retain the JSON direction
 });
 
-test('new distinct METAR generates trends; repeat refresh retains comparison and observation times',()=>{
- const a=weather('1854','2SM BKN009 17/07'),b=weather('1954','4SM BKN015 18/07'),h=history(a,b);
- const trends=resolveCurrentWeatherTrends(h,b,now);
- assert.deepEqual(directions(trends),{ceiling:'up',visibility:'up',temperature:'up'});
- assert.equal(advanceCurrentTrendHistory(h,result(b),now),h);
- assert.equal(trends.ceiling.previousObservedAt,a.metarObsIso);
- assert.equal(trends.ceiling.observedAt,b.metarObsIso);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,b,now+60000)),directions(trends));
+test('canonical actual readings override divergent METAR and rounded/model values without changing the weather engine',()=>{
+ const data=payload({visibilitySm:2,visibilityDisplay:'2 SM',atisVisibilitySm:2,tempC:19,ceilingFt:900,ceilingDisplay:'900 FT',atisCeilingFt:900,obsFieldSources:{ceiling:'ATIS',visibility:'ATIS',tempDp:'ATIS'}});
+ const source=weather(data,{temperatureF:80,feelsLikeF:999,visibilitySm:10,cloudBaseFt:6500,cloudCoverage:'BKN',source:'METAR'}),copy=structuredClone(source);
+ const r=resolveCurrentWeatherReadings(source,now);
+ assert.equal(r.temperature.display,'66');assert.equal(r.visibility.value,2);assert.equal(r.ceiling.value.feet,900);
+ assert.deepEqual(directions(r),expected);assert.deepEqual(source,copy);
+ assert.equal(getFlightCategory(r.visibility.value,r.ceiling.value.feet,'BKN',true).cat,'IFR');
 });
 
-test('equal-time correction resets comparison, older reports cannot reverse the baseline',()=>{
- const a=weather('1854'),b=weather(),h=history(a,b),cor=weather('1954','4SM OVC006 16/07');
- const corrected=advanceCurrentTrendHistory(h,result(cor),now);
- assert.equal(corrected.previous,null);assert.equal(corrected.current.raw,cor.rawMetar);
- const older=advanceCurrentTrendHistory(h,result(a),now);
- assert.equal(older.current,h.current);assert.equal(older.previous,null);
- const next=weather('2000','5SM BKN012 17/07');
- assert.equal(advanceCurrentTrendHistory(corrected,result(next),now).previous.raw,cor.rawMetar);
+test('symbol/text validation accepts upstream arrow variants, never manufactures a steady default',()=>{
+ for(const [symbols,text,direction] of [[['↑','▲'],'RISING','up'],[['↓','▼'],'FALLING','down'],[['→','►','▶'],'STEADY','steady']]) for(const symbol of symbols) assert.equal(normalizeReportedTrend(symbol,text),direction);
+ for(const args of [[null,'STEADY'],['','STEADY'],['?','STEADY'],['→',null],['▲','FALLING'],['→','N/A'],[0,0],['up','RISING']]) assert.equal(normalizeReportedTrend(...args),null);
+ const r=read(payload({ceilingTrend:'?',visibilityTrendText:undefined,tempTrendText:'FALLING'}));
+ assert.deepEqual(directions(r),none);assert.deepEqual(fields(r),fields(read()));
 });
 
-test('invalid, failed, stale, model and timestamp-inconsistent responses are never admitted',()=>{
- const a=weather('1854'),b=weather(),h=history(a,b);
- for(const overrides of [{source:'MODEL'},{metarFetchStatus:'STALE'},{metarFetchStatus:'USED_LAST_GOOD'},{metarObsIso:null},{metarObsIso:'invalid'},{metarObsIso:'2026-10-16T20:04:00Z'},{rawMetar:'METAR KJFK 161954Z 10SM CLR 17/07 A3022'},{rawMetar:'TAF KMEM 161954Z 10SM CLR 17/07 A3022'}]) {
-  const w=weather('1954',undefined,overrides);assert.equal(currentTrendObservation(w,now),null);
-  assert.deepEqual(advanceCurrentTrendHistory(h,result(w),now),empty());
+test('bad or fallback trend reference suppresses arrows, while independently valid current values remain',()=>{
+ for(const overrides of [{trendReferenceSource:'LAST_GOOD_FALLBACK'},{trendReferenceSource:undefined},{trendLookbackHours:undefined},{trendLookbackHours:'3'},{trendLookbackHours:6},{trendReferenceTimestampZ:'LAST_GOOD_FALLBACK'},{trendReferenceTimestampZ:undefined},{trendReferenceTimestampZ:'2026-10-16T22:56:00Z'},{trendReferenceTimestampZ:'2026-10-16T19:50:00Z'},{trendSampleCount:0},{trendSampleCount:2.5},{trendSampleCount:'22'}]) {
+  const r=read(payload(overrides));assert.deepEqual(directions(r),none,JSON.stringify(overrides));assert.deepEqual(fields(r),fields(read()));
  }
- for(const flags of [{feedReached:false},{metarValid:false}]) assert.deepEqual(advanceCurrentTrendHistory(h,{...result(b),...flags},now),empty());
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,{...b,requestStatus:'ERROR'},now)),none);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,{...b,feedStatus:'OFFLINE'},now)),none);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,b,now,true)),none);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,{...b,tafFetchStatus:'ERROR',feedStatus:'DEGRADED'},now)),{ceiling:'steady',visibility:'steady',temperature:'steady'});
+ // The updater uses the oldest available sample inside the 3-hour window, not necessarily three hours ago.
+ assert.deepEqual(directions(read(payload({trendReferenceTimestampZ:'2026-10-16T22:45:42Z',trendSampleCount:1}))),expected);
 });
 
-test('freshness uses each real observation with inclusive75min and5min future bounds; long gaps reseed',()=>{
- const a=weather('1854'),b=weather(),h=history(a,b),boundary=Date.parse(a.metarObsIso)+75*60000;
- assert.ok(resolveCurrentWeatherTrends(h,b,boundary).ceiling);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,b,boundary+1)),none);
- const future=weather('2010');assert.ok(currentTrendObservation(future,now));assert.equal(currentTrendObservation(future,now-1),null);
- const old=weather('1754');assert.equal(currentTrendObservation(old,now),null);
- assert.equal(advanceCurrentTrendHistory({previous:null,current:{...sample(),observedAt:old.metarObsIso}},result(b),now).previous,null);
+test('generation age is rechecked on ticks and frozen JSON cannot renew observations',()=>{
+ const w=weather(payload({metarObservedZ:'2026-10-16T22:54:00Z',metarAgeMinutes:2}));
+ assert.deepEqual(directions(resolveCurrentWeatherReadings(w,Date.parse('2026-10-16T23:14:59.999Z'))),expected);
+ assert.deepEqual(fields(resolveCurrentWeatherReadings(w,Date.parse('2026-10-16T23:15:00Z'))),none);
+ for(const updated of [undefined,'bad','2026-10-16T22:55:00','2026-02-30T22:55:00Z','2026-10-16T22:35:00Z','2026-10-16T23:01:00.001Z']) assert.deepEqual(fields(read(payload({allFeedsUpdatedZ:updated}))),none,String(updated));
+ assert.deepEqual(directions(read(payload({allFeedsUpdatedZ:'2026-10-16T23:01:00Z',trendReferenceTimestampZ:'2026-10-16T20:05:00Z'}))),expected);
 });
 
-test('ceiling thresholds match ops-board categories,500ft and unlimited/highVFR rule',()=>{
- const c=n=>n==='UNL'?{kind:'unlimited'}:{kind:'height',feet:n};
- for(const [a,b,d] of [[400,500,'up'],[900,1000,'up'],[3000,3100,'up'],[1500,1900,'steady'],[1500,2000,'up'],[6000,'UNL','steady'],[3000,'UNL','up']]) {
-  assert.equal(compareCeiling(c(b),c(a)),d);
-  assert.equal(compareCeiling(c(a),c(b)),d==='up'?'down':d);
+test('source-specific hard stale boundaries accept usable WARN_SOURCE and age independently',()=>{
+ const data=payload({metarObservedZ:'2026-10-16T21:41:00.001Z',metarAgeMinutes:74,atisObservedZ:'2026-10-16T21:26:00.001Z',atisAgeMinutes:89,atisFetchStatus:'WARN_SOURCE'});
+ assert.deepEqual(directions(read(data)),expected);
+ assert.deepEqual(fields(read({...data,metarObservedZ:'2026-10-16T21:41:00Z'})),{ceiling:null,visibility:'10 SM',temperature:'63'});
+ assert.deepEqual(fields(read({...data,atisObservedZ:'2026-10-16T21:26:00Z'})),{ceiling:'6,500 FT',visibility:null,temperature:null});
+ for(const status of ['STALE_SOURCE','ERROR','USED_LAST_GOOD','UNKNOWN',undefined]) {
+  assert.equal(read(payload({metarFetchStatus:status})).ceiling,null);
+  assert.equal(read(payload({atisFetchStatus:status})).temperature,null);
  }
- for(const fields of ['10SM 17/07','10SM VV/// 17/07','10SM BKN/// 17/07','10SM CLR BKN/// 17/07','10SM CLR BKNABC 17/07']) assert.equal(sample('1954',fields).ceiling,null);
- assert.deepEqual(sample('1954','10SM FEW005 SCT010 17/07').ceiling,{kind:'unlimited'});
- assert.equal(compareCeiling(null,{kind:'unlimited'}),null);
+ for(const overrides of [{metarAgeMinutes:75},{metarAgeMinutes:-1},{metarAgeMinutes:'62'},{lastKnownGoodUsed:{metar:true}},{metarObservedZ:undefined},{metarObservedZ:'2026-10-16T23:02:00Z'}]) assert.equal(read(payload(overrides)).ceiling,null);
+ for(const overrides of [{atisAgeMinutes:90},{atisSourceIsCurrent:false},{lastKnownGoodUsed:{atis:true}},{atisObservedZ:'invalid'}]) assert.equal(read(payload(overrides)).temperature,null);
+ assert.equal(read(payload({metarObservedZ:'2026-10-16T20:54:00Z'})).temperature.display,'63');
 });
 
-test('visibility categories and1SM threshold preserve P/M/capped bounds without unsupported changes',()=>{
- const v=(value,bound='exact')=>({value,bound});
- for(const [a,b,d] of [[.75,1,'up'],[2.5,3,'up'],[5,6,'up'],[1.5,2,'steady'],[1.5,2.5,'up']]) {assert.equal(compareVisibility(v(b),v(a)),d);assert.equal(compareVisibility(v(a),v(b)),d==='up'?'down':d);}
- const p6=v(6,'more-than'),ten=v(10,'at-least'),mQuarter=v(.25,'less-than');
- assert.equal(compareVisibility(ten,p6),null);assert.equal(compareVisibility(p6,ten),null);
- assert.equal(compareVisibility(p6,v(5)),'up');assert.equal(compareVisibility(v(5),p6),'down');
- assert.equal(compareVisibility(v(1),mQuarter),'up');assert.equal(compareVisibility(mQuarter,v(1)),'down');
- assert.equal(compareVisibility(v(9),ten),'down');assert.equal(compareVisibility(ten,v(9)),'up');
- assert.equal(compareVisibility(ten,v(9.5)),null);assert.equal(compareVisibility(v(9.5),ten),null);
- assert.equal(compareVisibility(ten,ten),'steady');assert.equal(compareVisibility(mQuarter,mQuarter),'steady');
- assert.deepEqual(sample('1954','1 1/2SM CLR 17/07').visibility,v(1.5));
- assert.deepEqual(sample('1954','10SM CLR 17/07').visibility,ten);
- for(const fields of ['CAVOK 17/07','CLR 17/07','1/0SM CLR 17/07','M0SM CLR 17/07','CLR 17/07 RMK 3SM']) assert.equal(sample('1954',fields).visibility,null);
+test('missing, malformed, or source-incompatible values hide independently and never borrow a METAR number',()=>{
+ for(const overrides of [{ceilingFt:undefined},{ceilingFt:'6500'},{ceilingFt:NaN},{ceilingFt:-1},{ceilingFt:6500.5},{ceilingDisplay:'UNL'},{metarCeilingFt:2500},{obsFieldSources:{ceiling:'UNKNOWN',visibility:'ATIS',tempDp:'ATIS'}}]) assert.equal(read(payload(overrides)).ceiling,null,JSON.stringify(overrides));
+ for(const overrides of [{visibilitySm:undefined},{visibilitySm:'10'},{visibilitySm:Infinity},{visibilitySm:-1},{visibilityDisplay:'8 SM'},{visibilityDisplay:'1 10 SM'},{atisVisibilitySm:8},{obsFieldSources:{ceiling:'METAR',visibility:'NONE',tempDp:'ATIS'}}]) assert.equal(read(payload(overrides)).visibility,null,JSON.stringify(overrides));
+ for(const overrides of [{tempC:undefined},{tempC:'17'},{tempC:NaN},{tempC:Infinity},{tempC:80},{obsFieldSources:{ceiling:'METAR',visibility:'ATIS',tempDp:'NONE'}}]) assert.equal(read(payload(overrides)).temperature,null,JSON.stringify(overrides));
+ for(const [value,display] of [[1.5,'1 1/2 SM'],[.25,'M1/4 SM'],[6,'P6 SM']]) assert.equal(read(payload({visibilitySm:value,visibilityDisplay:display,atisVisibilitySm:value})).visibility.display,display);
+ const mismatch=read(payload({ceilingFt:1000,ceilingDisplay:'1000 FT'}));assert.equal(mismatch.ceiling,null);assert.equal(mismatch.trends.ceiling,null);
 });
 
-test('temperature uses body Celsius, never rounded Fahrenheit/model fallback/remarks or feels-like',()=>{
- const a=weather('1854','10SM CLR 17/07'),b=weather('1954','10SM CLR 18/07'),h=history(a,b);
- assert.equal(a.temperatureF,63);assert.equal(b.temperatureF,64);
- assert.equal(resolveCurrentWeatherTrends(h,b,now).temperature.direction,'up');
- assert.equal(resolveCurrentWeatherTrends(history(b,weather('2000','10SM CLR 17/07')),weather('2000','10SM CLR 17/07'),now).temperature.direction,'down');
- assert.equal(sample('1954','10SM CLR M02/M05').temperatureC,-2);
- for(const fields of ['10SM CLR','10SM CLR RMK 18/07','10SM CLR //07']) assert.equal(sample('1954',fields).temperatureC,null);
- const missing=weather('1954','10SM CLR');
- assert.equal(resolveCurrentWeatherTrends(history(a,missing),missing,now).temperature,null);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,temperatureF:80},now).temperature,null);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,feelsLikeF:999},now).temperature.direction,'up');
+test('JSON null ceiling needs explicit current METAR unlimited evidence; missing sky never becomes UNL or VFR',()=>{
+ const data=payload({ceilingFt:null,ceilingDisplay:'UNL',metarCeilingFt:null,obsFieldSources:{ceiling:'NONE',visibility:'ATIS',tempDp:'ATIS'}});
+ for(const sky of ['CLR','SKC','FEW005 SCT070']) {
+  const r=read({...data,metar:`METAR KMEM 162154Z 35010KT 10SM ${sky} 17/03 A3025`});
+  assert.deepEqual(r.ceiling.value,{kind:'unlimited'});assert.equal(r.ceiling.display,'UNLIMITED (UNL)');
+  assert.equal(getFlightCategory(r.visibility.value,null,'CLR',true).cat,'VFR');
+ }
+ for(const sky of ['', 'BKN///','VV///','CLR BKNABC','SCT///','CLR SCT///','FEW005 SCTABC','BKN065']) {
+  const r=read({...data,metar:`METAR KMEM 162154Z 35010KT 10SM ${sky} 17/03 A3025`});
+  assert.equal(r.ceiling,null,sky);assert.equal(r.trends.ceiling,null);
+  assert.equal(getFlightCategory(r.visibility.value,null,'CLR',!!r.ceiling).cat,'UNAVAILABLE');
+ }
+ for(const overrides of [{metarCeilingFt:6500},{atisCeilingFt:900}]) assert.equal(read({...data,metar:'METAR KMEM 162154Z 10SM CLR 17/03 A3025',...overrides}).ceiling,null);
+ assert.equal(read({...data,metar:'METAR KJFK 162154Z 10SM CLR 17/03 A3025'}).ceiling,null);
+ assert.equal(read({...data,metar:'METAR KMEM 162254Z 10SM CLR 17/03 A3025'}).ceiling,null);
+ assert.equal(read({...data,metar:'METAR KMEM 162154Z 10SM CLR 17/03 A3025',metarFetchStatus:'STALE_SOURCE'}).ceiling,null);
 });
 
-test('trends hide individually when displayed fields no longer match that source report',()=>{
- const a=weather('1854'),b=weather(),h=history(a,b);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,operationalWeather:null},now).ceiling,null);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,cloudCoverage:'OVC'},now).ceiling,null);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,cloudBaseFt:2500},now).ceiling,null);
- assert.equal(resolveCurrentWeatherTrends(h,{...b,visibilitySm:8},now).visibility,null);
- assert.deepEqual(directions(resolveCurrentWeatherTrends(h,{...b,rawMetar:weather('2000').rawMetar},now)),none);
+test('legacy fallback is only for the entirely absent extension; partial payload/cache/error/demo do not invent arrows',()=>{
+ assert.equal(normalizeCurrentOpsWeather({metar:'METAR KMEM'}),undefined);
+ assert.equal(read({metar:'METAR KMEM'}).usesOps,false);
+ assert.equal(read({ceilingFt:undefined}).usesOps,true);
+ assert.equal(read({trendReferenceSource:'3HR_HISTORY'}).usesOps,true);
+ assert.deepEqual(fields(read({ceilingFt:undefined})),none);
+ const cache=resolveCurrentWeatherReadings({currentOpsWeather:null},now);assert.equal(cache.usesOps,true);assert.deepEqual(directions(cache),none);
+ for(const overrides of [{requestStatus:'ERROR'},{feedStatus:'OFFLINE'}]) assert.deepEqual(fields(read(payload(),now,overrides)),none);
+ assert.deepEqual(directions(read(payload(),now,{requestStatus:'REFRESHING'})),expected);
+ const demo=resolveCurrentWeatherReadings(weather(),now,true);assert.equal(demo.usesOps,false);assert.deepEqual(directions(demo),none);
+ assert.deepEqual(directions(read()),expected); // recovery establishes the first live result immediately
+});
+
+test('merge handles the complete canonical snapshot independently of retained METAR values',()=>{
+ const prior={...weather(),forecast:[],metarObsIso:'2026-10-16T22:54:00Z',temperatureF:60,cloudBaseFt:3000,birdRisk:'LOW'};
+ const next={...weather(payload({tempC:19})),forecast:[],metarObsIso:'2026-10-16T21:54:00Z',temperatureF:80,cloudBaseFt:6500,birdRisk:'LOW',lastRefreshAttemptIso:'2026-10-16T22:56:00Z'};
+ const flags={metarValid:true,tafValid:true,modelValid:true,windValid:true,feedReached:true};
+ const merged=mergeWeather(prior,{weather:next,...flags});assert.equal(merged.temperatureF,60);assert.equal(merged.currentOpsWeather,next.currentOpsWeather);assert.equal(resolveCurrentWeatherReadings(merged,now).temperature.display,'66');
+ const failed=mergeWeather(prior,{weather:next,...flags,feedReached:false});assert.equal(failed.currentOpsWeather,null);
+ const legacy={...next};delete legacy.currentOpsWeather;assert.equal(mergeWeather(prior,{weather:legacy,...flags}).currentOpsWeather,undefined);
+});
+
+test('lagging CDN JSON cannot roll a known canonical generation backwards, including its arrows',()=>{
+ const prior={...weather(payload({allFeedsUpdatedZ:'2026-10-16T23:00:00Z',trendReferenceTimestampZ:'2026-10-16T20:05:00Z',tempC:18,tempTrend:'▼',tempTrendText:'FALLING'})),forecast:[],birdRisk:'LOW'};
+ const incoming={...weather(),forecast:[],birdRisk:'LOW',lastRefreshAttemptIso:'2026-10-16T23:01:00Z'};
+ const flags={metarValid:true,tafValid:true,modelValid:true,windValid:true,feedReached:true};
+ const merged=mergeWeather(prior,{weather:incoming,...flags});
+ assert.equal(merged.currentOpsWeather,prior.currentOpsWeather);
+ const r=resolveCurrentWeatherReadings(merged,Date.parse('2026-10-16T23:01:00Z'));assert.equal(r.temperature.display,'64');assert.equal(r.trends.temperature.direction,'down');
+ assert.equal(resolveCurrentWeatherReadings(merged,Date.parse('2026-10-16T23:20:00Z')).temperature,null);
+ const fresh={...incoming,currentOpsWeather:normalizeCurrentOpsWeather(payload({allFeedsUpdatedZ:'2026-10-16T23:02:00Z',tempC:19,trendReferenceTimestampZ:'2026-10-16T20:05:00Z'}))};
+ assert.equal(mergeWeather(merged,{weather:fresh,...flags}).currentOpsWeather,fresh.currentOpsWeather);
+ const corrected={...incoming,currentOpsWeather:normalizeCurrentOpsWeather(payload({allFeedsUpdatedZ:'2026-10-16T23:00:00Z',tempC:19}))};
+ assert.equal(mergeWeather(merged,{weather:corrected,...flags}).currentOpsWeather,corrected.currentOpsWeather);
+ const badFuture={...prior,currentOpsWeather:{...prior.currentOpsWeather,updatedAt:'2026-10-17T23:00:00Z'}};
+ assert.equal(mergeWeather(badFuture,{weather:incoming,...flags}).currentOpsWeather,incoming.currentOpsWeather);
 });
 
 const require=createRequire(import.meta.url),source=readFileSync(new URL('../app/CurrentWeatherTrend.tsx',import.meta.url),'utf8'),mod={exports:{}};
 new Function('require','module','exports',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(require,mod,mod.exports);
-test('small accessible triangles use green/up red/down yellow/steady; all temperature directions stay neutral',()=>{
+test('small accessible triangles retain colors and describe JSON-window/reference provenance honestly',()=>{
  const css=readFileSync(new URL('../app/information-bar.css',import.meta.url),'utf8');
  for(const metric of ['ceiling','visibility','temperature'])for(const [direction,symbol] of [['up','▲'],['down','▼'],['steady','▶']]) {
-  const html=renderToStaticMarkup(React.createElement(mod.exports.default,{metric,comparison:{direction,previousObservedAt:'2026-10-16T18:54:00Z',observedAt:'2026-10-16T19:54:00Z'}}));
-  assert.ok(html.includes(symbol));assert.ok(html.includes(`data-tone="${metric==='temperature'?'neutral':direction}"`));assert.match(html,/role="img" aria-label="/);assert.match(html,/previous METAR/);
+  const html=renderToStaticMarkup(React.createElement(mod.exports.default,{metric,comparison:{direction,referenceAt:'2026-10-16T19:55:42Z',updatedAt:'2026-10-16T22:55:00Z',lookbackHours:3}}));
+  assert.ok(html.includes(symbol));assert.ok(html.includes(`data-tone="${metric==='temperature'?'neutral':direction}"`));assert.match(html,/role="img" aria-label="/);assert.match(html,/Ops JSON reported 3-hour-window trend/);assert.match(html,/reference sample/);assert.doesNotMatch(html,/previous METAR|consecutive/);
  }
  assert.equal(renderToStaticMarkup(React.createElement(mod.exports.default,{metric:'ceiling',comparison:null})), '');
  for(const [tone,color]of [['up','#72dbbd'],['down','#ff7676'],['steady','#ffd07a'],['neutral','#c5d7e3']])assert.ok(css.includes(`.current-wx-trend[data-tone="${tone}"] { color: ${color}; }`));
 });
 
-test('page collects only incoming METAR results in session memory and renders exactly three current metric arrows',()=>{
+test('page uses JSON readouts/category without changing enhanced METAR sky, feels-like, or forecast winds',()=>{
  const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
- assert.match(page,/advanceCurrentTrendHistory\(history,result,currentTrendClockRef.current.nowMs\)/);
- assert.match(page,/setCurrentTrendHistory\(\{previous:null,current:null\}\)/);
+ assert.match(page,/currentOpsWeather:normalizeCurrentOpsWeather\(ops\)/);
+ assert.doesNotMatch(page,/advanceCurrentTrendHistory|setCurrentTrendHistory|currentTrendClockRef/);
+ assert.match(page,/resolveCurrentWeatherReadings\(weather,now.getTime\(\),currentPresentation.simulated\|\|clock.source==="PREVIEW"\)/);
+ assert.match(page,/currentReadings\.usesOps \? "CURRENT WEATHER"/);
  assert.equal((page.match(/<CurrentWeatherTrend /g)||[]).length,3);
- assert.match(page,/current-temperature[^\n]*metric="temperature"/);
- assert.match(page,/current-ceiling[^\n]*metric="ceiling"/);
- assert.match(page,/wind-vis-tag[^\n]*metric="visibility"/);
+ assert.match(page,/current-temperature[^\n]*currentReadings.temperature\?\.display/);
+ assert.match(page,/current-ceiling[^\n]*currentReadings.ceiling\?\.display/);
+ assert.match(page,/wind-vis-tag[^\n]*currentReadings.visibility\?\.display/);
+ assert.match(page,/getFlightCategory\(currentReadings.visibility\?\.value/);
+ assert.match(page,/!currentReadings.usesOps && !currentPresentation.simulated && metarState === "STALE"/);
  for(const label of ['FEELS LIKE','HUMIDITY']) assert.doesNotMatch(page.match(new RegExp('<div><span>'+label+'[\\s\\S]*?<\\/div>'))?.[0]||'',/CurrentWeatherTrend/);
  assert.doesNotMatch(page.slice(page.indexOf('className="forecast-card')),/CurrentWeatherTrend/);
- assert.match(page,/clock.source==="PREVIEW"/);
- const cache=readFileSync(new URL('../app/weatherRefresh.ts',import.meta.url),'utf8');assert.doesNotMatch(cache,/currentTrendHistory|currentWeatherTrends/);
+ assert.match(page,/condition:metar\?\.condition\?\?model\.condition/);
+ assert.match(page,/forecastWind:null/);
+ const cache=readFileSync(new URL('../app/weatherRefresh.ts',import.meta.url),'utf8');assert.match(cache,/return \{\.\.\.candidate,currentOpsWeather:null/);
 });

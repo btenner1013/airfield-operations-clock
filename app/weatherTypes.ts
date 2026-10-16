@@ -3,6 +3,7 @@ import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
 import type { CurrentWindRecord } from "./currentWind";
 import type { ForecastWindRecord } from "./forecastWind";
 import type { LightningReport } from "./lightning";
+import type { CurrentOpsWeatherSnapshot } from "./currentWeatherTrends";
 
 export type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
 export type Forecast = {
@@ -27,6 +28,7 @@ export type FeedStatus = "OK" | "DEGRADED" | "OFFLINE";
 export type WeatherRequestStatus = "IDLE" | "REFRESHING" | "ERROR";
 
 export type Weather = {
+  currentOpsWeather?:CurrentOpsWeatherSnapshot|null;
   runwayOperations?:RunwayOperationsSnapshot|null;
   temperatureF:number;
   feelsLikeF:number;

@@ -1,3 +1,5 @@
+import { cloudSunsetStrength, type SkyPhase } from "./skyLighting.ts";
+
 /**
  * A small, clock-independent atmosphere pass for the existing precipitation canvas.
  * The caller owns time, visibility, reduced motion, and the lightning scheduler.
@@ -15,6 +17,7 @@ export type AtmosphereSpec = {
   windY: number;
   gust: number;
   night: boolean;
+  phase?: SkyPhase;
   reduced: boolean;
   quality: "full" | "low";
   lightningLevel: "none" | "distant" | "vicinity" | "station" | "severe";
@@ -46,6 +49,7 @@ type AtmosphereState = {
   windY: number;
   gust: number;
   night: number;
+  sunset: number;
 };
 
 const TEXTURE_WIDTH = 384;
@@ -235,6 +239,10 @@ export function createAtmosphereRenderer(): {
     clearBuffer();
     const cw = COMPOSITE_WIDTH, ch = COMPOSITE_HEIGHT;
     const layers = spec.quality === "low" ? 2 : 3;
+    const closedDeck = ramp(0.8, 1, coverage);
+    // Let the original broken-cloud gaps survive instead of veiling them in pale
+    // daytime texture. A closed deck retains its full coverage at sunset.
+    const sunsetOpacity = 1 - state.sunset * (1 - closedDeck) * 0.35;
     for (let layer = 0; layer < layers; layer++) {
       const high = layer === 0;
       const evolution = Math.sin(motionTime / (17 + layer * 9) + layer * 2.3);
@@ -242,7 +250,7 @@ export function createAtmosphereRenderer(): {
       const scaleY = high ? 0.56 : layer === 1 ? 0.93 : 1.24;
       const parallax = high ? 0.22 : layer === 1 ? 0.62 : 1.08 + state.low * 0.28;
       const opacity = high ? coverage * (0.18 + (1 - state.storm) * 0.13) : layer === 1 ? coverage * (0.51 + state.storm * 0.28) : coverage * coverage * (0.44 + state.storm * 0.2);
-      buffer.globalAlpha = opacity;
+      buffer.globalAlpha = opacity * sunsetOpacity;
       sampleTexture(buffer, textures[high ? 1 : 0], cw * (scaleX + evolution * 0.045), ch * scaleY,
         travelX * parallax + layer * 197 + Math.sin(motionTime / 39 + layer) * 14,
         travelY * parallax + layer * 83 + evolution * 7);
@@ -251,7 +259,7 @@ export function createAtmosphereRenderer(): {
     // Translucent tint preserves the light-and-shadow structure baked into each texture.
     buffer.globalCompositeOperation = "source-atop";
     const tint = buffer.createLinearGradient(0, 0, cw * 0.18, ch * 0.6);
-    const darkness = clamp(state.storm * 0.88 + state.night * 0.8, 0, 0.94);
+    const darkness = clamp(state.storm * 0.88 + state.night * 0.8 + state.sunset * 0.68, 0, 0.94);
     tint.addColorStop(0, `rgba(${Math.round(mix(197, 34, darkness))},${Math.round(mix(211, 48, darkness))},${Math.round(mix(223, 67, darkness))},${0.12 + darkness * 0.84})`);
     tint.addColorStop(0.55, `rgba(${Math.round(mix(156, 22, darkness))},${Math.round(mix(178, 34, darkness))},${Math.round(mix(193, 51, darkness))},${0.15 + darkness * 0.83})`);
     tint.addColorStop(1, `rgba(35,49,65,${state.storm * 0.88 + state.night * 0.1})`);
@@ -386,6 +394,7 @@ export function createAtmosphereRenderer(): {
         coverage: clamp(spec.coverage), low: spec.ceiling === null ? 0.2 : 1 - clamp(spec.ceiling / 8500),
         storm: clamp(spec.storm), density: clamp(spec.density), horizon: clamp(spec.horizon), veil: clamp(spec.veil),
         windX: clamp(spec.windX, -120, 120), windY: clamp(spec.windY, -50, 50), gust: clamp(spec.gust), night: spec.night ? 1 : 0,
+        sunset: spec.obscuration === "none" ? cloudSunsetStrength(spec.phase, spec.coverage, spec.ceiling, spec.storm) : 0,
       };
       // Reduced motion is drawn on demand with dt=0, so new observations must snap
       // to their static appearance rather than leaving the previous weather frozen.

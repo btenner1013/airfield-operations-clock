@@ -274,3 +274,13 @@ test("forecast wind is re-established by fresh TAF only, never restored or retai
   corrupt.weather.forecast[0].forecastWind={directionType:"directional",speedKt:"bad"};
   assert.equal(restoreWeatherCache(JSON.stringify(corrupt),new Date("2026-07-20T06:02:00Z")).forecast[0].forecastWind,null);
 });
+
+
+test("canonical current JSON metrics are cleared on cache restore, including malformed extensions",()=>{
+  const snapshot=weather({currentOpsWeather:{updatedAt:"2026-07-20T06:00:00Z",temperature:{value:17,direction:"up"}},solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:00"}]});
+  const raw=serializeWeatherCache(snapshot,"2026-07-20T06:02:00Z");
+  const restored=restoreWeatherCache(raw,new Date("2026-07-20T06:02:00Z"));
+  assert.ok(restored);assert.equal(restored.currentOpsWeather,null);assert.equal(restored.temperatureF,snapshot.temperatureF);
+  const corrupt=JSON.parse(raw);corrupt.weather.currentOpsWeather="untrusted cached extension";
+  assert.equal(restoreWeatherCache(JSON.stringify(corrupt),new Date("2026-07-20T06:02:00Z")).currentOpsWeather,null);
+});

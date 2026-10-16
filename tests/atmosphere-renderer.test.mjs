@@ -90,6 +90,29 @@ test("atmosphere caches three bounded canvases and never allocates frame pixel b
   });
 });
 
+test("sunset shades broken cloud bodies while retaining gaps and closed-deck coverage", () => {
+  const render = (coverage, phase, reduced = false, quality = "full", obscuration = "none") => {
+    let result;
+    withRenderer((renderer, h) => {
+      renderer.draw(h.ctx, 1920, 1080, 0, 0, { ...BASE, coverage, ceiling: 6500, phase, reduced, quality, obscuration, night: phase === "night" }, QUIET);
+      result = h.snapshot();
+    });
+    return result;
+  };
+  for (const coverage of [0, .2, .44]) assert.deepEqual(render(coverage, "sunset"), render(coverage, "day"), "Clear/FEW/SCT retain exactly their existing atmospheric treatment");
+  for (const quality of ["full", "low"]) for (const reduced of [false, true]) for (const coverage of [.76, 1]) {
+    const day = render(coverage, "day", reduced, quality), sunset = render(coverage, "sunset", reduced, quality);
+    const samples = commands => commands.filter(command => command.id === "offscreen-2" && command.name === "drawImage");
+    const tint = commands => commands.find(command => command.blend === "source-atop" && command.name === "fillRect").fill;
+    assert.notDeepEqual(tint(sunset), tint(day), "Sunset clouds do not remain pale daytime white");
+    if (coverage < 1) assert.ok(samples(sunset)[0].alpha < samples(day)[0].alpha, "BKN keeps its gaps visible");
+    else assert.equal(samples(sunset)[0].alpha, samples(day)[0].alpha, "OVC retains a continuous deck");
+    assert.deepEqual(sunset.filter(command => command.blend === "destination-in"), day.filter(command => command.blend === "destination-in"), "Existing sky-only mask stays unchanged");
+  }
+  for (const obscuration of ["fog", "mist", "haze", "smoke"]) assert.deepEqual(render(.76, "sunset", false, "full", obscuration), render(.76, "day", false, "full", obscuration), "Obscuration keeps its dedicated lighting");
+  assert.notDeepEqual(render(.76, "sunset"), render(.76, "night"), "Sunset never masquerades as night");
+});
+
 test("dispose releases all backing stores and subsequent draws are inert", () => {
   withRenderer((renderer, h) => {
     renderer.draw(h.ctx, 1024, 768, 0, 0.016, { ...BASE, coverage: 0.8 }, QUIET);

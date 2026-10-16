@@ -134,9 +134,13 @@ function rematchPrecipitation(rows:Weather["forecast"], samples:Weather["forecas
 
 export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weather {
   const incomingForecast=result.weather.forecast;
-  const merged={...previous,...result.weather};
+  const merged={...previous,...result.weather,currentOpsWeather:result.feedReached?result.weather.currentOpsWeather:null};
   if(!result.modelValid) preserve(merged,previous,MODEL_KEYS);
   const reference=Date.parse(result.weather.lastRefreshAttemptIso||"")||Date.now();
+  // A lagging CDN generation must not roll the canonical values or their arrows
+  // backwards. Retain the prior snapshot atomically; render-time age checks still apply.
+  const priorOps=previous.currentOpsWeather,nextOps=result.weather.currentOpsWeather;
+  if(result.feedReached&&validDate(priorOps?.updatedAt)&&validDate(nextOps?.updatedAt)&&Date.parse(priorOps.updatedAt)<=reference+5*60000&&Date.parse(nextOps.updatedAt)<Date.parse(priorOps.updatedAt)) merged.currentOpsWeather=priorOps;
   const previousObservation=Date.parse(previous.metarObsIso||""),incomingObservation=Date.parse(result.weather.metarObsIso||"");
   // CDN edges can return a valid but older report. Never roll a known observation
   // backwards; equal-time corrected reports still replace it. Future-invalid cache
@@ -282,7 +286,7 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     if(!isWeather(candidate)) return null;
     // Operations are re-established from a fetched source after reload. Never trust
     // an unvalidated cached extension to advertise a runway as in use.
-    return {...candidate,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    return {...candidate,currentOpsWeather:null,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 
