@@ -1,3 +1,4 @@
+import type { RunwayOperationsSnapshot } from "./runwayOperations";
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
 import type { CurrentWindRecord } from "./currentWind";
 import type { LightningReport } from "./lightning";
@@ -24,6 +25,7 @@ export type FeedStatus = "OK" | "DEGRADED" | "OFFLINE";
 export type WeatherRequestStatus = "IDLE" | "REFRESHING" | "ERROR";
 
 export type Weather = {
+  runwayOperations?:RunwayOperationsSnapshot|null;
   temperatureF:number;
   feelsLikeF:number;
   modelObsIso?:string|null;

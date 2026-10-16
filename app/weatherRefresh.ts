@@ -277,7 +277,9 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     const aged=refreshPrecipitationAges(migrated,displayNow.getTime());
     const candidate={...aged,currentLightning:{...LEGACY_NO_LIGHTNING,...(aged.currentLightning&&typeof aged.currentLightning==="object"?aged.currentLightning:{})}};
     if(!isWeather(candidate)) return null;
-    return {...candidate,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    // Operations are re-established from a fetched source after reload. Never trust
+    // an unvalidated cached extension to advertise a runway as in use.
+    return {...candidate,runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 

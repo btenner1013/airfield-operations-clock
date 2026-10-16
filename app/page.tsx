@@ -17,6 +17,8 @@ import { isFlybyWeatherAllowed } from "./flyby";
 import { applyNwsPrecipitation, describePrecipitationSource, parseNwsHourlyPrecipitation } from "./nwsPrecipitation";
 import { parseStandardWind, resolveCurrentWind, type CurrentWindRecord } from "./currentWind";
 import WindInstrument from "./WindInstrument";
+import RunwayPlacement from "./RunwayPlacement";
+import { normalizeRunwayOperations } from "./runwayOperations";
 import WeatherIcon from "./WeatherIcon";
 import SolarLunarInstrument from "./SolarLunarInstrument";
 import BirdWatchGlyph from "./BirdWatchGlyph";
@@ -232,7 +234,7 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   });
   const windValid=currentWind!==null;
   const healthy=metarValid&&tafValid&&metarFetchStatus==="OK"&&tafFetchStatus==="OK";
-  const weather:Weather={...model,temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
+  const weather:Weather={...model,runwayOperations:normalizeRunwayOperations(ops),temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
   weather.currentLightning=resolveCurrentLightning(ops,weather.currentLightning);
   return {weather,metarValid,tafValid,modelValid,windValid,feedReached:true};
 }
@@ -622,6 +624,7 @@ export default function Home() {
       <section className="clocks" aria-label="Local and Zulu clocks">
         <article className="clock local"><div className="clock-head"><span>LOCAL</span><b><i/> ON STATION</b></div><time>{localTime}</time><div className="clock-foot"><strong>{local.timeZoneName||"LOCAL"}</strong><span>{dateLine(local)}</span></div></article>
         <article className="clock zulu"><div className="clock-head"><span>ZULU</span><b><i/> UNIVERSAL</b></div><time>{utcTime}<em>Z</em></time><div className="clock-foot"><strong>UTC</strong><span>{dateLine(utc)}</span></div></article>
+        <RunwayPlacement snapshot={weather.runwayOperations} nowMs={now.getTime()} />
       </section>
       <section className="info">
         <article className="sun-card panel">
