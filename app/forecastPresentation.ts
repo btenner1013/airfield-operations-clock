@@ -47,9 +47,9 @@ export function formatForecastWind(
   }
 
   const speed = String(Math.round(wind.speedKt)).padStart(2, "0");
-  const gust = wind.gustKt === null ? "" : `G${String(Math.round(wind.gustKt)).padStart(2, "0")}`;
-  const direction = wind.directionType === "variable" ? "VRB" : `${String(wind.directionDegrees).padStart(3, "0")}°`;
-  const text = wind.directionType === "calm" ? "CALM" : `${direction}${speed}${gust}KT`;
+  const gust = wind.gustKt === null ? "" : ` G${String(Math.round(wind.gustKt)).padStart(2, "0")}`;
+  const direction = wind.directionType === "variable" ? "VRB" : `${String(wind.directionDegrees).padStart(3, "0")}`;
+  const text = wind.directionType === "calm" ? "CALM" : `${direction} @ ${speed}${gust} KT`;
   return {
     text,
     state: "available",

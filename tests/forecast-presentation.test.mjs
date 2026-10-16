@@ -49,22 +49,22 @@ const display = (wind = standardWind, context = windContext, time = realNow) => 
 
 test("forecast wind uses compact padded direction, speed, gust and explicit knots", () => {
   const value = display();
-  assert.equal(value.text,"350°15G25KT");
+  assert.equal(value.text,"350 @ 15 G25 KT");
   assert.equal(value.state,"available");
   assert.match(value.detail,/Prevailing TAF wind/);
   assert.match(value.detail,/TEMPO\/PROB wind changes are not included/);
-  assert.equal(display({...standardWind,directionDegrees:20,speedKt:7,gustKt:null,raw:"02007KT"}).text,"020°07KT");
-  assert.equal(display({...standardWind,directionDegrees:360,gustKt:null,raw:"36015KT"}).text,"360°15KT");
+  assert.equal(display({...standardWind,directionDegrees:20,speedKt:7,gustKt:null,raw:"02007KT"}).text,"020 @ 07 KT");
+  assert.equal(display({...standardWind,directionDegrees:360,gustKt:null,raw:"36015KT"}).text,"360 @ 15 KT");
 });
 
 test("forecast calm and variable wind remain distinct with no invented direction", () => {
   assert.equal(display({...standardWind,directionType:"calm",directionDegrees:null,speedKt:0,gustKt:null,raw:"00000KT"}).text,"CALM");
-  assert.equal(display({...standardWind,directionType:"variable",directionDegrees:null,speedKt:3,gustKt:null,raw:"VRB03KT"}).text,"VRB03KT");
+  assert.equal(display({...standardWind,directionType:"variable",directionDegrees:null,speedKt:3,gustKt:null,raw:"VRB03KT"}).text,"VRB @ 03 KT");
 });
 
 test("converted wind speeds round to whole knots only at presentation", () => {
   const wind = {...standardWind,...parseForecastWindToken("35010G15MPS")};
-  assert.equal(display(wind).text,"350°19G29KT");
+  assert.equal(display(wind).text,"350 @ 19 G29 KT");
   assert.equal(wind.speedKt,10*(3600/1852));
 });
 
