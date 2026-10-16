@@ -11,11 +11,15 @@
 .wind-dial-tick.major { stroke: #bdd1dc; stroke-width: 1.1; }
 .wind-dial-cardinals { font: 800 11px/1 Consolas, monospace; text-anchor: middle; fill: #d8e8ee; }
 .wind-dial-north { fill: var(--cyan); }
+/* Steady visual cues only; these thresholds do not define operational limits. */
+.wind-instrument { --wind-arrow-color: #a9bac4; }
+.wind-arrow-green { --wind-arrow-color: #6ee7a0; }
+.wind-arrow-yellow { --wind-arrow-color: #f5d76e; }
 .wind-needle { transform-origin: 60px 60px; transition: transform .7s ease-in-out; }
 .wind-from-marker { fill: #f5fbff; stroke: #061016; stroke-width: 1; }
-.wind-flow-line { stroke: var(--cyan); stroke-width: 2.4; stroke-linecap: round; }
-.wind-flow-head { fill: var(--cyan); stroke: var(--cyan); stroke-linejoin: round; }
-.wind-pivot { fill: #061016; stroke: var(--cyan); stroke-width: 1.6; }
+.wind-flow-line { stroke: var(--wind-arrow-color); stroke-width: 2.4; stroke-linecap: round; }
+.wind-flow-head { fill: var(--wind-arrow-color); stroke: var(--wind-arrow-color); stroke-linejoin: round; }
+.wind-pivot { fill: #061016; stroke: var(--wind-arrow-color); stroke-width: 1.6; }
 .wind-sector-arc { stroke: #f1bd6d; stroke-width: 4; stroke-linecap: round; opacity: .85; }
 .wind-calm-ring, .wind-calm-center { stroke: #b8d9d5; stroke-width: 1.5; }
 .wind-calm-center { fill: #b8d9d5; }
@@ -28,7 +32,10 @@
 .wind-speed strong { color: var(--cyan); font-size: clamp(23px, 11.5cqw, 36px); font-weight: 800; line-height: 1; }
 .wind-speed > span { color: #bdd3df; font-size: clamp(10px, 4cqw, 12px); font-weight: 700; }
 /* Gusts are a separate, TV-readable observation, not a small caption. */
-.wind-gust { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 1px 4px; max-width: 100%; box-sizing: border-box; margin-top: 2px; padding: 3px 4px; border: 1px solid #f5c572; border-radius: 3px; background: #080e14; color: #fff6df; font-weight: 900; }
+.wind-gust { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 1px 4px; max-width: 100%; box-sizing: border-box; margin-top: 2px; padding: 3px 4px; border: 1px solid currentColor; border-radius: 3px; background: #080e14; color: #a9bac4; font-weight: 900; }
+.wind-gust-green { color: #6ee7a0; }
+.wind-gust-yellow { color: #f5d76e; }
+.wind-gust-red { color: #ff8585; }
 .wind-gust strong { font-size: clamp(17px, 10cqw, 30px); font-weight: 900; line-height: 1; white-space: nowrap; }
 .wind-gust > span { font-size: clamp(10px, 4.3cqw, 13px); line-height: 1; font-weight: 800; }
 .wind-instrument-detail { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font: 700 clamp(8px, 3.7cqw, 10px)/1.15 Consolas, monospace; letter-spacing: .025em; }

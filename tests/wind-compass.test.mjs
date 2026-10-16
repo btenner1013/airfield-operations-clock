@@ -148,11 +148,11 @@ test("actual neutral-state markup has no directional marker or arrow and shows i
 test("observed gusts get a separate bold G reading with knots and preserved accessible description", () => {
   for (const [token, expected] of [["21008G18KT", "18"], ["VRB03G12KT", "12"], ["27075G105KT", "105"]]) {
     const markup = render(wind(token));
-    assert.match(markup, new RegExp(`<span class="wind-gust"><strong>G ${expected}</strong><span>KT</span></span>`));
+    assert.match(markup, new RegExp(`<span class="wind-gust wind-gust-(?:green|yellow|red)"><strong>G ${expected}</strong><span>KT</span></span>`));
     assert.ok(markup.includes(`gusting ${expected} knots`));
   }
   const css = readFileSync(new URL("../app/wind-compass.css", import.meta.url), "utf8");
-  assert.match(css, /\.wind-gust \{[^}]*background: #080e14;[^}]*color: #fff6df;[^}]*font-weight: 900;/);
+  assert.match(css, /\.wind-gust \{[^}]*background: #080e14;[^}]*color: #a9bac4;[^}]*font-weight: 900;/);
   assert.match(css, /\.wind-gust strong \{ font-size: clamp\(17px, 10cqw, 30px\); font-weight: 900;/);
   assert.match(css, /\.wind-gust strong \{ font-size: 16px; \}/);
   assert.doesNotMatch(css, /\.wind-gust \{ font-size: 8px;/);
@@ -163,5 +163,66 @@ test("the gust badge is absent for no-gust, calm, stale, model-only and missing 
     wind("21008KT"), wind("VRB03KT"), wind("00000KT"),
     wind("21008G18KT", "METAR", "2026-10-15T14:00:00Z"),
     wind("21008G18KT", "MODEL"), null,
-  ]) assert.doesNotMatch(render(report), /class="wind-gust"/);
+  ]) assert.doesNotMatch(render(report), /class="wind-gust /);
+});
+
+test("fresh sustained arrow and gust readout use independent visual thresholds across sources", () => {
+  for (const source of ["ATIS", "METAR"]) {
+    for (const [speed, arrowColor] of [[19, "green"], [20, "yellow"], [29, "yellow"], [30, "yellow"]]) {
+      for (const [gust, gustColor] of [[19, "green"], [20, "yellow"], [29, "yellow"], [30, "red"]]) {
+        const report = wind(`210${speed}G${gust}KT`, source);
+        const model = compass.buildWindCompassModel(report, now);
+        assert.equal(model.arrowColor, arrowColor);
+        assert.equal(model.gustColor, gustColor);
+        assert.equal(model.speed, String(speed));
+        assert.equal(model.gust, String(gust));
+        assert.equal(model.bearing, 210);
+        const markup = render(report);
+        assert.match(markup, new RegExp(`wind-arrow-${arrowColor}"`));
+        assert.match(markup, /class="wind-flow-head"/);
+        assert.match(markup, new RegExp(`class="wind-gust wind-gust-${gustColor}"><strong>G ${gust}</strong>`));
+      }
+    }
+  }
+});
+
+test("missing gust, stale and unavailable data remain neutral; calm and VRB never gain arrows", () => {
+  for (const report of [
+    null, wind("21030G40KT", "MODEL"),
+    wind("21030G40KT", "ATIS", "2026-10-15T14:00:00Z"),
+    wind("21030G40KT", "METAR", "2026-10-15T14:00:00Z"),
+    wind("21030G40KT", "METAR", null),
+    wind("00000KT"),
+  ]) {
+    const model = compass.buildWindCompassModel(report, now);
+    assert.equal(model.arrowColor, "neutral");
+    assert.equal(model.gustColor, "neutral");
+    assert.equal(model.gust, null);
+    const markup = render(report);
+    assert.match(markup, /wind-arrow-neutral/);
+    assert.doesNotMatch(markup, /wind-flow-head|class="wind-gust /);
+  }
+  assert.equal(display("21020KT").gustColor, "neutral");
+  for (const [gust, color] of [[19, "green"], [20, "yellow"], [29, "yellow"], [30, "red"]]) {
+    const report = wind(`VRB05G${gust}KT`);
+    const model = compass.buildWindCompassModel(report, now);
+    assert.equal(model.arrowColor, "neutral");
+    assert.equal(model.gustColor, color);
+    assert.equal(model.bearing, null);
+    assert.doesNotMatch(render(report), /wind-flow-head/);
+    assert.match(render(report), new RegExp(`wind-gust-${color}`));
+  }
+});
+
+test("actual arrow and gust CSS wires steady colors without adding flashing or changing sustained readout", () => {
+  const css = readFileSync(new URL("../app/wind-compass.css", import.meta.url), "utf8");
+  for (const [color, hex] of [["green", "#6ee7a0"], ["yellow", "#f5d76e"]]) {
+    assert.ok(css.includes(`.wind-arrow-${color} { --wind-arrow-color: ${hex}; }`));
+    assert.ok(css.includes(`.wind-gust-${color} { color: ${hex}; }`));
+  }
+  assert.match(css, /\.wind-gust-red \{ color: #ff8585; \}/);
+  assert.match(css, /\.wind-flow-line \{ stroke: var\(--wind-arrow-color\)/);
+  assert.match(css, /\.wind-flow-head \{ fill: var\(--wind-arrow-color\); stroke: var\(--wind-arrow-color\)/);
+  assert.match(css, /\.wind-speed strong \{ color: var\(--cyan\)/);
+  assert.doesNotMatch(css, /animation:|@keyframes/);
 });

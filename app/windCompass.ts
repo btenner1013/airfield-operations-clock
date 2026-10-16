@@ -1,6 +1,7 @@
 import { ATIS_WIND_CURRENT_MINUTES, METAR_WIND_CURRENT_MINUTES, type CurrentWindRecord } from "./currentWind.ts";
 
 export type WindCompassState = "directional" | "variable" | "calm" | "stale" | "unavailable";
+export type WindColorCue = "neutral" | "green" | "yellow" | "red";
 export type WindCompassModel = Readonly<{
   state: WindCompassState;
   bearing: number | null;
@@ -8,6 +9,8 @@ export type WindCompassModel = Readonly<{
   cardinal: string;
   speed: string;
   gust: string | null;
+  arrowColor: Exclude<WindColorCue, "red">;
+  gustColor: WindColorCue;
   sector: string | null;
   sectorPath: string | null;
   observation: string;
@@ -49,6 +52,7 @@ export function windSectorPath(from: number, to: number): string | null {
 export function buildWindCompassModel(wind: CurrentWindRecord | null, nowMs: number): WindCompassModel {
   const empty: WindCompassModel = {
     state: "unavailable", bearing: null, degrees: "—", cardinal: "", speed: "—", gust: null,
+    arrowColor: "neutral", gustColor: "neutral",
     sector: null, sectorPath: null, observation: "OBS UNAVAILABLE", description: "Current observed wind unavailable.",
   };
   if (!wind || !["ATIS", "METAR"].includes(wind.source)) return empty;
@@ -65,13 +69,15 @@ export function buildWindCompassModel(wind: CurrentWindRecord | null, nowMs: num
   if (!validSpeed(wind.speedKt) || (wind.gustKt !== null && !validSpeed(wind.gustKt))) return empty;
   const speed = String(Math.round(wind.speedKt)).padStart(2, "0");
   const gust = wind.gustKt === null ? null : String(Math.round(wind.gustKt)).padStart(2, "0");
+  // Display cues only, not operational limits. Classify fresh observations independently.
+  const gustColor: WindColorCue = wind.gustKt === null ? "neutral" : wind.gustKt >= 30 ? "red" : wind.gustKt >= 20 ? "yellow" : "green";
   const gustDescription = gust === null ? "" : `, gusting ${gust} knots`;
   if (wind.directionType === "calm" && wind.speedKt === 0) return {
     ...empty, state: "calm", degrees: "CALM", speed: "00", observation,
     description: `Calm wind, 0 knots. ${observation}.`,
   };
   if (wind.directionType === "variable") return {
-    ...empty, state: "variable", degrees: "VRB", speed, gust, observation,
+    ...empty, state: "variable", degrees: "VRB", speed, gust, gustColor, observation,
     description: `Variable wind direction, ${speed} knots${gustDescription}. ${observation}.`,
   };
   if (wind.directionType !== "directional" || !validDegrees(wind.directionDegrees)) return empty;
@@ -81,6 +87,7 @@ export function buildWindCompassModel(wind: CurrentWindRecord | null, nowMs: num
     ? `${degreesLabel(wind.variableFromDegrees)}–${degreesLabel(wind.variableToDegrees)}` : null;
   const sectorPath = sector ? windSectorPath(wind.variableFromDegrees!, wind.variableToDegrees!) : null;
   return {
+    arrowColor: wind.speedKt >= 20 ? "yellow" : "green", gustColor,
     state: "directional", bearing, degrees, cardinal, speed, gust, sector, sectorPath, observation,
     description: `Wind from ${degrees} ${cardinal}, ${speed} knots${gustDescription}.${sector ? ` Direction varies from ${sector}.` : ""} The arrow shows airflow toward ${degreesLabel(bearing + 180)} ${windCardinal(bearing + 180)}. ${observation}.`,
   };

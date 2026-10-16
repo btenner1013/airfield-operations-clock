@@ -21,7 +21,7 @@ export default function WindInstrument({ wind, nowMs, reduced }: { wind: Current
   const directional = model.state === "directional";
   const unavailable = model.state === "unavailable" || model.state === "stale";
   const directionDetail = directional ? model.sector ? `VAR ${model.sector}` : null : model.state === "variable" ? "NO FIXED DIRECTION" : model.state === "calm" ? "NO DIRECTIONAL FLOW" : "NO CURRENT OBSERVATION";
-  return <div className={`wind-instrument wind-state-${model.state}`} data-wind-state={model.state} data-wind-source={wind?.source} data-wind-time={wind?.observedAt ?? undefined} role="img" aria-label={model.description}>
+  return <div className={`wind-instrument wind-state-${model.state} wind-arrow-${model.arrowColor}`} data-wind-state={model.state} data-wind-source={wind?.source} data-wind-time={wind?.observedAt ?? undefined} role="img" aria-label={model.description}>
     <div className="wind-instrument-body" aria-hidden="true">
       <div className="wind-dial-wrap">
         <svg className="wind-dial" viewBox="0 0 120 120" fill="none">
@@ -42,7 +42,7 @@ export default function WindInstrument({ wind, nowMs, reduced }: { wind: Current
         <span className="wind-from-label">{directional ? `FROM ${model.cardinal}` : model.state === "variable" ? "DIRECTION" : model.state === "calm" ? "WIND" : "WIND DATA"}</span>
         <strong className="wind-bearing">{unavailable ? model.state === "stale" ? "STALE" : "—" : model.degrees}</strong>
         <div className="wind-speed"><strong>{model.speed}</strong><span>KT</span></div>
-        {model.gust !== null && <span className="wind-gust"><strong>G {model.gust}</strong><span>KT</span></span>}
+        {model.gust !== null && <span className={`wind-gust wind-gust-${model.gustColor}`}><strong>G {model.gust}</strong><span>KT</span></span>}
       </div>
     </div>
     <div className="wind-instrument-detail" aria-hidden="true">
