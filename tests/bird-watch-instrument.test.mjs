@@ -93,8 +93,8 @@ test("both OS and explicit reduced-motion state disable the severe bird and text
 });
 
 
-test("condition uses a full-width row and substantially larger type without squeezing observation age", () => {
-  assert.match(css, /grid-column: 1 \/ -1; font: 900 clamp\(18px, 16cqw, 52px\)/);
+test("condition retains its large type and readable sizing beside the bird without squeezing observation age", () => {
+  assert.match(css, /flex-shrink: 0; font: 900 clamp\(18px, 16cqw, 52px\)/);
   assert.match(css, /font-size: clamp\(18px, 16cqw, 72px\)/);
   assert.match(css, /font-size: clamp\(18px, 16cqw, 30px\)/);
   assert.match(css, /\.bird-watch-reading \.bird-severity \{[^}]*white-space: nowrap/);
@@ -106,5 +106,47 @@ test("condition uses a full-width row and substantially larger type without sque
       assert.ok(font * (8 * .62 + 7 * .01) <= content, `MODERATE fits ${content}px full-width row at cap ${cap}`);
     }
     assert.ok(clamp(18, content * .16, 52) >= clamp(14, content * .104, 32) * (content >= 150 ? 1.5 : 1.25));
+  }
+});
+
+test("every Bird Watch condition and its left-hand goose are centered together at every viewport", () => {
+  assert.match(css, /\.bird-condition-row \{[^}]*display: flex; align-items: center; justify-content: center;[^}]*width: 100%;/);
+  const severityRules = [...css.matchAll(/\.bird-watch-reading \.bird-severity \{([^}]+)\}/g)].map(match => match[1]);
+  assert.match(severityRules[0], /text-align: center;/);
+  assert.match(severityRules[0], /flex-shrink: 0;/);
+  assert.doesNotMatch(severityRules[0], /(?:^|;)\s*width:/);
+  // Large and short-screen overrides must inherit the shared centering.
+  for (const rule of severityRules.slice(1)) assert.doesNotMatch(rule, /text-align:|\bwidth:/);
+  for (const [selectors, declarations] of [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => match.slice(1))) {
+    if (selectors.includes("bird-severity")) assert.doesNotMatch(declarations, /text-align:\s*(?:left|right|start|end)/);
+  }
+  for (const risk of ["LOW", "MODERATE", "HIGH", "SEVERE", "UNKNOWN", "UNAVAILABLE"]) {
+    const html = render(risk);
+    assert.ok(html.includes(`<strong class="bird-severity">${risk}</strong>`));
+    assert.match(html, /BIRD WATCH/);
+    assert.match(html, /AHAS/);
+    assert.match(html, /CONDITION/);
+    assert.match(html, /bird-watch-glyph/);
+    assert.match(html, /OBSERVATION AGE/);
+    assert.match(html, /class="bird-condition-row"><svg class="bird-watch-glyph"[\s\S]*?<\/svg><strong class="bird-severity">/);
+  }
+});
+
+test("long condition words retain their type size while the goose uses the available row width", () => {
+  assert.match(css, /\.bird-watch-glyph \{[^}]*width: clamp\(30px, 20cqw, 56px\); min-width: 0;[^}]*flex-shrink: 1;/);
+  assert.match(css, /\.bird-card.risk-unknown \.bird-severity \{[^}]*min-width: 0; flex-shrink: 1;/);
+  const clamp = (lo, value, hi) => Math.max(lo, Math.min(hi, value));
+  for (const width of [110,120,130,150,180,230,280,330,440,550]) {
+    for (const cap of [30,52,72]) {
+      const font = clamp(18, width * .16, cap);
+      const gap = clamp(4, width * .02, 8);
+      for (const risk of ["LOW", "MODERATE", "HIGH", "SEVERE"]) {
+        const textWidth = font * (risk.length * .62 + (risk.length - 1) * .01);
+        const preferredBird = cap === 30 ? 24 : cap === 72 ? 56 : clamp(30, width * .20, 56);
+        const birdWidth = Math.min(preferredBird, width - textWidth - gap);
+        assert.ok(birdWidth >= 15, `${risk} keeps a visible goose at ${width}px / ${cap}px cap`);
+        assert.ok(textWidth + birdWidth + gap <= width + .001, `${risk} pair fits ${width}px / ${cap}px cap`);
+      }
+    }
   }
 });
