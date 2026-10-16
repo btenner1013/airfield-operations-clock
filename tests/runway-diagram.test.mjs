@@ -269,3 +269,46 @@ test('every independent arrival/departure count fits with every physical closure
   }
  }
 });
+
+test('wider panel adds up to twelve percent spacing without altering the diagram height or clock gaps',()=>{
+ for(const [top,clock,right,brand] of [[58,370,1842,910],[41,280,1311,700],[22,230,1072,850],[20,105,1024,600]]){
+  const height=geometry.runwayPlacementHeight(top,clock,right,brand),diagramWidth=height*300/280;
+  const width=geometry.runwayPanelWidth(height,right-brand-24);
+  assert.ok(width>=diagramWidth&&width<=diagramWidth*1.12+1e-8);
+  assert.ok(right-width>=brand+24-1e-8);assert.ok(top+height<=clock-12+1e-8);
+ }
+ const base=300*300/280;
+ assert.ok(Math.abs(geometry.runwayPanelWidth(300,1000)-base*1.12)<1e-8);
+ assert.equal(geometry.runwayPanelWidth(300,base),base);
+ assert.equal(geometry.runwayPanelWidth(300,base+10),base+10);
+ for(const [height,available] of [[0,1000],[NaN,1000],[300,NaN],[300,0],[300,-1]])assert.equal(geometry.runwayPanelWidth(height,available),0);
+});
+
+test('narrow panel stays in normal flow and guards the painted rim without resizing its SVG viewports',()=>{
+ for(const headerWidth of [26,52,200,338,700]){
+  const available=Math.max(0,headerWidth-16);
+  const height=Math.min(240,headerWidth*.7*280/300,available*280/300);
+  const width=geometry.runwayPanelWidth(height,available);
+  assert.ok(width+16<=headerWidth+1e-8);assert.ok(height<=240);
+  if(headerWidth>=54)assert.equal(height,Math.min(240,headerWidth*.7*280/300));
+ }
+ const placement=readFileSync(new URL('../app/RunwayPlacement.tsx',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ assert.equal((placement.match(/style=\{\{height,width:height\*300\/280\}\}/g)||[]).length,2);
+ assert.match(css,/\.runway-status-placement \{ position:absolute;right:0;top:0; \}/);
+ assert.match(css,/\.runway-placement \{ position:relative;top:auto;right:auto;margin-left:auto; \}/);
+ assert.doesNotMatch(placement,/scale\(|preserveAspectRatio|transform/);
+});
+
+test('clock heads retain LOCAL and ZULU while redundant badges and dots are removed',()=>{
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ assert.match(page,/<div className="clock-head"><span>LOCAL<\/span><\/div><time>\{localTime\}<\/time>/);
+ assert.match(page,/<div className="clock-head"><span>ZULU<\/span><\/div><time>\{utcTime\}<em>Z<\/em><\/time>/);
+ assert.doesNotMatch(page,/ON STATION|UNIVERSAL/);
+ assert.equal((page.match(/className="clock-head"/g)||[]).length,2);
+ assert.equal((page.match(/\{dateLine\(local\)\}/g)||[]).length,1);
+ assert.equal((page.match(/\{dateLine\(utc\)\}/g)||[]).length,1);
+ const placement=readFileSync(new URL('../app/RunwayPlacement.tsx',import.meta.url),'utf8');
+ assert.match(placement,/querySelectorAll<HTMLElement>\('\.clock-head'\)/);
+ assert.doesNotMatch(placement,/clock-head b|clock-head i|ON STATION|UNIVERSAL/);
+});

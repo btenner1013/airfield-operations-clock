@@ -14,6 +14,10 @@
   background:linear-gradient(145deg,rgba(13,26,34,.55),rgba(5,13,19,.40));
 }
 .runway-placement[data-ready="true"] { visibility:visible; }
+/* The panel can widen leftward while these two equally sized viewports retain
+   the original diagram scale. Anchoring the list right adds only separation. */
+.runway-graphic { position:relative; }
+.runway-status-placement { position:absolute;right:0;top:0; }
 .runway-diagram {
   display:block;width:100%;height:100%;overflow:visible;color:#e6f5fb;
   font-family:Consolas,"DejaVu Sans",monospace;font-size:15px;font-weight:800;

@@ -35,3 +35,10 @@ export function runwayPlacementHeight(headerTop:number,clockTop:number,headerRig
   if(![headerTop,clockTop,headerRight,brandRight].every(Number.isFinite))return 0;
   return Math.max(0,Math.min(300,clockTop-headerTop-12,(headerRight-brandRight-24)*280/300));
 }
+
+/** Add up to 12% breathing room without changing the diagram scale or height. */
+export function runwayPanelWidth(diagramHeight:number,availableWidth:number):number {
+  if(![diagramHeight,availableWidth].every(Number.isFinite)||diagramHeight<=0||availableWidth<=0)return 0;
+  const diagramWidth=diagramHeight*300/280;
+  return diagramWidth+Math.min(diagramWidth*.12,Math.max(0,availableWidth-diagramWidth));
+}
