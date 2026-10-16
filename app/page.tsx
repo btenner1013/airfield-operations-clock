@@ -23,8 +23,10 @@ import { normalizeRunwayOperations } from "./runwayOperations";
 import WeatherIcon from "./WeatherIcon";
 import SolarLunarInstrument from "./SolarLunarInstrument";
 import BirdWatchGlyph from "./BirdWatchGlyph";
+import CurrentWeatherTrend from "./CurrentWeatherTrend";
+import { advanceCurrentTrendHistory, resolveCurrentWeatherTrends, type CurrentTrendHistory } from "./currentWeatherTrends";
 import OperationalWarning from "./OperationalWarning";
-import { describeForecastSources } from "./forecastPresentation";
+import { describeForecastSources, formatForecastWind } from "./forecastPresentation";
 import { currentWeatherPresentation, currentLightningPresentation, lightningReportForDisplay } from "./currentWeatherPresentation";
 import { modelWeatherFromCode } from "./modelWeather";
 import { resolveMoonPreview, showLunarInformation } from "./solarLunar";
@@ -333,6 +335,9 @@ export default function Home() {
   const cfRef=useRef<{active:"a"|"b";a:string;b:string}>({active:"a",a:"clear-night",b:"clear-night"}); cfRef.current={active,a:aScene,b:bScene};
   const clockDebug=useMemo<ClockDebug|undefined>(()=>{ if(typeof location==="undefined") return undefined; const q=new URLSearchParams(location.search); const off=q.get("debugClockOffset"), chk=q.get("debugClockCheck"), exact=q.get("debugExactTime"); return { offsetMs: off!=null&&off!==""?Number(off):undefined, exact: exact!=null&&exact!==""?Number(exact):undefined, force:(chk==="offline"||chk==="stale"||chk==="warning")?chk:undefined }; },[]);
   const {now,status:clock}=useSystemClock(clockDebug);
+  const [currentTrendHistory,setCurrentTrendHistory]=useState<CurrentTrendHistory>({previous:null,current:null});
+  const currentTrendClockRef=useRef({nowMs:0,simulated:false});
+  currentTrendClockRef.current={nowMs:now.getTime(),simulated:clock.source==="PREVIEW"};
   
   // Spawning controls for single C-17 photo flyby
   const activeFlybyRemovalRef = useRef<number | null>(null);
@@ -415,10 +420,13 @@ export default function Home() {
         const prior=weatherRef.current, feedStatus=result.feedReached?result.weather.feedStatus:(navigator.onLine?"DEGRADED":"OFFLINE");
         const validFeedSnapshot=result.feedReached&&(result.metarValid||result.tafValid||result.windValid);
         const candidate={...result.weather,feedStatus,requestStatus:"IDLE" as const,lastRefreshAttemptIso:prior.lastRefreshAttemptIso,lastRefreshSuccessIso:validFeedSnapshot?atIso:prior.lastRefreshSuccessIso,feedError:result.feedReached?result.weather.feedError:(result.weather.feedError||"FEED UNREACHABLE")};
+        // Only the successful incoming observation can advance this session-only history.
+        if(currentTrendClockRef.current.simulated) setCurrentTrendHistory({previous:null,current:null});
+        else setCurrentTrendHistory(history=>advanceCurrentTrendHistory(history,result,currentTrendClockRef.current.nowMs));
         const merged=mergeWeather(prior,{...result,weather:candidate}); commit(merged);
         try{const stored=serializeWeatherCache(merged,atIso);if(stored)localStorage.setItem("kmem-weather",stored);}catch{}
       },
-      onError:(_error,_reason,_atIso,timedOut)=>commit({...weatherRef.current,requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}),
+      onError:(_error,_reason,_atIso,timedOut)=>{ setCurrentTrendHistory({previous:null,current:null}); commit({...weatherRef.current,forecast:weatherRef.current.forecast.map(row=>({...row,forecastWind:null})),requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}); },
       timeoutMs:12000
     });
     const removeLifecycle=installWeatherRefreshLifecycle(reason=>{void coordinator.refresh(reason);},CONFIG.weatherRefreshMinutes*60000);
@@ -471,6 +479,7 @@ export default function Home() {
     simulated:Boolean((debug && !(["night","sunrise","sunset"] as Theme[]).includes(debug)) || debugPhenomena !== null || debugCloud !== null || debugCloudBase !== null || debugVisibility !== null || debugIntensity !== null),
     phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
   });
+  const currentTrends=resolveCurrentWeatherTrends(currentTrendHistory,{...weather,cloudCoverage:effCoverage,cloudBaseFt:effBase,visibilitySm:effVisibility},now.getTime(),currentPresentation.simulated||clock.source==="PREVIEW");
   const lightning=currentLightningPresentation({preview:debugLightning,simulated:currentPresentation.simulated,phenomena:effPhenomena,live:weather.currentLightning});
   const visualLightning=lightningForAnimation(lightning,weather.metarObsIso,now.getTime());
   const lightningPoint=lightningPlacement(lightning),flashTest=debugLightning==="flash-test";
@@ -639,14 +648,14 @@ export default function Home() {
           </div>
           <div className="current-weather-instrument">
             <div className="current-weather-hero">
-              <strong className="current-temperature">{!currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small></strong>
+              <strong className="current-temperature">{!currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small><CurrentWeatherTrend metric="temperature" comparison={currentTrends.temperature} /></strong>
               <span className="current-weather-glyph"><WeatherIcon condition={currentPresentation.condition} codes={currentPresentation.codes} night={!effSolar.daylight || phase === "night"} /></span>
             </div>
             <b className="current-condition">{currentPresentation.label}{currentPresentation.secondaryLabel && <span className="weather-modifier"> · {currentPresentation.secondaryLabel}</span>}</b>
             <div className="current-weather-stats">
               <div><span>FEELS LIKE</span><strong>{!modelMetricsAvailable ? "—" : weather.feelsLikeF}°F</strong></div>
               <div><span>HUMIDITY</span><strong>{!modelMetricsAvailable ? "—" : weather.humidity}%</strong></div>
-              <div className="current-ceiling"><span>CEILING</span><strong>{currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}</strong></div>
+              <div className="current-ceiling"><span>CEILING</span><strong>{currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
             </div>
             {/* Lightning remains an exception: no report means no row. */}
             {lightningDisplay.severity!=="none"&&(
@@ -662,7 +671,7 @@ export default function Home() {
             <WindInstrument wind={effectiveWind} nowMs={now.getTime()} reduced={reduced} />
             <div className="wind-flight-meta-centered">
               <span className="flight-cat-pill" style={{ borderColor: flightCat.color, color: flightCat.color, background: `${flightCat.color}22` }}>{!currentPresentation.simulated && metarState === "STALE" ? "STALE" : flightCat.cat}</span>
-              <span className="wind-vis-tag">VIS <strong>{effVisibility ?? "—"} SM</strong></span>
+              <span className="wind-vis-tag">VIS <strong>{effVisibility ?? "—"} SM<CurrentWeatherTrend metric="visibility" comparison={currentTrends.visibility} /></strong></span>
             </div>
           </div>
         </article>
@@ -742,6 +751,8 @@ export default function Home() {
                 const conditionLabel=f.operationalWeather?(f.operationalWeather.code?`${f.operationalWeather.shortLabel}${f.operationalWeather.secondaryLabel ? ` · ${f.operationalWeather.secondaryLabel}` : ""}`:skyDisplay.headline):f.description;
                 const precipText=formatForecastProbability(f.operationalWeather?.probability,f.precipitationProbability);
                 const cigText=skyDisplay.detail;
+                const forecastWind=formatForecastWind(f,weather,Date.now());
+                const windLabel=f.operationalWeather?.temporary||f.operationalWeather?.probability?"PREV WIND":"WIND";
 
                 return (
                   <div key={`${f.time}-${i}`} className="forecast-item-tile" data-category={f.operationalWeather?.category || "unknown"}>
@@ -750,6 +761,7 @@ export default function Home() {
                     <div className="forecast-content-col">
                       <b className="forecast-condition">{conditionLabel}</b>
                       <span className="forecast-meta-detail"><span className="forecast-probability">{precipText}</span>{cigText && <span>{cigText}</span>}</span>
+                      <span className="forecast-wind" data-state={forecastWind.state} title={forecastWind.detail}><span className="forecast-wind-label">{windLabel}</span><b>{forecastWind.text}</b></span>
                     </div>
                     <strong className="forecast-temp">{f.temperatureF}°<small>F</small></strong>
                   </div>

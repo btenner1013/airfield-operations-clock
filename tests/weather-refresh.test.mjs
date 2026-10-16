@@ -251,3 +251,26 @@ test("model provenance survives independent model failure and is absent before f
   assert.match(page,/!modelMetricsAvailable \? "—" : weather.feelsLikeF/);
   assert.match(page,/!modelMetricsAvailable \? "—" : weather.humidity/);
 });
+
+test("forecast wind is re-established by fresh TAF only, never restored or retained on failure",()=>{
+  const forecastWind={directionType:"directional",directionDegrees:180,speedKt:12,gustKt:20,source:"TAF",sourceKind:"TAF_BASE",issueIso:"2026-07-20T05:00:00.000Z",validFromIso:"2026-07-20T06:00:00.000Z",validToIso:"2026-07-21T12:00:00.000Z",raw:"18012G20KT"};
+  const previous=weather({solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:00"}]});
+  previous.forecast=previous.forecast.map(row=>({...row,forecastWind}));
+  const restored=restoreWeatherCache(serializeWeatherCache(previous,"2026-07-20T06:02:00Z"),new Date("2026-07-20T06:02:00Z"));
+  assert.ok(restored);
+  assert.equal(restored.forecast[0].forecastWind,null);
+  assert.equal(restored.forecast[0].description,previous.forecast[0].description);
+  assert.deepEqual(restored.currentWind,previous.currentWind);
+  const incoming=weather();
+  const failed=mergeWeather(previous,{weather:incoming,metarValid:true,tafValid:false,modelValid:true,windValid:true,feedReached:true});
+  assert.equal(failed.forecast[0].forecastWind,null);
+  assert.equal(failed.forecast[0].description,previous.forecast[0].description);
+  const noRows=mergeWeather(previous,{weather:weather({forecast:[]}),metarValid:true,tafValid:true,modelValid:true,windValid:true,feedReached:true});
+  assert.equal(noRows.forecast[0].forecastWind,null);
+  const good=mergeWeather(restored,{weather:previous,metarValid:false,tafValid:true,modelValid:true,windValid:true,feedReached:true});
+  assert.equal(good.forecast[0].forecastWind,forecastWind);
+  // A malformed extension cannot poison normal cached weather or survive the restore.
+  const corrupt=JSON.parse(serializeWeatherCache(previous,"2026-07-20T06:02:00Z"));
+  corrupt.weather.forecast[0].forecastWind={directionType:"directional",speedKt:"bad"};
+  assert.equal(restoreWeatherCache(JSON.stringify(corrupt),new Date("2026-07-20T06:02:00Z")).forecast[0].forecastWind,null);
+});

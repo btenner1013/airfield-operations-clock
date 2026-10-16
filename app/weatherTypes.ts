@@ -1,6 +1,7 @@
 import type { RunwayOperationsSnapshot } from "./runwayOperations";
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
 import type { CurrentWindRecord } from "./currentWind";
+import type { ForecastWindRecord } from "./forecastWind";
 import type { LightningReport } from "./lightning";
 
 export type Theme = "clear" | "partly-cloudy" | "overcast" | "rain" | "heavy-rain" | "thunderstorm" | "fog" | "snow" | "night" | "sunrise" | "sunset" | "neutral";
@@ -18,6 +19,7 @@ export type Forecast = {
   source:"TAF"|"MODEL";
   phenomena?:string[];
   operationalWeather:OperationalWeather|null;
+  forecastWind?:ForecastWindRecord|null;
 };
 export type SolarDay = { date:string; sunriseLocal:string; sunsetLocal:string };
 export type CloudCoverage = "CLR"|"FEW"|"SCT"|"BKN"|"OVC"|"VV";

@@ -1,5 +1,7 @@
 import type { CloudCoverage, Forecast, Theme } from "./weatherTypes";
 import { matchPeriodPrecipitation } from "./futureWeather.ts";
+import { parseTafWindTimeline, resolveForecastWind } from "./forecastWind.ts";
+import type { TafWindTimelinePeriod } from "./forecastWind";
 
 export type WeatherSourceKind = "METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PROB30"|"TAF_PROB40"|"TAF_PROB30_TEMPO"|"TAF_PROB40_TEMPO"|"MODEL";
 export type WeatherCategory = "severe-convection"|"thunderstorm"|"freezing-precipitation"|"winter-precipitation"|"liquid-precipitation"|"obscuration"|"cloud"|"clear"|"unknown";
@@ -25,7 +27,7 @@ export type OperationalWeather = {
   ceilingCoverage:"BKN"|"OVC"|"VV"|null; ceilingFt:number|null; ceilingUnlimited:boolean; cloudSummary:string|null; cloudLayers:CloudLayer[]; sourceKind:WeatherSourceKind;
 };
 export type TafTimelinePeriod = { id:string; fromIso:string; toIso:string; raw:string; weather:OperationalWeather };
-export type TafTimeline = { issueIso:string; validStartIso:string; validEndIso:string; prevailing:TafTimelinePeriod[]; overlays:TafTimelinePeriod[] };
+export type TafTimeline = { issueIso:string; validStartIso:string; validEndIso:string; prevailing:TafTimelinePeriod[]; overlays:TafTimelinePeriod[]; windPeriods?:TafWindTimelinePeriod[] };
 export type TafHazard = { id:string; fromIso:string; toIso:string; weather:OperationalWeather };
 
 const CATEGORY_RANK:Record<WeatherCategory,number>={"severe-convection":900,thunderstorm:800,"freezing-precipitation":700,"winter-precipitation":600,"liquid-precipitation":500,obscuration:400,cloud:200,clear:100,unknown:0};
@@ -420,7 +422,8 @@ export function parseStructuredTaf(raw:string,reference:Date):TafTimeline|null {
   if(baseStart<firstFm)prevailing.push({id:"base",fromIso:baseStart.toISOString(),toIso:firstFm.toISOString(),raw:baseRaw,weather:groupWeather(baseRaw,"TAF_BASE")});
   fm.forEach((entry,index)=>{const end=fm[index+1]?.date||validEnd;if(entry.date<end){const rawGroup=body(entry.i);prevailing.push({id:`fm-${entry.m[0]}`,fromIso:entry.date.toISOString(),toIso:end.toISOString(),raw:rawGroup,weather:groupWeather(rawGroup,"TAF_FM")});}});
   const overlays:TafTimelinePeriod[]=[];markers.forEach((m,index)=>{if(m[0].startsWith("FM"))return;const range=m[0].match(/(\d{2})(\d{2})\/(\d{2})(\d{2})/);if(!range)return;let start=resolveWithin(Number(range[1]),Number(range[2]),0,validStart,validEnd),end=start?firstAfter(Number(range[3]),Number(range[4]),0,start):null;if(!start||!end)return;start=new Date(Math.max(start.getTime(),validStart.getTime()));end=new Date(Math.min(end.getTime(),validEnd.getTime()));if(start>=end)return;const probability=m[0].startsWith("PROB")?Number(m[0].slice(4,6)):null,temporary=m[0].includes("TEMPO"),sourceKind:WeatherSourceKind=probability===30&&temporary?"TAF_PROB30_TEMPO":probability===40&&temporary?"TAF_PROB40_TEMPO":probability===30?"TAF_PROB30":probability===40?"TAF_PROB40":"TAF_TEMPO",rawGroup=body(index);overlays.push({id:`${m[0].replace(/\s+/g,"-")}-${index}`,fromIso:start.toISOString(),toIso:end.toISOString(),raw:rawGroup,weather:groupWeather(rawGroup,sourceKind,temporary,probability)});});
-  return {issueIso:issueDate.toISOString(),validStartIso:validStart.toISOString(),validEndIso:validEnd.toISOString(),prevailing,overlays};
+  const timing={issueIso:issueDate.toISOString(),validStartIso:validStart.toISOString(),validEndIso:validEnd.toISOString()};
+  return {...timing,prevailing,overlays,windPeriods:parseTafWindTimeline(taf,timing)};
 }
 
 export function isTafPeriodActive(period:Pick<TafTimelinePeriod,"fromIso"|"toIso">,time:number):boolean { return Date.parse(period.fromIso)<=time&&time<Date.parse(period.toIso); }
@@ -435,6 +438,11 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
     if (fromMs > windowStartMs && fromMs <= windowEnd) {
       transitionTimes.add(fromMs);
     }
+  }
+  // Wind-only BECMG boundaries must not silently span unknown or newly prevailing winds.
+  for (const period of timeline.windPeriods ?? []) {
+    const fromMs = Date.parse(period.fromIso);
+    if (fromMs > windowStartMs && fromMs <= windowEnd) transitionTimes.add(fromMs);
   }
   // An overlay ending is also a weather transition: return to the concurrent
   // prevailing group instead of displaying TEMPO/PROB weather past its end.
@@ -467,7 +475,8 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
       condition: primary ? primary.condition : (closestSlot?.condition || "neutral"),
       description: primary ? primary.label : (closestSlot?.description || "Weather unavailable"),
       source: "TAF" as const,
-      operationalWeather: primary || null
+      operationalWeather: primary || null,
+      forecastWind: resolveForecastWind(timeline.windPeriods, time)
     });
   }
 
@@ -485,7 +494,8 @@ export function applyStructuredTaf(model:Forecast[],timeline:TafTimeline,windowS
              condition: primary ? primary.condition : candidate.condition,
              description: primary ? primary.label : candidate.description,
              source: "TAF" as const,
-             operationalWeather: primary || null
+             operationalWeather: primary || null,
+             forecastWind: resolveForecastWind(timeline.windPeriods, time)
          });
      }
      modelIndex++;

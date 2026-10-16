@@ -153,6 +153,9 @@ export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weathe
   if(result.tafValid&&!result.weather.forecast.length&&previous.forecast.length) {
     merged.forecast=rematchPrecipitation(previous.forecast,[],result);
   }
+  // Retained/cloud-only rows are useful, but stale forecast wind must never masquerade
+  // as a freshly fetched prevailing TAF. A new TAF re-establishes it atomically.
+  if(!result.tafValid||!result.weather.forecast.length) merged.forecast=merged.forecast.map(row=>({...row,forecastWind:null}));
   if(result.weather.birdRisk==="UNAVAILABLE"&&previous.birdRisk!=="UNAVAILABLE") preserve(merged,previous,["birdRisk","birdBasis","birdUpdated"]);
   return merged;
 }
@@ -279,7 +282,7 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     if(!isWeather(candidate)) return null;
     // Operations are re-established from a fetched source after reload. Never trust
     // an unvalidated cached extension to advertise a runway as in use.
-    return {...candidate,runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    return {...candidate,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 

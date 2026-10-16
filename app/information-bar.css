@@ -67,6 +67,11 @@
 .forecast-card .forecast-condition { color: #eef5f8; font: 800 clamp(10px, 3.3cqw, 15px)/1.15 Consolas, monospace; letter-spacing: .015em; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-overflow: clip; }
 .forecast-card .forecast-meta-detail { display: flex; flex-wrap: wrap; gap: 3px 7px; color: #a6bfcd; font: 700 clamp(8px, 2.65cqw, 12px)/1.2 Consolas, monospace; letter-spacing: .01em; white-space: normal; overflow: visible; text-align: left; }
 .forecast-probability { color: #b5d7e8; }
+.forecast-card .forecast-wind { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 5px; color: #c4dfeb; font: 700 clamp(8px, 2.65cqw, 12px)/1.2 Consolas, monospace; letter-spacing: .01em; }
+.forecast-card .forecast-wind-label { color: #8eaab9; font-size: .85em; white-space: nowrap; }
+.forecast-card .forecast-wind b { white-space: nowrap; font-weight: 700; }
+.forecast-card .forecast-wind[data-state="unavailable"] { color: #9bb0bc; }
+.forecast-card .forecast-wind[data-state="stale"] { color: #e4bd83; }
 .forecast-card .forecast-temp { font: 800 clamp(16px, 5cqw, 23px)/1 Consolas, monospace !important; letter-spacing: -.04em; }
 .forecast-card .forecast-temp small { color: #a6bfcd; font-size: .55em; margin-left: 1px; }
 .forecast-card .forecast-empty { margin: auto; padding: 18px 8px; font: 700 11px/1.5 Consolas, monospace; color: #a7bfcd; text-align: center; }
@@ -76,6 +81,7 @@
   .forecast-card .forecast-item-tile { grid-template-columns: max-content 24px minmax(0, 1fr) max-content; gap: 5px; padding: 7px 6px; }
   .forecast-card .forecast-icon .wx-pictogram { font-size: 25px; }
   .forecast-card .forecast-meta-detail { font-size: 8px; }
+  .forecast-card .forecast-wind { font-size: 8px; }
 }
 @media (min-width: 2560px), (min-height: 1400px) {
   .current-weather-instrument { gap: 10px; }
@@ -101,6 +107,7 @@
   .forecast-card .forecast-icon .wx-pictogram { font-size: 42px; }
   .forecast-card .forecast-condition { font-size: 19px; }
   .forecast-card .forecast-meta-detail { font-size: 15px; }
+  .forecast-card .forecast-wind { font-size: 15px; }
   .forecast-card .forecast-temp { font-size: 30px !important; }
 }
 @media (max-height: 700px) and (min-width: 721px) {
@@ -134,6 +141,15 @@
   .forecast-card .forecast-icon .wx-pictogram { font-size: 21px; }
   .forecast-card .forecast-condition { font-size: 9px; }
   .forecast-card .forecast-meta-detail { font-size: 7px; gap: 2px 4px; }
+  .forecast-card .forecast-wind { font-size: 7px; gap: 2px 4px; }
   .forecast-card .forecast-content-col { gap: 2px; }
   .forecast-card .forecast-temp { font-size: 13px !important; }
 }
+
+/* Current observed metrics only. Temperature direction carries no good/bad color. */
+.current-wx-trend { display: inline-block; margin-left: .25em; font-family: Consolas, monospace; font-size: .8em; font-weight: 900; font-style: normal; line-height: 1; letter-spacing: 0; text-shadow: none; }
+.current-wx-trend[data-tone="up"] { color: #72dbbd; }
+.current-wx-trend[data-tone="down"] { color: #ff7676; }
+.current-wx-trend[data-tone="steady"] { color: #ffd07a; }
+.current-wx-trend[data-tone="neutral"] { color: #c5d7e3; }
+.current-temperature .current-wx-trend { font-size: .28em; vertical-align: .2em; }
