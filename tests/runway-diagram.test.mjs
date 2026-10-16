@@ -53,7 +53,7 @@ test('diagram occupies header right and Julian group sits below both clocks',()=
  assert.equal((page.match(/className="header-date julian-date"/g)||[]).length,1);
  assert.match(css,/right:0;top:0/);assert.match(css,/min-height:clamp/);
  assert.match(css,/\.clocks > \.header-date \{\s*display:flex/);
- assert.doesNotMatch(css,/grid-template|background:|animation:|\.clock time/);
+ assert.doesNotMatch(css,/grid-template|animation:|\.clock time/);
 });
 test('header placement stays above clock labels and right of branding',()=>{
  for(const [top,clock,right,brand] of [[58,370,1842,910],[41,280,1311,700],[22,230,1072,850]]) {
@@ -94,4 +94,15 @@ test('runway contrast panel shares bottom-card finish without shrinking or clipp
  const panel=css.match(/\.runway-placement::before \{([^}]+)\}/)[1];
  assert.doesNotMatch(panel,/padding:|overflow:hidden|width:|height:/);
  assert.ok(12-8>=4);assert.ok(24-8>=16);
+});
+
+test('runway-only translucent background leaves shared cards and solid SVG intact',()=>{
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ const board=readFileSync(new URL('../app/board-cohesion.css',import.meta.url),'utf8');
+ const panel=css.match(/\.runway-placement::before \{([^}]+)\}/)[1];
+ assert.match(panel,/background:linear-gradient\(145deg,rgba\(13,26,34,\.55\),rgba\(5,13,19,\.40\)\)/);
+ assert.match(board,/rgba\(13, 26, 34, \.96\), rgba\(5, 13, 19, \.9\)/);
+ assert.doesNotMatch(css,/\bopacity\s*:/);
+ const layout=readFileSync(new URL('../app/layout.tsx',import.meta.url),'utf8');
+ assert.ok(layout.indexOf('./runway-diagram.css')>layout.indexOf('./board-cohesion.css'));
 });

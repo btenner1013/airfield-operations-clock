@@ -37,3 +37,13 @@ test("instrument CSS is scoped away from wind, rail, clocks, scene and footer", 
   assert.deepEqual([...css.matchAll(/animation:\s*([^;]+);/g)].map(m => m[1]), ["bwcPulse 1.2s infinite ease-in-out", "none !important", "none !important"]);
   for (const text of ["clockText", "metarDiagnostic", "tafDiagnostic", "feedDiagnostic", "popDiagnostic", "PRESS F11 FOR FULL SCREEN"]) assert.ok(page.includes(text));
 });
+
+test("ceiling label and value grow independently with wrapping and viewport fallbacks",()=>{
+ assert.match(css,/\.current-weather-stats \.current-ceiling span \{ font-size: clamp\(11px, 4cqw, 15px\)/);
+ assert.match(css,/\.current-weather-stats \.current-ceiling strong \{ font-size: clamp\(14px, 5cqw, 22px\); line-height: 1\.25; white-space: normal; overflow-wrap: anywhere/);
+ assert.match(css,/\.current-ceiling strong \{ font-size: 28px/);
+ assert.match(css,/\.current-ceiling strong \{ font-size: 11px/);
+ assert.match(css,/\.current-weather-stats strong \{[^}]*clamp\(15px, 5\.5cqw, 22px\)/);
+ assert.match(css,/min-width: 0/);
+ for(const label of ['UNAVAILABLE','UNLIMITED (UNL)','effBase.toLocaleString()'])assert.ok(page.includes(label));
+});

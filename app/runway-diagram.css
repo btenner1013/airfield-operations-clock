@@ -10,6 +10,8 @@
 .runway-placement::before {
   content:"";position:absolute;inset:-8px;z-index:-1;
   border:1px solid var(--line);pointer-events:none;
+  /* Runway-only transparency; lower instruments retain their denser finish. */
+  background:linear-gradient(145deg,rgba(13,26,34,.55),rgba(5,13,19,.40));
 }
 .runway-placement[data-ready="true"] { visibility:visible; }
 .runway-diagram {
