@@ -113,6 +113,25 @@ test("sunset shades broken cloud bodies while retaining gaps and closed-deck cov
   assert.notDeepEqual(render(.76, "sunset"), render(.76, "night"), "Sunset never masquerades as night");
 });
 
+test("broken sunset clouds retain visible drift through calm or camera-aligned surface wind", () => {
+  const movement = (coverage, phase, reduced = false) => {
+    let delta = 0;
+    withRenderer((renderer, h) => {
+      const spec = { ...BASE, coverage, phase, ceiling: 6500, reduced };
+      const mainX = () => h.commands.find(command => command.name === "drawImage" && command.id === "offscreen-2" && command.args[0] === "offscreen-0").args[1];
+      renderer.draw(h.ctx, 1920, 1080, 0, 0, spec, QUIET);
+      const start = mainX();
+      for (let frame = 0; frame < 30; frame++) { h.reset(); renderer.draw(h.ctx, 1920, 1080, frame * 100, reduced ? 0 : .1, spec, QUIET); }
+      delta = (mainX() - start) * 1920 / 576;
+    });
+    return delta;
+  };
+  assert.ok(movement(.76, "sunset") > 20);
+  assert.ok(Math.abs(movement(.76, "day")) < 2, "Daytime BKN behavior is unchanged");
+  assert.ok(Math.abs(movement(.44, "sunset")) < 2, "SCT is not given a dense-deck drift floor");
+  assert.equal(movement(.76, "sunset", true), 0);
+});
+
 test("dispose releases all backing stores and subsequent draws are inert", () => {
   withRenderer((renderer, h) => {
     renderer.draw(h.ctx, 1024, 768, 0, 0.016, { ...BASE, coverage: 0.8 }, QUIET);

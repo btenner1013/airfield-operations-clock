@@ -185,3 +185,62 @@ test("only closed decks neutralize blue breaks, before the existing foreground m
     });
   }
 });
+
+test("sunset baked-in clouds move at CLR/FEW without a stationary transparent copy", () => {
+  for (const coverage of [0, .2, .44, .76, 1]) withSky((sky, h) => {
+    sky.draw(h.ctx, 1920, 1080, 0, PHOTO, coverage, 0, 0, false, 1);
+    assert.equal(h.calls.find(call => call.id === "output" && call.method === "drawImage").alpha, 1);
+    const start = h.sourceDraws()[0].values[1];
+    for (let frame = 0; frame < 30; frame++) {
+      h.reset();
+      sky.draw(h.ctx, 1920, 1080, .1, PHOTO, coverage, 0, 0, false, 1);
+    }
+    assert.ok((h.sourceDraws()[0].values[1] - start) * 2 > 35, "The photograph moves visibly within three seconds");
+    assert.equal(h.canvases.length, 1);
+  });
+  withSky((sky, h) => {
+    sky.draw(h.ctx, 1920, 1080, 0, PHOTO, 0, 0, 0, false, .05);
+    assert.equal(h.calls.find(call => call.id === "output" && call.method === "drawImage").alpha, .05, "Initial decoded sunset photo still fades in");
+  });
+});
+
+test("sunset moves the lower cloud bank but clears before roofs and protects every light pole", () => {
+  withSky((sky, h) => {
+    const w = 1920, height = 1080, resolution = .5;
+    sky.draw(h.ctx, w, height, 0, PHOTO, .76, 0, 0, false, 1);
+    const iw = PHOTO.width * Math.max(w / PHOTO.width, height / PHOTO.height), ih = PHOTO.height * Math.max(w / PHOTO.width, height / PHOTO.height);
+    const ox = (w - iw) / 2, oy = (height - ih) / 2;
+    const horizon = h.gradients.find(gradient => gradient.method === "createLinearGradient");
+    assert.ok(horizon.values[1] > (oy + ih * .4) * resolution, "Main bank remains fully moving below the old cutoff");
+    assert.ok(horizon.values[3] <= (oy + ih * .505) * resolution, "Fade is complete before hangar roofs and ground");
+    const centers = h.calls.filter(call => call.method === "translate").map(call => call.values);
+    const radii = h.calls.filter(call => call.method === "scale").map(call => call.values);
+    assert.equal(centers.length, 6, "One existing tower mask plus five fixed pole envelopes");
+    const poles = [[.174, .465], [.211, .49], [.833, .465], [.929, .485], [.958, .49]];
+    for (let index = 0; index < poles.length; index++) {
+      const [x, top] = poles[index], center = centers[index + 1], radius = radii[index + 1];
+      for (const zoom of [1, 1.152, 1.168]) for (const pan of zoom === 1 ? [0] : [-.058, .058]) {
+        for (const px of [x - .006, x + .006]) for (const py of [top, .6]) {
+          const screenX = (w / 2 + iw * zoom * (px - .5) + iw * pan) * resolution;
+          const screenY = (height / 2 + ih * zoom * (py - .5)) * resolution;
+          assert.ok(Math.hypot((screenX - center[0]) / radius[0], (screenY - center[1]) / radius[1]) < 1, "Original and moving source poles are inside a fully erased center");
+        }
+      }
+    }
+    for (let frame = 0; frame < 60; frame++) { h.reset(); sky.draw(h.ctx, w, height, .1, PHOTO, .76, 0, 0, false, 1); }
+    assert.deepEqual(h.calls.filter(call => call.method === "translate").map(call => call.values), centers, "Masks never chase a pole or create moving cutouts");
+    assert.ok(h.calls.length < 60, "The extra protection stays bounded without new canvases or pixel buffers");
+  });
+});
+
+test("sunset respects reduced motion and keeps its loop alive only while a usable photo can move", () => {
+  withSky((sky, h) => {
+    sky.draw(h.ctx, 1920, 1080, 0, PHOTO, 0, 0, 0, true, 1);
+    assert.deepEqual(h.calls, []);
+    assert.equal(h.canvases.length, 0);
+  });
+  const source = readFileSync(new URL("../app/PrecipCanvas.tsx", import.meta.url), "utf8");
+  assert.match(source, /sunsetPhotoMotion=!!photo&&a\.phase==="sunset"&&a\.storm===0&&a\.obscuration==="none"/);
+  assert.match(source, /const idle=[^;]*!sunsetPhotoMotion/);
+  assert.match(source, /reduced,sunsetPhotoMotion\?photoBlend:0/);
+});

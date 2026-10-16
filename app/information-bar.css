@@ -146,7 +146,7 @@
   .forecast-card .forecast-temp { font-size: 13px !important; }
 }
 
-/* Current observed metrics only. Temperature direction carries no good/bad color. */
+/* Current observed metrics only. Colors follow the reported trend direction. */
 .current-wx-trend { display: inline-block; margin-left: .25em; font-family: Consolas, monospace; font-size: .8em; font-weight: 900; font-style: normal; line-height: 1; letter-spacing: 0; text-shadow: none; }
 .current-wx-trend[data-tone="up"] { color: #72dbbd; }
 .current-wx-trend[data-tone="down"] { color: #ff7676; }

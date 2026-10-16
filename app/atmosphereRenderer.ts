@@ -417,7 +417,10 @@ export function createAtmosphereRenderer(): {
         // Closed decks need differential texture motion even with calm or
         // camera-aligned surface wind; otherwise only the photo's slow pan reads.
         // Keep SCT/FEW untouched and avoid interpreting this as measured cloud wind.
-        const deckDrift = ramp(0.8, 1, state.coverage) * (12 + state.low * 5);
+        // Broken sunset cloud banks need the same visible aloft motion when
+        // surface wind is calm or nearly aligned with the camera. This changes
+        // travel only, not density, color, or the observed wind instruments.
+        const deckDrift = Math.max(ramp(0.8, 1, state.coverage), state.sunset * ramp(0.44, 0.76, state.coverage)) * (12 + state.low * 5);
         const driftSpeed = Math.max(Math.abs(state.windX), deckDrift, state.storm * (18 + state.storm * 20));
         // Sampling offsets run opposite to the visible movement of the texture.
         travelX -= cloudDrift * driftSpeed * step * COMPOSITE_WIDTH / w * gust;

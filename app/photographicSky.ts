@@ -30,7 +30,7 @@ function eraseTower(ctx: CanvasRenderingContext2D, rect: Rect, feather: number):
 }
 
 export function createPhotographicSky(): {
-  draw: (ctx: CanvasRenderingContext2D, w: number, h: number, dt: number, image: SkyImage, coverage: number, storm: number, windX: number, reduced: boolean) => void;
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number, dt: number, image: SkyImage, coverage: number, storm: number, windX: number, reduced: boolean, sunset?: number) => void;
   dispose: () => void;
 } {
   let canvas: HTMLCanvasElement | null = null;
@@ -41,7 +41,7 @@ export function createPhotographicSky(): {
   let imageBlend = 1;
 
   return {
-    draw(ctx, w, h, dt, image, coverage, storm, windX, reduced) {
+    draw(ctx, w, h, dt, image, coverage, storm, windX, reduced, sunset = 0) {
       if (disposed || w <= 0 || h <= 0 || image.width <= 0 || image.height <= 0) return;
       if (image !== currentImage) {
         // On rapid changes, retain the dominant source rather than flashing an
@@ -54,7 +54,9 @@ export function createPhotographicSky(): {
       // repaint it with a different crop or let the stopped moving sky obscure it.
       if (reduced) { previousImage = null; imageBlend = 1; return; }
       const strength = clamp(storm);
-      const targetOpacity = clamp(Math.max(coverage * 3, strength * 1.6));
+      // The sunset photograph contains its own cloud banks even under CLR/FEW.
+      // Leaving that layer transparent exposes stationary copies of those banks.
+      const targetOpacity = clamp(Math.max(coverage * 3, strength * 1.6, sunset));
       const step = clamp(dt, 0, 0.1);
       imageBlend = Math.min(1, imageBlend + step / 3.6);
       if (imageBlend === 1) previousImage = null;
@@ -122,10 +124,15 @@ export function createPhotographicSky(): {
 
       // Use the earlier of the source and destination skyline. This guarantees
       // the scaled/panned photograph cannot introduce moving hangars or terrain.
-      const solidUntil = Math.min(originalY + originalHeight * 0.38, movingY + movingHeight * 0.38,
-        previousMovingY + previousHeight * zoom * 0.38) * resolution;
-      const clearBy = Math.min(originalY + originalHeight * 0.46, movingY + movingHeight * 0.46,
-        previousMovingY + previousHeight * zoom * 0.46) * resolution;
+      // The strongest sunset cloud banks live below the old 38–46% cutoff.
+      // Carry motion through that bank, still clearing before hangar roofs and
+      // terrain; the light-pole envelopes below protect the few taller objects.
+      const solidFraction = sunset ? 0.425 : 0.38;
+      const clearFraction = sunset ? 0.505 : 0.46;
+      const solidUntil = Math.min(originalY + originalHeight * solidFraction, movingY + movingHeight * solidFraction,
+        previousMovingY + previousHeight * zoom * solidFraction) * resolution;
+      const clearBy = Math.min(originalY + originalHeight * clearFraction, movingY + movingHeight * clearFraction,
+        previousMovingY + previousHeight * zoom * clearFraction) * resolution;
       buffer.globalCompositeOperation = "destination-in";
       const skyMask = buffer.createLinearGradient(0, solidUntil, 0, Math.max(solidUntil + 1, clearBy));
       skyMask.addColorStop(0, "rgba(0,0,0,1)");
@@ -155,6 +162,27 @@ export function createPhotographicSky(): {
         exclusion.bottom = Math.max(exclusion.bottom, (h / 2 + previousMaxHeight * (0.6 - 0.5)) * resolution);
       }
       if (exclusion.right > -bw * 0.06 && exclusion.left < bw) eraseTower(buffer, exclusion, Math.max(3, originalWidth * resolution * 0.045));
+      if (sunset) {
+        // Fixed masks cover both the stable photograph and every possible pan of
+        // the source poles. They do not chase individual frames or make moving
+        // cutouts. Positions are original-photo coordinates, as for the tower.
+        for (const [x, top] of [[0.174, 0.465], [0.211, 0.49], [0.833, 0.465], [0.929, 0.485], [0.958, 0.49]]) {
+          const pole: Rect = {
+            left: Math.min(originalX + originalWidth * (x - 0.006), w / 2 + maximumWidth * (x - 0.506) - amplitude) * resolution,
+            right: Math.max(originalX + originalWidth * (x + 0.006), w / 2 + maximumWidth * (x - 0.494) + amplitude) * resolution,
+            top: Math.min(originalY + originalHeight * top, h / 2 + maximumHeight * (top - 0.5)) * resolution,
+            bottom: Math.max(originalY + originalHeight * 0.6, h / 2 + maximumHeight * 0.1) * resolution,
+          };
+          if (previousImage) {
+            const pw = previousWidth * maximumZoom, ph = previousHeight * maximumZoom;
+            pole.left = Math.min(pole.left, (w / 2 + pw * (x - 0.506) - previousWidth * 0.058) * resolution);
+            pole.right = Math.max(pole.right, (w / 2 + pw * (x - 0.494) + previousWidth * 0.058) * resolution);
+            pole.top = Math.min(pole.top, (h / 2 + ph * (top - 0.5)) * resolution);
+            pole.bottom = Math.max(pole.bottom, (h / 2 + ph * 0.1) * resolution);
+          }
+          if (pole.right > 0 && pole.left < bw) eraseTower(buffer, pole, Math.max(2, originalWidth * resolution * 0.004));
+        }
+      }
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = opacity;

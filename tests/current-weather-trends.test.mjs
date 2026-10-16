@@ -151,9 +151,9 @@ test('small accessible triangles retain colors and describe JSON-window/referenc
  const css=readFileSync(new URL('../app/information-bar.css',import.meta.url),'utf8');
  for(const metric of ['ceiling','visibility','temperature'])for(const [direction,symbol] of [['up','▲'],['down','▼'],['steady','▶']]) {
   const html=renderToStaticMarkup(React.createElement(mod.exports.default,{metric,comparison:{direction,referenceAt:'2026-10-16T19:55:42Z',updatedAt:'2026-10-16T22:55:00Z',lookbackHours:3}}));
-  assert.ok(html.includes(symbol));assert.ok(html.includes(`data-tone="${metric==='temperature'?'neutral':direction}"`));assert.match(html,/role="img" aria-label="/);assert.match(html,/Ops JSON reported 3-hour-window trend/);assert.match(html,/reference sample/);assert.doesNotMatch(html,/previous METAR|consecutive/);
+  assert.ok(html.includes(symbol));assert.ok(html.includes(`data-tone="${direction}"`));assert.match(html,/role="img" aria-label="/);assert.match(html,/Ops JSON reported 3-hour-window trend/);assert.match(html,/reference sample/);assert.doesNotMatch(html,/previous METAR|consecutive/);
  }
- assert.equal(renderToStaticMarkup(React.createElement(mod.exports.default,{metric:'ceiling',comparison:null})), '');
+ for(const metric of ['ceiling','visibility','temperature']) assert.equal(renderToStaticMarkup(React.createElement(mod.exports.default,{metric,comparison:null})), '');
  for(const [tone,color]of [['up','#72dbbd'],['down','#ff7676'],['steady','#ffd07a'],['neutral','#c5d7e3']])assert.ok(css.includes(`.current-wx-trend[data-tone="${tone}"] { color: ${color}; }`));
 });
 
