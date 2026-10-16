@@ -1,9 +1,15 @@
-/* Transparent upper-right diagram; retain the original clock type and card rail. */
+/* Upper-right diagram with the same restrained glass finish as the lower rail. */
 .burn-shift > header { position:relative; min-height:clamp(72px,8.8vh,96px); }
 .clocks { position:relative; }
 .runway-placement {
   position:absolute;right:0;top:0;
   pointer-events:none;z-index:3;visibility:hidden;
+}
+/* Paint outside the measured SVG: 8px breathing room without shrinking arrows.
+   Existing 12px vertical / 24px horizontal collision gaps cover this rim. */
+.runway-placement::before {
+  content:"";position:absolute;inset:-8px;z-index:-1;
+  border:1px solid var(--line);pointer-events:none;
 }
 .runway-placement[data-ready="true"] { visibility:visible; }
 .runway-diagram {

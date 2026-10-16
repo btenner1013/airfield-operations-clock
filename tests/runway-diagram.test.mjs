@@ -84,3 +84,14 @@ test('each clock has exactly one larger date and Julian retains local-calendar r
  assert.equal(julian4(now),'6365');
  assert.equal(julian4(new Date('2027-01-01T06:00:00Z')),'7001');
 });
+
+test('runway contrast panel shares bottom-card finish without shrinking or clipping SVG',()=>{
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ const board=readFileSync(new URL('../app/board-cohesion.css',import.meta.url),'utf8');
+ assert.match(board,/\.info > \.panel,\s*\.runway-placement::before \{/);
+ assert.match(css,/\.runway-placement::before \{[^}]*inset:-8px;z-index:-1;[^}]*border:1px solid var\(--line\)/s);
+ assert.match(css,/width:100%;height:100%;overflow:visible/);
+ const panel=css.match(/\.runway-placement::before \{([^}]+)\}/)[1];
+ assert.doesNotMatch(panel,/padding:|overflow:hidden|width:|height:/);
+ assert.ok(12-8>=4);assert.ok(24-8>=16);
+});
