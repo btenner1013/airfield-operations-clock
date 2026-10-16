@@ -78,7 +78,7 @@ test("the gridpoint is fetched alongside the other feeds and never blocks them",
   const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
   assert.match(page,/nwsHourlyUrl:"https:\/\/api\.weather\.gov\/gridpoints\/MEG\/45,62\/forecast\/hourly"/);
   // allSettled, so an NWS outage degrades to model PoP instead of failing the refresh.
-  assert.match(page,/Promise\.allSettled\(\[getModelWeather\(signal\),feed,nws\]\)/);
+  assert.match(page,/Promise\.allSettled\(\[withOptionalWeatherDeadline\(optionalSignal=>getModelWeather\(optionalSignal\),signal\),feed,nws\]\)/);
   assert.match(page,/const nwsSamples=nwsResult\.status==="fulfilled"\?nwsResult\.value:\[\];/);
   // The swap happens before anything reads model.forecast, so the TAF builder aggregates it.
   assert.ok(page.indexOf("applyNwsPrecipitation(modelWeather.forecast,nwsSamples)")<page.indexOf("applyStructuredTaf(model.forecast"));

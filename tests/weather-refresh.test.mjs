@@ -225,3 +225,29 @@ test("future-dated METAR status uses the same five-minute tolerance as observati
   for(const futureMs of [0,1,5*60000]) assert.deepEqual(classifyMetarFreshness(new Date(now+futureMs).toISOString(),now),{state:"CURRENT",ageMinutes:0});
   for(const futureMs of [5*60000+1,6*60000,2*3600000]) assert.deepEqual(classifyMetarFreshness(new Date(now+futureMs).toISOString(),now),{state:"UNAVAILABLE",ageMinutes:null});
 });
+
+
+test("older valid METAR cannot roll current observations backward while equal-time corrections can",()=>{
+  const current=weather({metarObsIso:"2026-10-16T12:54:00Z",description:"BROKEN CEILING",temperatureF:64,cloudCoverage:"BKN",cloudBaseFt:2300});
+  const old=weather({metarObsIso:"2026-10-15T21:54:00Z",description:"FEW CLOUDS",temperatureF:90,lastRefreshAttemptIso:"2026-10-16T13:00:00Z"});
+  const result={weather:old,metarValid:true,tafValid:true,modelValid:true,windValid:true,feedReached:true};
+  const merged=mergeWeather(current,result);
+  assert.equal(merged.metarObsIso,current.metarObsIso);assert.equal(merged.temperatureF,64);assert.equal(merged.cloudBaseFt,2300);
+  assert.equal(merged.currentWind,old.currentWind);
+  const corrected=mergeWeather(current,{...result,weather:{...old,metarObsIso:current.metarObsIso,description:"CORRECTED"}});
+  assert.equal(corrected.description,"CORRECTED");
+  const invalidFuture=mergeWeather({...current,metarObsIso:"2026-10-17T12:54:00Z"},result);
+  assert.equal(invalidFuture.metarObsIso,old.metarObsIso);
+});
+
+test("model provenance survives independent model failure and is absent before first model sample",()=>{
+  const previous=weather({modelObsIso:"2026-10-16T12:45:00Z"});
+  const incoming=weather({modelObsIso:null,feelsLikeF:84,humidity:0});
+  const result={weather:incoming,metarValid:true,tafValid:true,modelValid:false,windValid:true,feedReached:true};
+  assert.equal(mergeWeather(previous,result).modelObsIso,previous.modelObsIso);
+  assert.equal(mergeWeather(weather({modelObsIso:null}),result).modelObsIso,null);
+  const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
+  assert.match(page,/modelMetricsAvailable=!!weather.modelObsIso/);
+  assert.match(page,/!modelMetricsAvailable \? "—" : weather.feelsLikeF/);
+  assert.match(page,/!modelMetricsAvailable \? "—" : weather.humidity/);
+});

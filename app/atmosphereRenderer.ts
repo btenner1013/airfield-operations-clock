@@ -405,7 +405,11 @@ export function createAtmosphereRenderer(): {
         // This illustrative storm drift floor keeps the shelf visibly moving while
         // preserving the observed wind sign. It is a visual cue, not an upper-air report.
         const cloudDrift = Math.abs(state.windX) >= 1 ? Math.sign(state.windX) : 1;
-        const driftSpeed = Math.max(Math.abs(state.windX), state.storm * (18 + state.storm * 20));
+        // Closed decks need differential texture motion even with calm or
+        // camera-aligned surface wind; otherwise only the photo's slow pan reads.
+        // Keep SCT/FEW untouched and avoid interpreting this as measured cloud wind.
+        const deckDrift = ramp(0.8, 1, state.coverage) * (12 + state.low * 5);
+        const driftSpeed = Math.max(Math.abs(state.windX), deckDrift, state.storm * (18 + state.storm * 20));
         // Sampling offsets run opposite to the visible movement of the texture.
         travelX -= cloudDrift * driftSpeed * step * COMPOSITE_WIDTH / w * gust;
         travelY -= state.windY * step * COMPOSITE_HEIGHT / h * gust;

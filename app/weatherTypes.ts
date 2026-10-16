@@ -26,6 +26,7 @@ export type WeatherRequestStatus = "IDLE" | "REFRESHING" | "ERROR";
 export type Weather = {
   temperatureF:number;
   feelsLikeF:number;
+  modelObsIso?:string|null;
   condition:Theme;
   description:string;
   currentWind:CurrentWindRecord;

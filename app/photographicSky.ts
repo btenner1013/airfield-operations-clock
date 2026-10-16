@@ -107,6 +107,19 @@ export function createPhotographicSky(): {
       buffer.drawImage(image, movingX * resolution, movingY * resolution, movingWidth * resolution, movingHeight * resolution);
       buffer.globalAlpha = 1;
 
+      // The bundled daytime OVC photograph contains blue breaks. Neutralize
+      // their chroma only in this moving sky buffer; the architectural exclusion
+      // and horizon fade below keep every foreground pixel on the original photo.
+      // Ease in above BKN coverage so scattered-cloud identity stays unchanged.
+      const closedDeck = clamp((coverage - 0.8) / 0.2);
+      if (closedDeck > 0) {
+        buffer.globalCompositeOperation = "saturation";
+        buffer.globalAlpha = closedDeck;
+        buffer.fillStyle = "rgb(160,160,160)";
+        buffer.fillRect(0, 0, bw, bh);
+        buffer.globalAlpha = 1;
+      }
+
       // Use the earlier of the source and destination skyline. This guarantees
       // the scaled/panned photograph cannot introduce moving hangars or terrain.
       const solidUntil = Math.min(originalY + originalHeight * 0.38, movingY + movingHeight * 0.38,

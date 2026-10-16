@@ -6,7 +6,7 @@ const css = readFileSync(new URL("../app/information-bar.css", import.meta.url),
 const solarCss = readFileSync(new URL("../app/solar-lunar.css", import.meta.url), "utf8");
 
 test("current-weather overhaul retains source values, modifier, feed status and conditional lightning", () => {
-  for (const text of ["weather.temperatureF", "weather.feelsLikeF??weather.temperatureF", "weather.humidity", "weather.description", "currentPresentation.secondaryLabel", "effBase.toLocaleString()", "UNLIMITED (UNL)", "METAR FEED", "METAR ${metarState}", 'lightningDisplay.severity!=="none"', "lightningDisplay.text", "lightningDisplay.isStale", "lightningDisplay.sourceTime"]) assert.ok(page.includes(text), text);
+  for (const text of ["weather.temperatureF", "!modelMetricsAvailable ? \"—\" : weather.feelsLikeF", "weather.humidity", "weather.description", "currentPresentation.secondaryLabel", "effBase.toLocaleString()", "UNLIMITED (UNL)", "METAR FEED", "METAR ${metarState}", 'lightningDisplay.severity!=="none"', "lightningDisplay.text", "lightningDisplay.isStale", "lightningDisplay.sourceTime"]) assert.ok(page.includes(text), text);
   assert.match(page, /current-weather-stats/);
   assert.match(page, /FEELS LIKE/);
   assert.match(page, /HUMIDITY/);

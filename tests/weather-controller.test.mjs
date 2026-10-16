@@ -76,6 +76,27 @@ test("drizzle stays finer and slower while showers retain their separate modulat
   assert.equal(nearby.atmosphere.lightningLevel, "none");
 });
 
+test("liquid styling preserves night and per-class vicinity opacity reductions", () => {
+  for (const token of ["RA", "DZ", "FZRA", "FZDZ", "SHRA"]) {
+    const day = effects([token]);
+    const night = effects([token], { night: true });
+    close(night.spec.alpha, day.spec.alpha * .88, token);
+  }
+  const local = effects(["SHRA"]);
+  const nearby = effects(["VCSH"]);
+  const nearbyNight = effects(["VCSH"], { night: true });
+  close(nearby.spec.alpha, local.spec.alpha * .58);
+  close(nearbyNight.spec.alpha, local.spec.alpha * .58 * .88);
+  // A local primary must not erase the vicinity status of its secondary rain.
+  const mixed = effects(["SN", "VCSHRA"]);
+  assert.equal(mixed.fx.vicinity, false);
+  assert.equal(mixed.spec.secondary.type, "rain");
+  close(mixed.spec.secondary.alpha, local.spec.alpha * .58);
+  const localRain = effects(["VCSN", "RA"]);
+  assert.equal(localRain.spec.secondary.type, "rain");
+  close(localRain.spec.secondary.alpha, local.spec.alpha);
+});
+
 test("explicit visual overrides do not change normalized observation input", () => {
   const observation = deepFreeze(input({ phenomena: ["-RA"], intensity: "heavy", paneDrops: false }));
   const before = JSON.stringify(observation);

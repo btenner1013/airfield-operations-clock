@@ -260,3 +260,25 @@ test("the renderer owns no animation loop, timers, or event listeners", () => {
   assert.equal((source.match(/createImageData\(/g) || []).length, 1);
   assert.equal((source.match(/putImageData\(/g) || []).length, 1);
 });
+
+
+test("calm overcast has layered drift without adding the same drift to scattered skies", () => {
+  const movement = coverage => {
+    let delta;
+    withRenderer((renderer, h) => {
+      const spec = { ...BASE, coverage, ceiling: 2300 };
+      const mainX = () => h.commands.find(command => command.name === "drawImage" && command.id === "offscreen-2" && command.args[0] === "offscreen-0").args[1];
+      renderer.draw(h.ctx, 1920, 1080, 0, 0, spec, QUIET);
+      const start = mainX();
+      for (let frame = 1; frame <= 30; frame++) {
+        h.reset();
+        renderer.draw(h.ctx, 1920, 1080, frame * 100, 0.1, spec, QUIET);
+      }
+      delta = (mainX() - start) * 1920 / 576;
+    });
+    return delta;
+  };
+  const overcast = movement(1), scattered = movement(0.44);
+  assert.ok(overcast > 20 && overcast < 50, "Overcast detail drifts visibly and gently over three seconds");
+  assert.ok(Math.abs(scattered) < 5, "Scattered keeps its existing calm motion");
+});

@@ -52,7 +52,9 @@ export function buildWeatherEffects(input: WeatherEffectInput) {
       cls.vx *= Math.abs(wind.x);
       if (cls.shape === "streak") {
         const drizzle = cls.type.includes("drizzle");
-        cls.alpha = drizzle ? .38 : fx.intensity === "heavy" ? .85 : fx.intensity === "moderate" ? .65 : .52;
+        const vicinity = cls === spec ? fx.precipVicinity ?? fx.vicinity : fx.secondaryPrecipVicinity ?? fx.vicinity;
+        cls.alpha = (drizzle ? .38 : fx.intensity === "heavy" ? .85 : fx.intensity === "moderate" ? .65 : .52)
+          * (input.night ? .88 : 1) * (vicinity ? .58 : 1);
         cls.thick = drizzle ? .7 : fx.intensity === "heavy" ? 1.3 : 1;
         cls.burst = fx.shower && !input.reduced;
       }

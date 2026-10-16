@@ -12,7 +12,7 @@ function harness() {
     const record = (method, values) => {
       values.forEach(value => { if (typeof value === "number") assert.ok(Number.isFinite(value), `${method} parameter is finite`); });
       assert.ok(ctx.globalAlpha >= 0 && ctx.globalAlpha <= 1, "Canvas alpha is bounded");
-      calls.push({ id, method, values, alpha: ctx.globalAlpha });
+      calls.push({ id, method, values, alpha: ctx.globalAlpha, blend: ctx.globalCompositeOperation });
     };
     for (const method of ["clearRect", "fillRect", "translate", "scale"]) ctx[method] = (...values) => record(method, values);
     ctx.drawImage = (image, ...values) => record("drawImage", [image.id, ...values]);
@@ -166,4 +166,22 @@ test("photographic sky uses cross-browser CSS grading and the active decoded wal
   assert.match(source, /skyCanvas\.style\.filter=photoFilter/);
   assert.doesNotMatch(source, /skyCtx\.filter=/);
   assert.match(page, /backgroundSrc=\{`\$\{imageBase\}\/assets\/backgrounds\/\$\{activeWallpaper\}\.png`\}/);
+});
+
+
+test("only closed decks neutralize blue breaks, before the existing foreground mask", () => {
+  for (const coverage of [0, 0.2, 0.44, 0.76, 1]) {
+    withSky((sky, h) => {
+      sky.draw(h.ctx, 1920, 1080, 0, PHOTO, coverage, 0, 0, false);
+      const tint = h.calls.findIndex(call => call.method === "fillRect" && call.blend === "saturation");
+      if (coverage < 1) assert.equal(tint, -1, "Clear, few, scattered and broken retain their photographic color");
+      else {
+        assert.ok(tint >= 0);
+        assert.ok(h.calls[tint].alpha > 0.999);
+        const horizon = h.calls.findIndex(call => call.method === "fillRect" && call.blend === "destination-in");
+        const tower = h.calls.findIndex(call => call.method === "fillRect" && call.blend === "destination-out");
+        assert.ok(tint < horizon && horizon < tower, "Both existing architecture masks apply after grading");
+      }
+    });
+  }
 });

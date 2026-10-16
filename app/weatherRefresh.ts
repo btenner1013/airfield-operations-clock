@@ -82,7 +82,7 @@ export function classifyTafFreshness(times:TafTimes, nowMs:number):TafFreshness 
 
 const METAR_KEYS:(keyof Weather)[]=["temperatureF","condition","description","operationalWeather","observationTime","source","cloudCoverage","cloudBaseFt","visibilitySm","phenomena","metarObsIso","rawMetar"];
 const TAF_KEYS:(keyof Weather)[]=["forecast","tafHazards","tafIssueIso","tafValidStartIso","tafValidEndIso"];
-const MODEL_KEYS:(keyof Weather)[]=["feelsLikeF","humidity","sunriseLocal","sunsetLocal","solarDays"];
+const MODEL_KEYS:(keyof Weather)[]=["feelsLikeF","humidity","modelObsIso","sunriseLocal","sunsetLocal","solarDays"];
 
 function integerInRange(value:unknown,min:number,max:number):value is number {
   return typeof value==="number"&&Number.isInteger(value)&&value>=min&&value<=max;
@@ -136,7 +136,13 @@ export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weathe
   const incomingForecast=result.weather.forecast;
   const merged={...previous,...result.weather};
   if(!result.modelValid) preserve(merged,previous,MODEL_KEYS);
-  if(!result.metarValid&&validDate(previous.metarObsIso)) preserve(merged,previous,METAR_KEYS);
+  const reference=Date.parse(result.weather.lastRefreshAttemptIso||"")||Date.now();
+  const previousObservation=Date.parse(previous.metarObsIso||""),incomingObservation=Date.parse(result.weather.metarObsIso||"");
+  // CDN edges can return a valid but older report. Never roll a known observation
+  // backwards; equal-time corrected reports still replace it. Future-invalid cache
+  // dates must not pin the display against a legitimate current observation.
+  const olderObservation=Number.isFinite(previousObservation)&&previousObservation<=reference+5*60000&&Number.isFinite(incomingObservation)&&incomingObservation<previousObservation;
+  if((!result.metarValid||olderObservation)&&validDate(previous.metarObsIso)) preserve(merged,previous,METAR_KEYS);
   if(!result.windValid&&isCurrentObservedWind(previous.currentWind,result.weather.lastRefreshAttemptIso)) merged.currentWind=previous.currentWind;
   if(!result.feedReached) merged.currentLightning={...result.weather.currentLightning,isStale:false,isUnavailable:true};
   if(!result.tafValid&&validDate(previous.tafValidEndIso)) {
@@ -321,4 +327,21 @@ export function installWeatherRefreshLifecycle(refresh:(reason:RefreshReason)=>v
   const interval=targetWindow.setInterval(()=>refresh("interval"),intervalMs);
   targetWindow.addEventListener("focus",onFocus); targetWindow.addEventListener("pageshow",onShow); targetWindow.addEventListener("online",onOnline); targetDocument.addEventListener("visibilitychange",onVisible);
   return ()=>{targetWindow.clearInterval(interval);targetWindow.removeEventListener("focus",onFocus);targetWindow.removeEventListener("pageshow",onShow);targetWindow.removeEventListener("online",onOnline);targetDocument.removeEventListener("visibilitychange",onVisible);};
+}
+
+/** Optional forecast services must settle before the primary observation deadline. */
+export async function withOptionalWeatherDeadline<T>(work:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,timeoutMs=7000):Promise<T> {
+  if(parent?.aborted) throw new DOMException("Optional weather request aborted","AbortError");
+  const controller=new AbortController();
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const abort=()=>controller.abort(parent?.reason);
+  if(parent?.aborted) abort(); else parent?.addEventListener('abort',abort,{once:true});
+  const deadline=new Promise<never>((_,reject)=>{
+    const onAbort=()=>reject(new DOMException('Optional weather request aborted','AbortError'));
+    controller.signal.addEventListener('abort',onAbort,{once:true});
+    if(controller.signal.aborted) onAbort();
+    timer=setTimeout(()=>controller.abort('optional-weather-timeout'),timeoutMs);
+  });
+  try { return await Promise.race([work(controller.signal),deadline]); }
+  finally { clearTimeout(timer);parent?.removeEventListener('abort',abort); }
 }
