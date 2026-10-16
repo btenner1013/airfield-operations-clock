@@ -93,25 +93,18 @@ test("both OS and explicit reduced-motion state disable the severe bird and text
 });
 
 
-test("condition emphasis is larger while the longest known label retains room beside the goose", () => {
-  assert.match(css, /grid-template-columns: minmax\(32px, \.5fr\) minmax\(0, 1\.5fr\)/);
-  assert.match(css, /font: 900 clamp\(14px, 10\.4cqw, 32px\)/);
-  assert.match(css, /font-size: clamp\(14px, 9\.5cqw, 42px\)/);
-  assert.match(css, /font-size: clamp\(13px, 10\.4cqw, 18px\)/);
+test("condition uses a full-width row and substantially larger type without squeezing observation age", () => {
+  assert.match(css, /grid-column: 1 \/ -1; font: 900 clamp\(18px, 16cqw, 52px\)/);
+  assert.match(css, /font-size: clamp\(18px, 16cqw, 72px\)/);
+  assert.match(css, /font-size: clamp\(18px, 16cqw, 30px\)/);
   assert.match(css, /\.bird-watch-reading \.bird-severity \{[^}]*white-space: nowrap/);
   assert.match(css, /\.bird-card\.risk-unknown \.bird-severity \{[^}]*white-space: normal; overflow-wrap: anywhere/);
-  const clamp=(lo,value,hi)=>Math.max(lo,Math.min(hi,value));
-  // Conservative .62em glyph width plus tracking, using the source grid/clamps.
-  // Covers the small desktop track above the1080px horizontal-rail breakpoint.
-  for(const content of [110,120,130,150,180,230,280,330,440]){
-    const font=clamp(14,content*.104,32), right=content-6-Math.max(32,(content-6)*.25);
-    assert.ok(font*(8*.62+7*.01)<=right, `MODERATE fits ${content}px content track`);
-    assert.ok(font>=clamp(11,content*.08,24)*1.2, `${content}px condition is visibly larger`);
-    const small=clamp(13,content*.104,18), compactRight=content-42;
-    assert.ok(small*(8*.62+7*.01)<=compactRight, `compact MODERATE fits ${content}px content track`);
-  }
-  for(const content of [110,130,150,180,200,250,300,360,440,550]){
-    const font=clamp(14,content*.095,42),right=(content-6)*.75;
-    assert.ok(font*(8*.62+7*.01)<=right, `TV or narrow-tall label fits ${content}px`);
+  const clamp = (lo, value, hi) => Math.max(lo, Math.min(hi, value));
+  for (const content of [110,120,130,150,180,230,280,330,440,550]) {
+    for (const cap of [30,52,72]) {
+      const font = clamp(18, content * .16, cap);
+      assert.ok(font * (8 * .62 + 7 * .01) <= content, `MODERATE fits ${content}px full-width row at cap ${cap}`);
+    }
+    assert.ok(clamp(18, content * .16, 52) >= clamp(14, content * .104, 32) * (content >= 150 ? 1.5 : 1.25));
   }
 });

@@ -144,3 +144,24 @@ test("actual neutral-state markup has no directional marker or arrow and shows i
     assert.doesNotMatch(markup, /NaN|undefined/);
   }
 });
+
+test("observed gusts get a separate bold G reading with knots and preserved accessible description", () => {
+  for (const [token, expected] of [["21008G18KT", "18"], ["VRB03G12KT", "12"], ["27075G105KT", "105"]]) {
+    const markup = render(wind(token));
+    assert.match(markup, new RegExp(`<span class="wind-gust"><strong>G ${expected}</strong><span>KT</span></span>`));
+    assert.ok(markup.includes(`gusting ${expected} knots`));
+  }
+  const css = readFileSync(new URL("../app/wind-compass.css", import.meta.url), "utf8");
+  assert.match(css, /\.wind-gust \{[^}]*background: #080e14;[^}]*color: #fff6df;[^}]*font-weight: 900;/);
+  assert.match(css, /\.wind-gust strong \{ font-size: clamp\(17px, 10cqw, 30px\); font-weight: 900;/);
+  assert.match(css, /\.wind-gust strong \{ font-size: 16px; \}/);
+  assert.doesNotMatch(css, /\.wind-gust \{ font-size: 8px;/);
+});
+
+test("the gust badge is absent for no-gust, calm, stale, model-only and missing observations", () => {
+  for (const report of [
+    wind("21008KT"), wind("VRB03KT"), wind("00000KT"),
+    wind("21008G18KT", "METAR", "2026-10-15T14:00:00Z"),
+    wind("21008G18KT", "MODEL"), null,
+  ]) assert.doesNotMatch(render(report), /class="wind-gust"/);
+});

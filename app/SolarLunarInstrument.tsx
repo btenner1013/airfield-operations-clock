@@ -58,7 +58,7 @@ export function SolarLunarDial({ solar, moon }: { solar: SolarInstrumentWindow; 
   const elapsed = available ? solarDialProgressPath(solar) : null;
   const sunColor = progress !== null && progress >= 85 ? "#f5a076" : "#f1c578";
   const phaseText = available ? solar.daylight ? "DAYLIGHT" : "NIGHT" : "SOLAR TIMES";
-  return <svg className="solar-lunar-dial" viewBox="-18 -10 236 178" role="img" aria-label={available ? `${solar.daylight ? "Daylight" : "Night"}, ${Math.round(progress!)} percent elapsed. ${showLunarInformation(solar) ? `${moon.name.toLowerCase()}, north-up phase view. ` : ""}Schematic time progress, not celestial position.` : "Solar times unavailable."} data-cycle={available ? solar.daylight ? "day" : "night" : "unavailable"}>
+  return <svg className="solar-lunar-dial" viewBox="-12 -4 224 164" role="img" aria-label={available ? `${solar.daylight ? "Daylight" : "Night"}, ${Math.round(progress!)} percent elapsed. ${showLunarInformation(solar) ? `${moon.name.toLowerCase()}, north-up phase view. ` : ""}Schematic time progress, not celestial position.` : "Solar times unavailable."} data-cycle={available ? solar.daylight ? "day" : "night" : "unavailable"}>
     <defs>
       <linearGradient id={`${id}-day`} x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0" stopColor="#efb66a" /><stop offset=".5" stopColor="#f8dca3" /><stop offset="1" stopColor="#e99772" /></linearGradient>
       <radialGradient id={`${id}-sun-halo`}><stop offset="0" stopColor={sunColor} stopOpacity=".45" /><stop offset="1" stopColor={sunColor} stopOpacity="0" /></radialGradient>
@@ -80,11 +80,11 @@ export function SolarLunarDial({ solar, moon }: { solar: SolarInstrumentWindow; 
     {elapsed && <path className="solar-dial-elapsed" d={elapsed} fill="none" stroke={solar.daylight ? `url(#${id}-day)` : "#a5d1e7"} strokeWidth={solar.daylight ? "2.7" : "2.2"} strokeLinecap="round" />}
     <path d="M5 76 H195" stroke="#7f9aa8" strokeOpacity=".28" strokeWidth=".75" strokeDasharray="2 3" />
     <circle cx="12" cy="76" r="2.1" fill="#e8bc80" /><circle cx="188" cy="76" r="2.1" fill="#dfa17c" />
-    <rect x="57" y="54" width="86" height="51" rx="12" fill="#091720" fillOpacity=".94" />
+    <rect x="49" y="47" width="102" height="61" rx="12" fill="#091720" fillOpacity=".94" />
     <g textAnchor="middle" fontFamily="Consolas, monospace">
-      <text x="100" y="66" fontSize="8.5" fontWeight="700" letterSpacing="1.5" fill={solar.daylight ? "#edc78d" : "#b8d8e9"}>{phaseText}</text>
-      <text x="100" y="87" fontSize={available ? "22" : "15"} fontWeight="800" letterSpacing="-.5" fill="#f0f6f8">{available ? `${Math.round(progress!)}%` : "—"}</text>
-      <text x="100" y="99" fontSize="6.5" fontWeight="700" letterSpacing="1.2" fill="#8faebb">{available ? "CYCLE ELAPSED" : "UNAVAILABLE"}</text>
+      <text className="solar-dial-cycle-label" x="100" y="62" fontSize="11" fontWeight="800" letterSpacing="1.2" fill={solar.daylight ? "#ffdda0" : "#d1edfc"}>{phaseText}</text>
+      <text className="solar-dial-percentage" x="100" y="88" fontSize={available ? "29" : "20"} fontWeight="900" letterSpacing="-.7" fill="#f6fbff">{available ? `${Math.round(progress!)}%` : "—"}</text>
+      <text className="solar-dial-progress-label" x="100" y="103" fontSize="8" fontWeight="700" letterSpacing=".8" fill="#b8d0dc">{available ? "CYCLE ELAPSED" : "UNAVAILABLE"}</text>
     </g>
     {/* The moon graphic appears only during the existing resolved night window. */}
     {available && solar.daylight && <g className="solar-dial-sun" transform={`translate(${solar.markerX.toFixed(3)} ${solar.markerY.toFixed(3)})`}>

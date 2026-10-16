@@ -28,11 +28,11 @@
 .bird-card.risk-severe { --bird-tone: #ff7676; }
 .bird-card .panel-title b { color: #9fb6c2; font-family: Consolas, monospace; }
 .bird-watch-instrument { display: flex; flex: 1; flex-direction: column; justify-content: space-between; gap: 14px; padding-top: 12px; min-height: 0; }
-.bird-watch-reading { display: grid; grid-template-columns: minmax(32px, .5fr) minmax(0, 1.5fr); align-items: center; gap: 6px; flex: 1; }
-.bird-watch-glyph { display: block; width: clamp(44px, 33cqw, 76px); max-height: 76px; color: var(--bird-tone); flex-shrink: 0; }
-.bird-watch-reading > div { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
+.bird-watch-reading { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; align-items: center; gap: 5px 8px; flex: 1; }
+.bird-watch-glyph { display: block; width: clamp(30px, 16cqw, 48px); max-height: 48px; color: var(--bird-tone); flex-shrink: 0; }
+.bird-watch-reading > .bird-watch-label { align-self: center; }
 .bird-watch-label { color: #a9c1ce; font: 700 clamp(8px, 4.5cqw, 11px)/1 Consolas, monospace; letter-spacing: .09em; }
-.bird-watch-reading .bird-severity { color: var(--bird-tone); font: 900 clamp(14px, 10.4cqw, 32px)/1.05 Consolas, monospace; letter-spacing: .01em; max-width: 100%; overflow-wrap: normal; white-space: nowrap; text-align: left; text-shadow: none; }
+.bird-watch-reading .bird-severity { color: var(--bird-tone); grid-column: 1 / -1; font: 900 clamp(18px, 16cqw, 52px)/1.05 Consolas, monospace; letter-spacing: .01em; max-width: 100%; overflow-wrap: normal; white-space: nowrap; text-align: left; text-shadow: none; }
 .bird-card.risk-moderate .bird-severity { text-shadow: 0 0 10px rgba(255, 208, 122, .18); }
 .bird-card.risk-unknown .bird-severity { font-size: clamp(9px, 6cqw, 17px); white-space: normal; overflow-wrap: anywhere; }
 .bird-watch-update { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
@@ -83,9 +83,9 @@
   .current-weather-stats strong { font-size: 30px; }
   .current-weather-stats .current-ceiling strong { font-size: 21px; }
   .weather-card .metar-title-badge { font-size: 12px !important; }
-  .bird-watch-glyph { width: 92px; max-height: 92px; }
+  .bird-watch-glyph { width: 56px; max-height: 56px; }
   .bird-watch-label { font-size: 14px; }
-  .bird-watch-reading .bird-severity { font-size: clamp(14px, 9.5cqw, 42px); }
+  .bird-watch-reading .bird-severity { font-size: clamp(18px, 16cqw, 72px); }
   .bird-card.risk-unknown .bird-severity { font-size: clamp(17px, 5.5cqw, 24px); }
   .bird-observation-age { padding: 10px 8px; gap: 7px; }
   .bird-observation-age .bird-watch-label { font-size: 12px; }
@@ -113,10 +113,9 @@
   .current-weather-stats strong { font-size: 12px; }
   .current-weather-stats .current-ceiling strong { font-size: 8px; }
   .bird-watch-instrument { gap: 5px; padding-top: 5px; }
-  .bird-watch-reading { grid-template-columns: 36px minmax(0, 1fr); gap: 6px; }
-  .bird-watch-glyph { width: 36px; }
-  .bird-watch-reading > div { align-items: flex-start; gap: 3px; }
-  .bird-watch-reading .bird-severity { font-size: clamp(13px, 10.4cqw, 18px); text-align: left; }
+  .bird-watch-reading { grid-template-columns: 24px minmax(0, 1fr); gap: 3px 6px; }
+  .bird-watch-glyph { width: 24px; }
+  .bird-watch-reading .bird-severity { font-size: clamp(18px, 16cqw, 30px); text-align: left; }
   .bird-card.risk-unknown .bird-severity { font-size: 10px; }
   .bird-watch-label { font-size: 7px; }
   .bird-watch-update { gap: 3px; }

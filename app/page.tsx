@@ -673,7 +673,8 @@ export default function Home() {
           <div className="bird-watch-instrument">
             <div className="bird-watch-reading">
               <BirdWatchGlyph />
-              <div><span className="bird-watch-label">CONDITION</span><strong className="bird-severity">{birdRisk}</strong></div>
+              <span className="bird-watch-label">CONDITION</span>
+              <strong className="bird-severity">{birdRisk}</strong>
             </div>
             {(() => {
               const bwcIso = parseAhasTimestampIso(weather.birdUpdated, now);

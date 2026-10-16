@@ -27,8 +27,10 @@
 .wind-speed { display: flex; align-items: baseline; gap: 5px; margin-top: 4px; }
 .wind-speed strong { color: var(--cyan); font-size: clamp(23px, 11.5cqw, 36px); font-weight: 800; line-height: 1; }
 .wind-speed > span { color: #bdd3df; font-size: clamp(10px, 4cqw, 12px); font-weight: 700; }
-.wind-gust { color: #f1bd6d; font-size: clamp(9px, 4.5cqw, 13px); font-weight: 700; white-space: nowrap; }
-.wind-gust strong { font-size: 1.15em; }
+/* Gusts are a separate, TV-readable observation, not a small caption. */
+.wind-gust { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 1px 4px; max-width: 100%; box-sizing: border-box; margin-top: 2px; padding: 3px 4px; border: 1px solid #f5c572; border-radius: 3px; background: #080e14; color: #fff6df; font-weight: 900; }
+.wind-gust strong { font-size: clamp(17px, 10cqw, 30px); font-weight: 900; line-height: 1; white-space: nowrap; }
+.wind-gust > span { font-size: clamp(10px, 4.3cqw, 13px); line-height: 1; font-weight: 800; }
 .wind-instrument-detail { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font: 700 clamp(8px, 3.7cqw, 10px)/1.15 Consolas, monospace; letter-spacing: .025em; }
 .wind-direction-key { color: #c1d3dd; }
 .wind-observation { color: #9fb6c2; }
@@ -45,7 +47,8 @@
   .wind-bearing { font-size: 18px; }
   .wind-speed { margin-top: 0; }
   .wind-speed strong { font-size: 22px; }
-  .wind-gust { font-size: 8px; }
+  .wind-gust { margin-top: 0; padding: 2px 3px; gap: 1px 3px; }
+  .wind-gust strong { font-size: 16px; }
   .wind-card .wind-flight-meta-centered { height: 25px; }
   .wind-card .flight-cat-pill { padding: 3px 8px; font-size: 13px; }
   .wind-card .wind-vis-tag, .wind-card .wind-vis-tag strong { font-size: 13px; }

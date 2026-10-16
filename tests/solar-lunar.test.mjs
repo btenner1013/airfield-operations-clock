@@ -191,3 +191,41 @@ test("moon visibility follows resolved solar day/night at both boundaries, witho
   }
   assert.doesNotMatch(source, /getHours|getUTCHours|setInterval|setTimeout/);
 });
+
+test("readability upgrade enlarges center type without moving the original solar geometry", () => {
+  const html = render(windowAt(true, 100));
+  assert.match(html, /viewBox="-12 -4 224 164"/);
+  assert.match(html, /class="solar-dial-cycle-label"[^>]*font-size="11"[^>]*font-weight="800"/);
+  assert.match(html, /class="solar-dial-percentage"[^>]*font-size="29"[^>]*font-weight="900"/);
+  assert.match(html, /class="solar-dial-progress-label"[^>]*font-size="8"/);
+  assert.match(html, /cx="100" cy="76" rx="106" ry="74"/);
+  assert.match(html, /translate\(188\.000 76\.000\)/);
+  // The tighter viewport still contains the full sun halo at every endpoint
+  // and the original moon/ellipse bounds, so larger markings are not cropped.
+  for (const [x, y, r] of [[12, 76, 23], [188, 76, 23], [100, 20, 23], [100, 132, 22.5]]) {
+    assert.ok(x - r >= -12 && x + r <= 212);
+    assert.ok(y - r >= -4 && y + r <= 160);
+  }
+});
+
+test("responsive solar readouts remain bounded for narrow, tablet, TV and tall-narrow cards", () => {
+  const css = readFileSync(new URL("../app/solar-lunar.css", import.meta.url), "utf8");
+  assert.match(css, /\.solar-dial-wrap \{[^}]*position: relative;[^}]*min-height: 122px/);
+  assert.match(css, /\.solar-lunar-dial \{[^}]*position: absolute;[^}]*width: 100%; height: 100%; max-height: 190px/);
+  assert.match(css, /font-size: clamp\(11px, 11\.5cqw, 34px\)/);
+  assert.match(css, /font-size: clamp\(11px, 11\.5cqw, 44px\)/);
+  assert.match(css, /font-size: clamp\(11px, 11\.5cqw, 19px\)/);
+  assert.match(css, /color: #ffda94/);
+  const clamp = (minimum, value, maximum) => Math.max(minimum, Math.min(value, maximum));
+  // Both 24-hour readings include their L suffix. Use conservative .62em glyphs,
+  // actual negative tracking, and the tighter second-column padding/border.
+  for (const width of [100, 110, 130, 150, 180, 200, 250, 300, 360, 440, 550]) {
+    for (const cap of [19, 34, 44]) {
+      const font = clamp(11, width * .115, cap);
+      const textWidth = 6 * .62 * font - 5 * .055 * font;
+      const available = (width - 6) / 2 - 7;
+      assert.ok(textWidth <= available, `time reading ${font}px fits ${width}px content at cap ${cap}`);
+    }
+  }
+  assert.doesNotMatch(css, /animation:|transition:|@keyframes/);
+});

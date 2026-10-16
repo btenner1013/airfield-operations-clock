@@ -42,7 +42,7 @@ export default function WindInstrument({ wind, nowMs, reduced }: { wind: Current
         <span className="wind-from-label">{directional ? `FROM ${model.cardinal}` : model.state === "variable" ? "DIRECTION" : model.state === "calm" ? "WIND" : "WIND DATA"}</span>
         <strong className="wind-bearing">{unavailable ? model.state === "stale" ? "STALE" : "—" : model.degrees}</strong>
         <div className="wind-speed"><strong>{model.speed}</strong><span>KT</span></div>
-        {model.gust !== null && <span className="wind-gust">GUST <strong>{model.gust}</strong> KT</span>}
+        {model.gust !== null && <span className="wind-gust"><strong>G {model.gust}</strong><span>KT</span></span>}
       </div>
     </div>
     <div className="wind-instrument-detail" aria-hidden="true">
