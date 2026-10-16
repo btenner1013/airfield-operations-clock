@@ -24,6 +24,17 @@
 .runway-strip { stroke-width:5.5px; }
 .runway-diagram .runway-arrow-outline { stroke:#001018;stroke-width:6px;stroke-linecap:round;stroke-linejoin:round; }
 .runway-diagram .runway-arrow { stroke-width:3px;stroke-linecap:round;stroke-linejoin:round; }
+/* The lower-right of the schematic is clear of strips, arrows and end labels.
+   Use that space so current-status rows never resize the diagram or clock gap. */
+.runway-status {
+  position:absolute;inset:0;width:100%;height:100%;overflow:visible;
+  font-family:Consolas,"DejaVu Sans",monospace;font-weight:800;
+}
+.runway-status-row { color:#62e5a6; }
+.runway-status-row[data-state="closed"] { color:#ff7179; }
+.runway-status text { fill:currentColor;stroke:#001018;stroke-width:1px;paint-order:stroke fill; }
+.runway-status-label { font-size:10.5px;letter-spacing:1px; }
+.runway-status-value { font-size:13px; }
 /* One date per clock; local-basis Julian day centered beneath both. */
 .clocks { padding-bottom:64px; }
 .clocks > .header-date {

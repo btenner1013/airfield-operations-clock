@@ -1,11 +1,13 @@
 "use client";
 import {useLayoutEffect,useRef,useState} from 'react';
 import RunwayDiagram from './RunwayDiagram';
+import RunwayStatus from './RunwayStatus';
 import {runwayPlacementHeight} from './runwayGeometry';
-import type {RunwayOperationsSnapshot} from './runwayOperations';
+import {resolveRunwayOperations,type RunwayOperationsSnapshot} from './runwayOperations';
 
 export default function RunwayPlacement(props:{snapshot:RunwayOperationsSnapshot|null|undefined;nowMs:number}) {
   const ref=useRef<HTMLDivElement>(null),[height,setHeight]=useState(0);
+  const operations=resolveRunwayOperations(props.snapshot,props.nowMs);
   useLayoutEffect(()=>{
     const host=ref.current,header=host?.parentElement,board=header?.parentElement;
     if(!host||!header||!board)return;
@@ -23,6 +25,7 @@ export default function RunwayPlacement(props:{snapshot:RunwayOperationsSnapshot
     return()=>{observer.disconnect();window.removeEventListener('resize',measure);};
   },[]);
   return <div ref={ref} className="runway-placement" style={{height,width:height*300/280}} data-ready={height>0}>
-    <RunwayDiagram {...props}/>
+    <RunwayDiagram {...props} operations={operations}/>
+    <RunwayStatus operations={operations}/>
   </div>;
 }

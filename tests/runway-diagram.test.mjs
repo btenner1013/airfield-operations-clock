@@ -106,3 +106,98 @@ test('runway-only translucent background leaves shared cards and solid SVG intac
  const layout=readFileSync(new URL('../app/layout.tsx',import.meta.url),'utf8');
  assert.ok(layout.indexOf('./runway-diagram.css')>layout.indexOf('./board-cohesion.css'));
 });
+
+const statusSource=readFileSync(new URL('../app/RunwayStatus.tsx',import.meta.url),'utf8');
+const statusCompiled=ts.transpileModule(statusSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const statusModule={exports:{}};
+new Function('require','module','exports',statusCompiled)(require,statusModule,statusModule.exports);
+const Status=statusModule.exports.default;
+const status=(data=input,now=time)=>renderToStaticMarkup(React.createElement(Status,{operations:operations.resolveRunwayOperations(operations.normalizeRunwayOperations(data),now)}));
+const row=(html,label)=>html.match(new RegExp(`<g class="runway-status-row" data-runway-status="${label}"[^>]*>(.*?)</g>`))?.[1]??'';
+const closure={text:'RWY 18R/36L CLSD',effectiveStart:'202610161300',effectiveEnd:'202610161930'};
+const notams={milNotamUpdatedZ:'2026-10-16T14:55:00Z',milNotamFetchStatus:'OK',milNotamSource:'FAA_NMS_STAGING',runwayClosureNotams:[closure]};
+
+test('compact rows show only effective reported ARR, DEP and physical runway closures',()=>{
+ const html=status();
+ assert.match(row(html,'ARR'),/>[^<]*36R[^<]*</);assert.match(row(html,'ARR'),/>[^<]*27[^<]*</);
+ assert.match(row(html,'DEP'),/>[^<]*36C[^<]*</);assert.match(row(html,'DEP'),/>[^<]*36R[^<]*</);assert.match(row(html,'DEP'),/>[^<]*27[^<]*</);
+ assert.match(row(html,'CLSD'),/>18R\/36L</);
+ assert.equal((html.match(/data-state="active"/g)||[]).length,2);
+ assert.equal((html.match(/data-state="closed"/g)||[]).length,1);
+ assert.doesNotMatch(html,/NONE|UNKNOWN|STALE|—/);
+});
+
+test('CLSD box disappears completely when nothing is closed; empty ARR and DEP also disappear',()=>{
+ const noClosure=status({...input,atisReportedClosedRunways:null});
+ assert.equal(row(noClosure,'CLSD'),'');assert.doesNotMatch(noClosure,/CLSD|data-state="closed"/);
+ assert.match(noClosure,/data-runway-status="ARR"/);assert.match(noClosure,/data-runway-status="DEP"/);
+ const departureOnly=status({...input,atisReportedArrRunways:null,atisReportedClosedRunways:null});
+ assert.equal(row(departureOnly,'ARR'),'');assert.equal(row(departureOnly,'CLSD'),'');assert.match(departureOnly,/data-runway-status="DEP"/);
+ const closureOnly=status({...input,atisReportedArrRunways:null,atisReportedDepRunways:null});
+ assert.equal(row(closureOnly,'ARR'),'');assert.equal(row(closureOnly,'DEP'),'');assert.match(closureOnly,/data-runway-status="CLSD"/);
+ assert.equal(status({...input,atisReportedArrRunways:null,atisReportedDepRunways:null,atisReportedClosedRunways:null}),'');
+});
+
+test('unknown, stale, cached and failed sources leave no status rows or placeholder container',()=>{
+ assert.equal(status(null),'');
+ for(const overrides of [
+  {atisObservedZ:'2026-10-16T12:00:00Z'}, {atisObservedZ:null}, {atisObservedZ:'2026-10-16T16:00:00Z'},
+  {atisFetchStatus:'ERROR'}, {atisSelectedSource:'CACHE'}, {atisSourceIsCurrent:false}, {lastKnownGoodUsed:{atis:true}},
+ ])assert.equal(status({...input,...overrides}),'');
+ assert.notEqual(status(input,Date.parse(input.atisObservedZ)+90*60000),'');
+ assert.equal(status(input,Date.parse(input.atisObservedZ)+90*60000+1),'');
+ assert.equal(status({windDirDeg:360,arrRunways:'36R',depRunways:'36C'}),'');
+});
+
+test('status rows share diagram closure precedence and cannot repeat conflicting runway use',()=>{
+ const data={...input,...notams,atisReportedArrRunways:'36L / 36R',atisReportedDepRunways:'18R / 36C',atisReportedClosedRunways:null};
+ const html=status(data);
+ assert.doesNotMatch(row(html,'ARR'),/36L|18R/);assert.doesNotMatch(row(html,'DEP'),/36L|18R/);
+ assert.match(row(html,'ARR'),/>[^<]*36R[^<]*</);assert.match(row(html,'DEP'),/>[^<]*36C[^<]*</);assert.match(row(html,'CLSD'),/>18R\/36L</);
+ assert.doesNotMatch(render(data),/data-end="(?:18R|36L)"/);
+ const resolved=operations.resolveRunwayOperations(operations.normalizeRunwayOperations(data),time);
+ const svg=renderToStaticMarkup(React.createElement(Diagram,{snapshot:null,nowMs:time,operations:resolved}));
+ assert.equal(svg,render(data));
+ const placement=readFileSync(new URL('../app/RunwayPlacement.tsx',import.meta.url),'utf8');
+ assert.match(placement,/const operations=resolveRunwayOperations\(props.snapshot,props.nowMs\)/);
+ assert.match(placement,/<RunwayDiagram[^>]+operations=\{operations\}/);
+ assert.match(placement,/<RunwayStatus operations=\{operations\}/);
+});
+
+test('ATIS and NOTAM age independently and only effective fresh closures get a CLSD row',()=>{
+ const staleAtis={...input,...notams,atisObservedZ:'2026-10-16T12:00:00Z'};
+ const closureOnly=status(staleAtis);
+ assert.equal(row(closureOnly,'ARR'),'');assert.equal(row(closureOnly,'DEP'),'');assert.match(row(closureOnly,'CLSD'),/18R\/36L/);
+ const staleNotam=status({...input,...notams,atisReportedClosedRunways:null,atisReportedArrRunways:'36L / 36R',milNotamUpdatedZ:'2026-10-16T12:00:00Z'});
+ assert.equal(row(staleNotam,'CLSD'),'');assert.doesNotMatch(row(staleNotam,'ARR'),/36L/);assert.match(row(staleNotam,'ARR'),/36R/);
+ for(const change of [{effectiveStart:'202610161600'},{effectiveEnd:'202610161500'},{effectiveEnd:null}]){
+  const html=status({...input,...notams,atisReportedClosedRunways:null,runwayClosureNotams:[{...closure,...change}]});
+  assert.equal(row(html,'CLSD'),'');
+ }
+ const bothStale=status({...staleAtis,milNotamUpdatedZ:'2026-10-16T12:00:00Z'});
+ assert.equal(bothStale,'');
+});
+
+test('status colors are green for use and red for closed, preserving the original SVG palette and footprint',()=>{
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ assert.match(css,/\.runway-status-row \{ color:#62e5a6; \}/);
+ assert.match(css,/\.runway-status-row\[data-state="closed"\] \{ color:#ff7179; \}/);
+ assert.match(css,/position:absolute;inset:0;width:100%;height:100%;overflow:visible/);
+ assert.match(source,/operation==='arrival'\?'#9fe8ff':'#ffd489'/);
+ assert.match(source,/viewBox="20 0 300 280"/);
+ const placement=readFileSync(new URL('../app/RunwayPlacement.tsx',import.meta.url),'utf8');
+ assert.match(placement,/width:height\*300\/280/);
+});
+
+test('every physical-runway closure combination keeps compact labels inside the clear right-hand space',()=>{
+ for(let mask=0;mask<16;mask++){
+  const closed=operations.MEM_RUNWAYS.filter((_,index)=>mask&(1<<index));
+  const used=operations.MEM_RUNWAYS.filter((_,index)=>!(mask&(1<<index))).flatMap(runway=>runway.ends);
+  const html=status({...input,atisReportedArrRunways:used,atisReportedDepRunways:used,atisReportedClosedRunways:closed.flatMap(runway=>runway.ends)});
+  for(const [,x,y,kind,text] of html.matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-(label|value)">([^<]+)<\/text>/g)){
+   assert.equal(Number(x),207);assert.ok(Number(y)>=95&&Number(y)<=255,`${mask}: ${y} ${text}`);
+   if(kind==='value')assert.ok(text.length<=13,`${mask}: ${text}`);
+  }
+  assert.equal((html.match(/data-runway-status="CLSD"/g)||[]).length,closed.length?1:0);
+ }
+});

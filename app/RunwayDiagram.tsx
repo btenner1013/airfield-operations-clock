@@ -1,12 +1,12 @@
 import {RUNWAY_GEOMETRY,runwayArrow,type RunwayPoint} from './runwayGeometry';
-import {resolveRunwayOperations,type RunwayOperationsSnapshot} from './runwayOperations';
+import {resolveRunwayOperations,type RunwayOperationsSnapshot,type ResolvedRunwayOperations} from './runwayOperations';
 const colors={active:'#62e5a6',closed:'#ff7179',unknown:'#87949e'};
 function arrowPath(start:RunwayPoint,end:RunwayPoint) {
   const d=Math.hypot(end.x-start.x,end.y-start.y),ux=(end.x-start.x)/d,uy=(end.y-start.y)/d;
   return `M${start.x} ${start.y} L${end.x} ${end.y} M${end.x-ux*7-uy*4} ${end.y-uy*7+ux*4} L${end.x} ${end.y} L${end.x-ux*7+uy*4} ${end.y-uy*7-ux*4}`;
 }
-export default function RunwayDiagram({snapshot,nowMs}:{snapshot:RunwayOperationsSnapshot|null|undefined;nowMs:number}) {
-  const operations=resolveRunwayOperations(snapshot??null,nowMs);
+export default function RunwayDiagram({snapshot,nowMs,operations:resolved}:{snapshot:RunwayOperationsSnapshot|null|undefined;nowMs:number;operations?:ResolvedRunwayOperations}) {
+  const operations=resolved??resolveRunwayOperations(snapshot??null,nowMs);
   const description=operations.runways.map(r=>`${r.id}: ${r.state==='closed'?'closed':r.state==='active'?'reported in use':'status unknown'}${r.arrivals.length?`; arrivals ${r.arrivals.join(', ')}`:''}${r.departures.length?`; departures ${r.departures.join(', ')}`:''}`).join('. ');
   return <svg className="runway-diagram" viewBox="20 0 300 280" role="img" aria-label={`KMEM runway operations. ${description}. Schematic reference only.`} data-atis-current={operations.atisCurrent} data-notams-current={operations.notamsCurrent}>
     <title>KMEM runway operations</title><desc>{description}. Arrival arrows point toward the landing threshold; departure arrows point away from the opposite end. Gray means unknown or stale.</desc>
