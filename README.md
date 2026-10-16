@@ -9,7 +9,13 @@ A full-screen, 24-hour local/Zulu clock for wall displays, with live Memphis wea
 3. The included workflow builds and publishes the site. Open the URL shown by the completed Pages deployment.
 4. Use the browser's full-screen or kiosk mode. F11 enters full screen on most Windows browsers.
 
-The project uses no secret API keys and no backend. The clock always follows the device system clock. Local time is formatted in `America/Chicago`, including automatic CST/CDT handling; Zulu is independently formatted in UTC.
+The project uses no secret API keys and no backend. Local time is formatted in `America/Chicago`, including automatic CST/CDT handling; Zulu is independently formatted in UTC. Both clocks and their dates use one shared instant.
+
+### Display time correction
+
+On load, every five minutes, and after wake/reconnection, the display checks three same-origin GitHub HTTP Date responses. It applies a display-only correction only when at least two fresh, low-latency samples agree and the server seconds advance. Failed/redirected responses, frozen Date headers, malformed cache metadata, invalid dates, slow requests, system-clock jumps during sampling, and corrections over five minutes are rejected. GitHub can regenerate its Date header even when the object is cached; Date must advance with elapsed time across samples, and the object’s Age is never added to it. The whole-second Date bucket and request latency are included in the displayed estimated uncertainty. This is a coarse HTTP estimate, not NTP or certified aviation time; the original system offset cannot be diagnosed from the footer alone.
+
+`SRC GITHUB HTTP` identifies a corrected display. `CORR` is the correction relative to the computer; `EST ±` is estimated timing uncertainty, not a guaranteed accuracy bound. If a check fails, `HTTP HOLDOVER` continues the last accepted estimate for at most 20 minutes from that sample. After expiry, or a wall/monotonic clock discontinuity, `SYSTEM CLOCK` is the fallback and the failure remains visible. Offline startup uses system time. Corrections are never saved across page reloads and never change Windows or other system settings. Seconds are derived from an absolute anchor rather than incremented counters; local, Zulu, and Julian dates roll from the same corrected instant.
 
 ## Weather source and resilience
 

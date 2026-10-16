@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
+import { formatClockStatus } from "./clockSync";
 import type { Intensity } from "./weatherFx";
 import { buildWeatherEffects, type WeatherDemo } from "./weatherController";
 import PrecipCanvas from "./PrecipCanvas";
@@ -77,7 +78,7 @@ const FALLBACK: Weather = { temperatureF:84, feelsLikeF:84, condition:"neutral",
 const DEBUG_THEMES: Theme[] = ["clear","partly-cloudy","overcast","rain","heavy-rain","thunderstorm","fog","snow","night","sunrise","sunset"];
 
 function parts(date:Date, zone:string) {
-  return Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone:zone, hour12:false, weekday:"long", day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", timeZoneName:"short" }).formatToParts(date).map(p=>[p.type,p.value]));
+  return Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone:zone, hourCycle:"h23", weekday:"long", day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", timeZoneName:"short" }).formatToParts(date).map(p=>[p.type,p.value]));
 }
 function dateLine(p:Record<string,string>) { return `${p.weekday.toUpperCase()} • ${p.day} ${p.month.toUpperCase()} ${p.year}`; }
 function julian4(date:Date) {
@@ -593,9 +594,7 @@ export default function Home() {
   const popDiagnostic=describePrecipitationSource(weather.forecast);
   const birdRisk=debugBird||weather.birdRisk;
   const birdClass=/SEVERE|HIGH/.test(birdRisk)?"severe":/MODERATE/.test(birdRisk)?"moderate":/LOW/.test(birdRisk)?"low":"unknown", birdStamp=zStamp(weather.birdUpdated);
-  const clockZ=clock.lastCheckedUtc?new Intl.DateTimeFormat("en-US",{timeZone:"UTC",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(clock.lastCheckedUtc)).replace(":","")+"Z":"—";
-  const clockOffset=clock.estimatedOffsetMs!=null?`${clock.estimatedOffsetMs>=0?"+":"-"}${(Math.abs(clock.estimatedOffsetMs)/1000).toFixed(1)} SEC`:"—";
-  const clockText=clock.lastCheckedUtc===null&&clock.state!=="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK…":clock.state==="OFFLINE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: OFFLINE":clock.state==="STALE"?"SRC WINDOWS SYSTEM · NETWORK CHECK: STALE (GITHUB EDGE DATE)":`SRC WINDOWS SYSTEM · CHECK GITHUB EDGE DATE: ${clock.state} · OFFSET ${clockOffset} · ${clockZ}`;
+  const clockText=formatClockStatus(clock);
   const clockClass=clock.state==="OK"?"ok":clock.state==="OFFLINE"?"off":clock.state==="CHECK"?"chk":"warn";
   const flightCat = getFlightCategory(effVisibility, effBase, effCoverage, currentPresentation.simulated || (metarState === "CURRENT" && !!weather.operationalWeather && weather.operationalWeather.skyCondition !== "unavailable"));
   const flybyAllowed = isFlybyWeatherAllowed(weather, flightCat);
