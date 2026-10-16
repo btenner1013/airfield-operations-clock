@@ -195,9 +195,29 @@ test('every physical-runway closure combination keeps compact labels inside the 
   const used=operations.MEM_RUNWAYS.filter((_,index)=>!(mask&(1<<index))).flatMap(runway=>runway.ends);
   const html=status({...input,atisReportedArrRunways:used,atisReportedDepRunways:used,atisReportedClosedRunways:closed.flatMap(runway=>runway.ends)});
   for(const [,x,y,kind,text] of html.matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-(label|value)">([^<]+)<\/text>/g)){
-   assert.equal(Number(x),207);assert.ok(Number(y)>=95&&Number(y)<=255,`${mask}: ${y} ${text}`);
-   if(kind==='value')assert.ok(text.length<=13,`${mask}: ${text}`);
+   assert.equal(Number(x),207);assert.ok(Number(y)>=70&&Number(y)<=260,`${mask}: ${y} ${text}`);
+   if(kind==='value')assert.ok(text.length<=10,`${mask}: ${text}`);
   }
   assert.equal((html.match(/data-runway-status="CLSD"/g)||[]).length,closed.length?1:0);
+ }
+});
+
+test('larger status type wraps every runway-use subset inside the unchanged diagram bounds',()=>{
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ assert.match(css,/\.runway-status-label \{ font-size:14px;letter-spacing:1px; \}/);
+ assert.match(css,/\.runway-status-value \{ font-size:17px; \}/);
+ for(let closureMask=0;closureMask<16;closureMask++){
+  const closed=operations.MEM_RUNWAYS.filter((_,index)=>closureMask&(1<<index)).flatMap(runway=>runway.ends);
+  const available=operations.MEM_RUNWAYS.filter((_,index)=>!(closureMask&(1<<index))).flatMap(runway=>runway.ends);
+  for(let useMask=0;useMask<(1<<available.length);useMask++){
+   const used=available.filter((_,index)=>useMask&(1<<index));
+   // Matching maximal ARR/DEP lists exercise the largest vertical stack;
+   // asymmetric lists can only reduce one of the two groups' line counts.
+   const html=status({...input,atisReportedArrRunways:used,atisReportedDepRunways:used,atisReportedClosedRunways:closed});
+   for(const [,x,y,kind,text] of html.matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-(label|value)">([^<]+)<\/text>/g)){
+    assert.equal(Number(x),207);assert.ok(Number(y)>=70&&Number(y)<=260,`${closureMask}/${useMask}: ${y} ${text}`);
+    if(kind==='value')assert.ok(text.length<=10,`${closureMask}/${useMask}: ${text}`);
+   }
+  }
  }
 });

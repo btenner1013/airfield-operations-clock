@@ -33,8 +33,8 @@
 .runway-status-row { color:#62e5a6; }
 .runway-status-row[data-state="closed"] { color:#ff7179; }
 .runway-status text { fill:currentColor;stroke:#001018;stroke-width:1px;paint-order:stroke fill; }
-.runway-status-label { font-size:10.5px;letter-spacing:1px; }
-.runway-status-value { font-size:13px; }
+.runway-status-label { font-size:14px;letter-spacing:1px; }
+.runway-status-value { font-size:17px; }
 /* One date per clock; local-basis Julian day centered beneath both. */
 .clocks { padding-bottom:64px; }
 .clocks > .header-date {
