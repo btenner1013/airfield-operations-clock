@@ -30,8 +30,8 @@ export function runwayArrow(runway:RunwayGeometry,end:string,operation:'arrival'
   return {start:{x:anchor.x+ux*start,y:anchor.y+uy*start},end:{x:anchor.x+ux*finish,y:anchor.y+uy*finish},ux,uy};
 }
 
-/** Fit solely below both clock/date blocks; never intrude into their bounds. */
-export function runwayPlacementHeight(sectionBottom:number,clockTextBottom:number,sectionWidth:number):number {
-  if(![sectionBottom,clockTextBottom,sectionWidth].every(Number.isFinite))return 0;
-  return Math.max(0,Math.min(280,sectionWidth*.36*280/300,sectionBottom-clockTextBottom-8));
+/** Fit top-right between the brand and the clock labels, not below the clocks. */
+export function runwayPlacementHeight(headerTop:number,clockTop:number,headerRight:number,brandRight:number):number {
+  if(![headerTop,clockTop,headerRight,brandRight].every(Number.isFinite))return 0;
+  return Math.max(0,Math.min(300,clockTop-headerTop-12,(headerRight-brandRight-24)*280/300));
 }

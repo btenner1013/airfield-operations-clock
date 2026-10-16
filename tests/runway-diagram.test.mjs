@@ -46,19 +46,23 @@ test('stale and absent data render four gray runways without operational arrows 
   assert.doesNotMatch(html,/data-operation=|runway-closure/);
  }
 });
-test('new diagram stays centered across both clock columns and leaves card grid unchanged',()=>{
+test('diagram occupies header right and single local-date group moves below both clocks',()=>{
  const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
- assert.ok(page.indexOf('<RunwayPlacement')>page.indexOf('<article className="clock zulu"'));
- assert.ok(page.indexOf('<RunwayPlacement')<page.indexOf('<section className="info">'));
- assert.match(css,/left:50%/);assert.match(css,/translateX\(-50%\)/);assert.doesNotMatch(css,/grid-template|background:|animation:/);
+ assert.ok(page.indexOf('<RunwayPlacement')<page.indexOf('<section className="clocks"'));
+ assert.ok(page.indexOf('<div className="header-date">')>page.indexOf('<article className="clock zulu"'));
+ assert.equal((page.match(/className="header-date"/g)||[]).length,1);
+ assert.match(css,/right:0;top:0/);assert.match(css,/min-height:clamp/);
+ assert.match(css,/\.clocks > \.header-date \{\s*display:flex/);
+ assert.doesNotMatch(css,/grid-template|background:|animation:|\.clock time/);
 });
-
-
-test('placement is bounded below both clock/date blocks at TV and short viewport sizes',()=>{
- for(const [width,bottom,foot] of [[1766,780,580],[1766,780,650],[1260,520,390],[1260,420,390],[330,600,400]]) {
-  const height=geometry.runwayPlacementHeight(bottom,foot,width);
-  assert.ok(bottom-height>=foot+8);assert.ok(height<=280);assert.ok(height*300/280<=width*.36);
+test('header placement stays above clock labels and right of branding',()=>{
+ for(const [top,clock,right,brand] of [[58,370,1842,910],[41,280,1311,700],[22,230,1072,850]]) {
+  const height=geometry.runwayPlacementHeight(top,clock,right,brand);
+  assert.ok(top+height<=clock-12);assert.ok(height<=300);assert.ok(right-height*300/280>=brand+24);
  }
- assert.equal(geometry.runwayPlacementHeight(200,220,1200),0);
- assert.equal(geometry.runwayPlacementHeight(NaN,200,1200),0);
+ assert.ok(geometry.runwayPlacementHeight(58,370,1842,910)>=280);
+ assert.ok(geometry.runwayPlacementHeight(41,280,1311,700)>=210);
+ assert.equal(geometry.runwayPlacementHeight(200,205,1200,800),0);
+ assert.equal(geometry.runwayPlacementHeight(50,400,800,790),0);
+ assert.equal(geometry.runwayPlacementHeight(NaN,200,1200,800),0);
 });

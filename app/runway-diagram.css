@@ -1,7 +1,8 @@
-/* Transparent concept D. The existing clock/card grid and card contents stay put. */
+/* Transparent upper-right diagram; retain the original clock type and card rail. */
+.burn-shift > header { position:relative; min-height:clamp(72px,8.8vh,96px); }
 .clocks { position:relative; }
 .runway-placement {
-  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  position:absolute;right:0;top:0;
   pointer-events:none;z-index:3;visibility:hidden;
 }
 .runway-placement[data-ready="true"] { visibility:visible; }
@@ -15,12 +16,16 @@
 .runway-strip { stroke-width:5.5px; }
 .runway-diagram .runway-arrow-outline { stroke:#001018;stroke-width:6px;stroke-linecap:round;stroke-linejoin:round; }
 .runway-diagram .runway-arrow { stroke-width:3px;stroke-linecap:round;stroke-linejoin:round; }
-/* Auto-height clocks have no spare lower region. Reserve only the new diagram's
-   space below their readings; retain their existing column/row arrangement. */
-@media (max-width:720px), (orientation:portrait) {
-  .clocks { padding-bottom:190px; }
-
+/* A single local-date/Julian group below both clocks. Per-zone dates remain. */
+.clocks { padding-bottom:64px; }
+.clocks > .header-date {
+  display:flex;position:absolute;left:0;right:0;bottom:12px;
+  justify-content:center;align-items:baseline;gap:8px 22px;flex-wrap:wrap;text-align:center;
 }
-@media (max-height:850px) and (min-width:721px) and (orientation:landscape) {
-  .clocks { padding-bottom:110px; }
+.clocks > .header-date small,.clocks > .header-date strong { margin:0; }
+@media (max-width:720px), (orientation:portrait) {
+  .burn-shift > header { flex-direction:column;align-items:stretch;gap:14px; }
+  .runway-placement { position:relative;top:auto;right:auto;margin-left:auto; }
+  .clocks { padding-bottom:88px; }
+  .clocks > .header-date { padding:0 8px;gap:6px 14px; }
 }
