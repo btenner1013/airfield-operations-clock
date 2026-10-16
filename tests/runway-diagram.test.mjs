@@ -195,28 +195,76 @@ test('every physical-runway closure combination keeps compact labels inside the 
   const used=operations.MEM_RUNWAYS.filter((_,index)=>!(mask&(1<<index))).flatMap(runway=>runway.ends);
   const html=status({...input,atisReportedArrRunways:used,atisReportedDepRunways:used,atisReportedClosedRunways:closed.flatMap(runway=>runway.ends)});
   for(const [,x,y,kind,text] of html.matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-(label|value)">([^<]+)<\/text>/g)){
-   assert.equal(Number(x),207);assert.ok(Number(y)>=70&&Number(y)<=260,`${mask}: ${y} ${text}`);
-   if(kind==='value')assert.ok(text.length<=10,`${mask}: ${text}`);
+   assert.ok([207,264].includes(Number(x)));assert.ok(Number(y)>=65&&Number(y)<=265,`${mask}: ${y} ${text}`);
+   if(kind==='value')assert.match(text,/^(?:18[CLR]|36[CLR]|09|27)(?:\/(?:18[CLR]|36[CLR]|09|27))?$/,`${mask}: ${text}`);
   }
   assert.equal((html.match(/data-runway-status="CLSD"/g)||[]).length,closed.length?1:0);
  }
 });
 
-test('larger status type wraps every runway-use subset inside the unchanged diagram bounds',()=>{
+test('one-runway lines retain every runway-use subset inside the unchanged diagram bounds',()=>{
  const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
- assert.match(css,/\.runway-status-label \{ font-size:14px;letter-spacing:1px; \}/);
- assert.match(css,/\.runway-status-value \{ font-size:17px; \}/);
+ assert.match(css,/\.runway-status-label \{ font-size:13px;font-weight:700;letter-spacing:1px; \}/);
+ assert.match(css,/\.runway-status-value \{ font-size:17px;font-weight:800; \}/);
  for(let closureMask=0;closureMask<16;closureMask++){
   const closed=operations.MEM_RUNWAYS.filter((_,index)=>closureMask&(1<<index)).flatMap(runway=>runway.ends);
   const available=operations.MEM_RUNWAYS.filter((_,index)=>!(closureMask&(1<<index))).flatMap(runway=>runway.ends);
   for(let useMask=0;useMask<(1<<available.length);useMask++){
    const used=available.filter((_,index)=>useMask&(1<<index));
-   // Matching maximal ARR/DEP lists exercise the largest vertical stack;
-   // asymmetric lists can only reduce one of the two groups' line counts.
+   // Exercise every available subset; independent ARR/DEP count combinations
+   // are covered separately because they can change the column choice.
    const html=status({...input,atisReportedArrRunways:used,atisReportedDepRunways:used,atisReportedClosedRunways:closed});
    for(const [,x,y,kind,text] of html.matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-(label|value)">([^<]+)<\/text>/g)){
-    assert.equal(Number(x),207);assert.ok(Number(y)>=70&&Number(y)<=260,`${closureMask}/${useMask}: ${y} ${text}`);
-    if(kind==='value')assert.ok(text.length<=10,`${closureMask}/${useMask}: ${text}`);
+    assert.ok([207,264].includes(Number(x)));assert.ok(Number(y)>=65&&Number(y)<=265,`${closureMask}/${useMask}: ${y} ${text}`);
+    if(kind==='value')assert.match(text,/^(?:18[CLR]|36[CLR]|09|27)(?:\/(?:18[CLR]|36[CLR]|09|27))?$/,`${closureMask}/${useMask}: ${text}`);
+   }
+  }
+ }
+});
+
+const statusValues=(html,label)=>[...row(html,label).matchAll(/<text x="([\d.]+)" y="([\d.]+)" class="runway-status-value">([^<]+)<\/text>/g)].map(([,x,y,text])=>({x:Number(x),y:Number(y),text}));
+test('current two-arrival, three-departure report uses aligned one-runway lines and a consistent group gap',()=>{
+ const html=status({...input,atisReportedArrRunways:'36L 36R',atisReportedDepRunways:'36L 36C 36R',atisReportedClosedRunways:null});
+ const arrivals=statusValues(html,'ARR'),departures=statusValues(html,'DEP');
+ assert.deepEqual(arrivals.map(value=>value.text),['36L','36R']);
+ assert.deepEqual(departures.map(value=>value.text),['36L','36C','36R']);
+ assert.ok([...arrivals,...departures].every(value=>value.x===207));
+ for(const values of [arrivals,departures])for(let i=1;i<values.length;i++)assert.equal(values[i].y-values[i-1].y,20);
+ const heading=Number(row(html,'DEP').match(/<text x="207" y="([\d.]+)" class="runway-status-label"/)[1]);
+ assert.equal(heading-arrivals.at(-1).y,28);assert.equal(departures[0].y-heading,20);
+ assert.doesNotMatch(html,/CLSD|data-columns="2"/);
+});
+
+test('long and asymmetric reports use deliberate columns without shrinking or dropping active entries',()=>{
+ const ends=operations.MEM_RUNWAYS.flatMap(runway=>runway.ends);
+ for(const [arr,dep] of [[ends,ends],[ends,['36R']],[['36R'],ends],[ends.slice(0,6),ends.slice(0,4)]]){
+  const html=status({...input,atisReportedArrRunways:arr,atisReportedDepRunways:dep,atisReportedClosedRunways:null});
+  assert.deepEqual(statusValues(html,'ARR').map(value=>value.text),arr);
+  assert.deepEqual(statusValues(html,'DEP').map(value=>value.text),dep);
+  assert.match(html,/data-columns="2"/);
+  for(const label of ['ARR','DEP']){
+   const values=statusValues(html,label);
+   assert.ok(values.every(value=>[207,264].includes(value.x)&&value.y>=65&&value.y<=265));
+   for(const x of [207,264]){
+    const column=values.filter(value=>value.x===x);
+    for(let i=1;i<column.length;i++)assert.equal(column[i].y-column[i-1].y,20);
+   }
+  }
+  assert.doesNotMatch(html,/font-size|fontSize|transform=/);
+ }
+});
+
+test('every independent arrival/departure count fits with every physical closure combination',()=>{
+ for(let mask=0;mask<16;mask++){
+  const closed=operations.MEM_RUNWAYS.filter((_,index)=>mask&(1<<index)).flatMap(runway=>runway.ends);
+  const available=operations.MEM_RUNWAYS.filter((_,index)=>!(mask&(1<<index))).flatMap(runway=>runway.ends);
+  for(let arrivals=0;arrivals<=available.length;arrivals++)for(let departures=0;departures<=available.length;departures++){
+   const html=status({...input,atisReportedArrRunways:available.slice(0,arrivals),atisReportedDepRunways:available.slice(0,departures),atisReportedClosedRunways:closed});
+   assert.equal(statusValues(html,'ARR').length,arrivals);assert.equal(statusValues(html,'DEP').length,departures);
+   for(const label of ['ARR','DEP','CLSD']){
+    const values=statusValues(html,label),positions=new Set(values.map(value=>`${value.x}/${value.y}`));
+    assert.equal(positions.size,values.length);
+    assert.ok(values.every(value=>[207,264].includes(value.x)&&value.y>=65&&value.y<=265));
    }
   }
  }
