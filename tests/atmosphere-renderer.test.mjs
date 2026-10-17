@@ -127,8 +127,8 @@ test("broken sunset clouds retain visible drift through calm or camera-aligned s
     return delta;
   };
   assert.ok(movement(.76, "sunset") > 20);
-  assert.ok(Math.abs(movement(.76, "day")) < 2, "Daytime BKN behavior is unchanged");
-  assert.ok(Math.abs(movement(.44, "sunset")) < 2, "SCT is not given a dense-deck drift floor");
+  for (const phase of ["day","sunrise","sunset","night"]) for (const coverage of [.2,.44,.76,1]) assert.ok(movement(coverage,phase)>20, `${phase}/${coverage} retains visible calm drift`);
+  assert.equal(movement(.44,"day",true),0);
   assert.equal(movement(.76, "sunset", true), 0);
 });
 
@@ -304,7 +304,7 @@ test("the renderer owns no animation loop, timers, or event listeners", () => {
 });
 
 
-test("calm overcast has layered drift without adding the same drift to scattered skies", () => {
+test("calm overcast and scattered skies both have gentle layered drift", () => {
   const movement = coverage => {
     let delta;
     withRenderer((renderer, h) => {
@@ -322,5 +322,5 @@ test("calm overcast has layered drift without adding the same drift to scattered
   };
   const overcast = movement(1), scattered = movement(0.44);
   assert.ok(overcast > 20 && overcast < 50, "Overcast detail drifts visibly and gently over three seconds");
-  assert.ok(Math.abs(scattered) < 5, "Scattered keeps its existing calm motion");
+  assert.ok(scattered > 20 && scattered < 50, "Scattered also remains visibly in motion");
 });

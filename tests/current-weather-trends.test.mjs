@@ -175,3 +175,16 @@ test('page uses JSON readouts/category without changing enhanced METAR sky, feel
  assert.match(page,/forecastWind:null/);
  const cache=readFileSync(new URL('../app/weatherRefresh.ts',import.meta.url),'utf8');assert.match(cache,/return \{\.\.\.candidate,currentOpsWeather:null/);
 });
+
+
+test('temperature triangle scales with the reading without changing other metric arrows',()=>{
+ const css=readFileSync(new URL('../app/information-bar.css',import.meta.url),'utf8');
+ assert.match(css,/\.current-temperature \.current-wx-trend \{ font-size: \.5em; vertical-align: \.1em; margin-left: \.16em; \}/);
+ assert.match(css,/\.current-wx-trend \{[^}]*font-size: \.8em;/);
+ for(const temperature of [63,100,-5,-40,-100]) for(const direction of ['up','steady','down']) {
+  const arrow=React.createElement(mod.exports.default,{metric:'temperature',comparison:{direction,referenceAt:'2026-10-16T19:55:42Z',updatedAt:'2026-10-16T22:55:00Z',lookbackHours:3}});
+  const html=renderToStaticMarkup(React.createElement('strong',{className:'current-temperature'},String(temperature),'°',React.createElement('small',null,'F'),arrow));
+  assert.match(html,/<small>F<\/small><i class="current-wx-trend"/);
+  assert.ok(html.includes(`data-tone="${direction}"`));
+ }
+});

@@ -152,4 +152,4 @@
 .current-wx-trend[data-tone="down"] { color: #ff7676; }
 .current-wx-trend[data-tone="steady"] { color: #ffd07a; }
 .current-wx-trend[data-tone="neutral"] { color: #c5d7e3; }
-.current-temperature .current-wx-trend { font-size: .28em; vertical-align: .2em; }
+.current-temperature .current-wx-trend { font-size: .5em; vertical-align: .1em; margin-left: .16em; }

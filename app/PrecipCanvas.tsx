@@ -180,7 +180,7 @@ export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night
       ctx.clearRect(0,0,w,h);
       const lightning={pulse:Number(main?.dataset.lightningPulse||0),bolt:main?.dataset.lightningBolt==="1",cluster:Number(main?.dataset.lightningCluster||0)};
       const photo=photoRef.current;
-      const sunsetPhotoMotion=!!photo&&a.phase==="sunset"&&a.storm===0&&a.obscuration==="none";
+      let photoMotion=false;
       if(skyCtx)skyCtx.clearRect(0,0,w,h);
       if(photo&&skyCtx){
         if(now-filterReadAt>1000){const bases=Array.from(host.querySelectorAll<HTMLElement>(".sky-base"));const visible=bases.find(base=>base.style.opacity==="1")||bases[0];photoFilter=visible&&typeof getComputedStyle!=="undefined"?getComputedStyle(visible).filter||"none":"none";filterReadAt=now;}
@@ -188,7 +188,7 @@ export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night
         if(skyCanvas)skyCanvas.style.filter=photoFilter;
         skyCtx.save();
         const photoBlend=reduced?1:Math.min(1,Math.max(0,(now-(photoReadyAt.current??now))/3500));
-        photoPainter.draw(skyCtx,w,h,dt,photo,Math.max(a.coverage,a.storm*.85)*photoBlend,a.storm*photoBlend,a.windX,reduced,sunsetPhotoMotion?photoBlend:0);
+        photoMotion=photoPainter.draw(skyCtx,w,h,dt,photo,Math.max(a.coverage,a.storm*.85)*photoBlend,a.storm*photoBlend,a.windX,reduced,photoBlend);
         skyCtx.restore();
       }
       atmospherePainter.draw(ctx,w,h,now,dt,{...a,quality:low?"low":"full"},lightning);
@@ -214,7 +214,7 @@ export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night
       if(fpsTime>=1){canvas.dataset.fps=String(Math.round(frames/fpsTime));frames=0;fpsTime=0;}
       canvas.dataset.renderMs=renderMs.toFixed(2);canvas.dataset.quality=low?"low":"full";canvas.dataset.adaptive="0";
       canvas.dataset.dropCount=String(dropList.length);canvas.dataset.dropRolling=String(rolling);canvas.dataset.active="1";
-      const idle=!s&&!dropList.length&&!sunsetPhotoMotion&&a.coverage===0&&a.storm===0&&a.density===0&&a.lightningLevel==="none"&&now>settleUntil;
+      const idle=!s&&!dropList.length&&!photoMotion&&a.coverage===0&&a.storm===0&&a.density===0&&a.lightningLevel==="none"&&now>settleUntil;
       canvas.dataset.running=reduced||idle?"0":"1";
       if(reduced||idle)canvas.dataset.fps="0";
       drawing=false;

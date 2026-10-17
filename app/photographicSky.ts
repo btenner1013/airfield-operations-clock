@@ -1,201 +1,171 @@
-/** Moves cloud detail already present in the airfield photograph, never its architecture.
- * The precipitation canvas owns loading, frame timing, visibility and reduced motion.
- */
-type SkyImage = CanvasImageSource & { width: number; height: number };
+import { createPhotographicSkyPlateCache } from "./photographicSkyPlate.ts";
+
+/** Cloud artwork moves independently of the fixed airport photograph.
+ * Loading, scheduling, visibility and reduced motion belong to PrecipCanvas. */
+type SkyImage = CanvasImageSource & { width: number; height: number; src?: string; currentSrc?: string; id?: string };
 type Rect = { left: number; top: number; right: number; bottom: number };
+type Geometry = { x: number; y: number; width: number; height: number };
+const MAX_WIDTH = 960, MAX_HEIGHT = 540;
+const PAN = 0.044, MAX_ZOOM = 1.168;
+const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max, n));
+const smooth = (n: number) => { const t = clamp(n); return t * t * (3 - 2 * t); };
+const movingScenes = new Set(["clear-day", "partly-cloudy-day", "partly-cloudy-night", "overcast-day", "overcast-night", "rain-day", "rain-night", "thunderstorm-day", "thunderstorm-night", "snow-day", "snow-night", "fog-day", "fog-night", "sunrise", "sunset"]);
 
-const MAX_WIDTH = 960;
-const MAX_HEIGHT = 540;
-const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, value));
+export function photoSkyScene(image: { src?: string; currentSrc?: string; id?: string }): string {
+  return (image.currentSrc || image.src || image.id || "").split(/[?#]/)[0].split("/").pop()?.replace(/\.(?:png|jpe?g|webp)$/i, "") || "";
+}
+/** Artwork content, not METAR coverage or a newly requested phase, owns photo motion. */
+export function photoSkyHasMotion(image: { src?: string; currentSrc?: string; id?: string }): boolean {
+  return movingScenes.has(photoSkyScene(image));
+}
+/** Match the effective .sky-base cascade: layout-tuning.css overrides weather.css
+ * with inset:0, background-size:cover and background-position:center. */
+export function photoSkyGeometry(w: number, h: number, iw: number, ih: number): Geometry {
+  const scale = Math.max(w / iw, h / ih);
+  return { x: (w - iw * scale) / 2, y: (h - ih * scale) / 2, width: iw * scale, height: ih * scale };
+}
+/** Continuous same-direction advection; recycle an invisible crop with a soft overlap.
+ * Unlike sine panning, every sample keeps moving through the wrap, with no turns.
+ * No mirrored/tiled edges are introduced. The extra crop remains inside overscan. */
+export function photoSkySamples(travel: number): { offset: number; mix: number } {
+  const q = ((.5 + travel / (PAN * 2)) % 1 + 1) % 1;
+  return { offset: (q * 2 - 1) * PAN, mix: smooth((q - .75) / .25) };
+}
 
-/** An oval exclusion whose fully opaque center contains the complete tower envelope.
- * The curved, broad falloff avoids a rectangular stationary-cloud patch above it.
- */
-function eraseTower(ctx: CanvasRenderingContext2D, rect: Rect, feather: number): void {
-  const { left, top, right, bottom } = rect;
-  const radiusX = (right - left) * 0.76;
-  const radiusY = (bottom - top) * 0.76;
-  const outer = 1 + feather / Math.max(1, Math.min(radiusX, radiusY));
-  ctx.save();
+function eraseRect(ctx: CanvasRenderingContext2D, r: Rect, feather: number): void {
+  const {left: x, top: y, right, bottom} = r, w = right - x, h = bottom - y;
   ctx.globalCompositeOperation = "destination-out";
-  ctx.translate((left + right) / 2, (top + bottom) / 2);
-  ctx.scale(radiusX, radiusY);
-  const mask = ctx.createRadialGradient(0, 0, 1, 0, 0, outer);
-  mask.addColorStop(0, "rgba(0,0,0,1)");
-  mask.addColorStop(0.45, "rgba(0,0,0,.58)");
-  mask.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = mask;
-  ctx.fillRect(-outer, -outer, outer * 2, outer * 2);
-  ctx.restore();
+  ctx.fillStyle = "rgba(0,0,0,1)";
+  ctx.fillRect(x, y, w, h);
+  for (const [x1,y1,x2,y2,rx,ry,rw,rh] of [
+    [x,y,x-feather,y,x-feather,y,feather,h], [right,y,right+feather,y,right,y,feather,h],
+    [x,y,x,y-feather,x-feather,y-feather,w+feather*2,feather], [x,bottom,x,bottom+feather,x-feather,bottom,w+feather*2,feather],
+  ]) {
+    const g = ctx.createLinearGradient(x1,y1,x2,y2);
+    g.addColorStop(0,"rgba(0,0,0,1)"); g.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=g; ctx.fillRect(rx,ry,rw,rh);
+  }
+}
+
+export const photoTowerMasks: Record<string,{polygon:number[][];rects:number[][];ellipses:number[][]}> = {"common":{"polygon":[[0.111244,0.325186],[0.134569,0.325186],[0.143541,0.332625],[0.145335,0.339001],[0.142943,0.35813],[0.151316,0.363443],[0.150718,0.369819],[0.149522,0.381509],[0.145933,0.387885],[0.145335,0.582359],[0.108254,0.582359],[0.107656,0.390011],[0.103469,0.378321],[0.102273,0.376196],[0.101675,0.366631],[0.100478,0.363443],[0.101077,0.359192],[0.110646,0.356004],[0.108852,0.347503],[0.107057,0.337938],[0.107057,0.332625]],"rects":[[0.110646,0.298618,0.113636,0.328374],[0.119019,0.299681,0.121411,0.326249],[0.132177,0.298618,0.135167,0.330499],[0.139952,0.301807,0.142943,0.339001],[0.124402,0.311371,0.128589,0.328374],[0.111244,0.31881,0.142344,0.328374],[0.106459,0.351753,0.111244,0.361318],[0.102871,0.354942,0.107057,0.363443]],"ellipses":[[0.111842,0.317747,0.002392,0.004251],[0.119617,0.316684,0.001794,0.003188],[0.126196,0.316684,0.002392,0.004251],[0.133373,0.302869,0.001794,0.003188],[0.142344,0.319872,0.002392,0.004251]]},"fog-night":{"polygon":[[0.089713,0.390011],[0.113636,0.390011],[0.123804,0.39745],[0.125598,0.403826],[0.122608,0.421892],[0.128589,0.427205],[0.130383,0.433581],[0.127392,0.443146],[0.125,0.455898],[0.125,0.63762],[0.087919,0.63762],[0.087321,0.453773],[0.083134,0.444208],[0.08134,0.434644],[0.078947,0.432519],[0.080144,0.424017],[0.086722,0.420829],[0.083732,0.408077],[0.082536,0.4017]],"rects":[[0.089115,0.365569,0.091507,0.396387],[0.098684,0.378321,0.101077,0.39745],[0.102871,0.377258,0.108254,0.396387],[0.110646,0.365569,0.113038,0.396387],[0.119617,0.369819,0.12201,0.403826]],"ellipses":[[0.090311,0.383634,0.00299,0.005313],[0.090311,0.367694,0.001794,0.003188],[0.09988,0.382572,0.001794,0.003188],[0.104665,0.380446,0.001794,0.003188],[0.107057,0.380446,0.001794,0.003188],[0.111842,0.367694,0.001794,0.003188],[0.120813,0.371945,0.001794,0.003188],[0.120813,0.386823,0.00299,0.005313],[0.123804,0.39745,0.00299,0.005313]]},"snow-night":{"polygon":[[0.103469,0.300744],[0.125,0.300744],[0.134569,0.308183],[0.136962,0.314559],[0.134569,0.33475],[0.141746,0.341126],[0.141746,0.34644],[0.14055,0.352816],[0.14055,0.35813],[0.136962,0.367694],[0.136364,0.562168],[0.099282,0.562168],[0.099282,0.369819],[0.095096,0.357067],[0.092703,0.351753],[0.092703,0.341126],[0.0939,0.336876],[0.101675,0.333688],[0.09988,0.327311],[0.098086,0.315622],[0.09689,0.309245]],"rects":[[0.102273,0.274176,0.105263,0.306057],[0.110048,0.285866,0.11244,0.303932],[0.115431,0.283741,0.120813,0.303932],[0.123804,0.274176,0.126196,0.306057],[0.132177,0.278427,0.135167,0.311371],[0.103469,0.298618,0.126196,0.303932]],"ellipses":[[0.103469,0.292242,0.00299,0.005313],[0.104665,0.299681,0.001794,0.003188],[0.111244,0.29118,0.001794,0.003188],[0.116627,0.29118,0.002392,0.004251],[0.119019,0.289054,0.00299,0.005313],[0.125,0.276302,0.001794,0.003188],[0.133373,0.280553,0.001794,0.003188],[0.133971,0.29543,0.00299,0.005313]]}};
+function eraseTowerSilhouette(ctx: CanvasRenderingContext2D,g:Geometry,scene:string,resolution:number):void {
+  const mask=photoTowerMasks[scene]||photoTowerMasks.common;
+  ctx.globalCompositeOperation="destination-out";ctx.fillStyle="black";ctx.strokeStyle="black";
+  ctx.lineWidth=Math.max(.8,g.width/1672*resolution*2);ctx.lineJoin="round";
+  const polygon=(points:number[][],outline=true)=>{ctx.beginPath();for(let i=0;i<points.length;i++){const [px,py]=points[i],x=(g.x+g.width*px)*resolution,y=(g.y+g.height*py)*resolution;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.closePath();ctx.fill();if(outline)ctx.stroke();};
+  polygon(mask.polygon);
+  for(const [left,top,right,bottom] of mask.rects) {
+    const vertical=bottom-top>(right-left)*1.5;
+    const inset=vertical?Math.max(0,(right-left-.0015)/2):0;
+    polygon([[left+inset,top],[right-inset,top],[right-inset,bottom],[left+inset,bottom]],false);
+  }
+  if(scene.endsWith("night")||scene==="sunset"||scene==="sunrise") for(const [x,y,rx,ry] of mask.ellipses) polygon(Array.from({length:12},(_,i)=>[x+Math.cos(i*Math.PI/6)*rx*.65,y+Math.sin(i*Math.PI/6)*ry*.65]),false);
+}
+
+function landmarks(scene: string): number[][] {
+  const tower = scene === "fog-night" ? [.079,.36,.135,.65] : scene === "snow-night" ? [.092,.26,.146,.59] : [.100,.285,.155,.61];
+  const poleTops = scene === "snow-night" ? [.47,.45,.47,.46,.45,.47,.47] : [.493,.466,.493,.475,.470,.486,.484];
+  return [tower, ...[.165,.190,.231,.255,.837,.929,.960].map((x,i) => [x-.006,poleTops[i],x+.006,.65])];
 }
 
 export function createPhotographicSky(): {
-  draw: (ctx: CanvasRenderingContext2D, w: number, h: number, dt: number, image: SkyImage, coverage: number, storm: number, windX: number, reduced: boolean, sunset?: number) => void;
+  draw: (ctx: CanvasRenderingContext2D,w:number,h:number,dt:number,image:SkyImage,coverage:number,storm:number,windX:number,reduced:boolean,reveal?:number) => boolean;
   dispose: () => void;
 } {
-  let canvas: HTMLCanvasElement | null = null;
-  let buffer: CanvasRenderingContext2D | null = null;
-  let phase = 0, evolution = 0;
-  let opacity = 0, started = false, disposed = false;
-  let currentImage: SkyImage | null = null, previousImage: SkyImage | null = null;
-  let imageBlend = 1;
-
+  let canvas: HTMLCanvasElement | null = null, buffer: CanvasRenderingContext2D | null = null;
+  let architecture: HTMLCanvasElement | null = null, architectureCtx: CanvasRenderingContext2D | null = null, architectureKey="";
+  let travel = 0, evolution = 0, opacity = 0, started = false, disposed = false;
+  let currentImage: SkyImage | null = null, previousImage: SkyImage | null = null, imageBlend = 1;
+  const plates = createPhotographicSkyPlateCache();
   return {
-    draw(ctx, w, h, dt, image, coverage, storm, windX, reduced, sunset = 0) {
-      if (disposed || w <= 0 || h <= 0 || image.width <= 0 || image.height <= 0) return;
-      if (image !== currentImage) {
-        // On rapid changes, retain the dominant source rather than flashing an
-        // intermediate photograph that had barely started to fade in.
-        previousImage = imageBlend < 0.5 && previousImage ? previousImage : currentImage;
-        currentImage = image;
-        imageBlend = previousImage ? 0 : 1;
+    draw(ctx,w,h,dt,image,coverage,storm,windX,reduced,reveal=1) {
+      if(disposed || w<=0 || h<=0 || image.width<=0 || image.height<=0) return false;
+      if(image!==currentImage) {
+        previousImage=imageBlend<.5&&previousImage?previousImage:currentImage;
+        currentImage=image; imageBlend=previousImage?0:1;
       }
-      // The unmodified photograph is already the reduced-motion background. Do not
-      // repaint it with a different crop or let the stopped moving sky obscure it.
-      if (reduced) { previousImage = null; imageBlend = 1; return; }
-      const strength = clamp(storm);
-      // The sunset photograph contains its own cloud banks even under CLR/FEW.
-      // Leaving that layer transparent exposes stationary copies of those banks.
-      const targetOpacity = clamp(Math.max(coverage * 3, strength * 1.6, sunset));
-      const step = clamp(dt, 0, 0.1);
-      imageBlend = Math.min(1, imageBlend + step / 3.6);
-      if (imageBlend === 1) previousImage = null;
-      opacity = started ? opacity + (targetOpacity - opacity) * (1 - Math.exp(-step / 2.2)) : targetOpacity;
-      started = true;
-      if (opacity < 0.002) return;
-      if (!canvas) {
-        if (typeof document === "undefined") return;
-        canvas = document.createElement("canvas");
-        buffer = canvas.getContext("2d");
-      }
-      if (!buffer) return;
-      const resolution = Math.min(1, MAX_WIDTH / w, MAX_HEIGHT / h);
-      const bw = Math.max(1, Math.round(w * resolution));
-      const bh = Math.max(1, Math.round(h * resolution));
-      if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
-
-      // Match the stable CSS background-position:center/background-size:cover.
-      // All masking landmarks are expressed in ORIGINAL image coordinates, so
-      // narrow, portrait, 4:3 and ultrawide crops preserve their own horizon.
-      const iw = image.width, ih = image.height;
-      const cover = Math.max(w / iw, h / ih);
-      const originalWidth = iw * cover, originalHeight = ih * cover;
-      const originalX = (w - originalWidth) / 2, originalY = (h - originalHeight) / 2;
-      const amplitude = originalWidth * 0.058;
-      const direction = Math.abs(windX) >= 1 ? Math.sign(windX) : 1;
-      // Illustrative cloud-level motion remains visible during calm surface wind.
-      const speed = Math.max(Math.min(Math.abs(windX), 40) * 0.9, 13 + strength * 12);
-      phase += direction * speed / Math.max(1, amplitude) * step;
-      evolution += step;
-      const zoom = 1.16 + Math.sin(evolution / 23) * 0.008;
-      const movingWidth = originalWidth * zoom, movingHeight = originalHeight * zoom;
-      const movingX = (w - movingWidth) / 2 + Math.sin(phase) * amplitude;
-      const movingY = (h - movingHeight) / 2;
-
-      buffer.globalAlpha = 1;
-      buffer.globalCompositeOperation = "source-over";
-      buffer.clearRect(0, 0, bw, bh);
-      buffer.imageSmoothingEnabled = true;
-      const previousCover = previousImage ? Math.max(w / previousImage.width, h / previousImage.height) : cover;
-      const previousWidth = previousImage ? previousImage.width * previousCover : originalWidth;
-      const previousHeight = previousImage ? previousImage.height * previousCover : originalHeight;
-      const previousMovingX = (w - previousWidth * zoom) / 2 + Math.sin(phase) * previousWidth * 0.058;
-      const previousMovingY = (h - previousHeight * zoom) / 2;
-      if (previousImage) {
-        buffer.drawImage(previousImage, previousMovingX * resolution, previousMovingY * resolution,
-          previousWidth * zoom * resolution, previousHeight * zoom * resolution);
-        buffer.globalAlpha = imageBlend;
-      }
-      buffer.drawImage(image, movingX * resolution, movingY * resolution, movingWidth * resolution, movingHeight * resolution);
-      buffer.globalAlpha = 1;
-
-      // The bundled daytime OVC photograph contains blue breaks. Neutralize
-      // their chroma only in this moving sky buffer; the architectural exclusion
-      // and horizon fade below keep every foreground pixel on the original photo.
-      // Ease in above BKN coverage so scattered-cloud identity stays unchanged.
-      const closedDeck = clamp((coverage - 0.8) / 0.2);
-      if (closedDeck > 0) {
-        buffer.globalCompositeOperation = "saturation";
-        buffer.globalAlpha = closedDeck;
-        buffer.fillStyle = "rgb(160,160,160)";
-        buffer.fillRect(0, 0, bw, bh);
-        buffer.globalAlpha = 1;
-      }
-
-      // Use the earlier of the source and destination skyline. This guarantees
-      // the scaled/panned photograph cannot introduce moving hangars or terrain.
-      // The strongest sunset cloud banks live below the old 38–46% cutoff.
-      // Carry motion through that bank, still clearing before hangar roofs and
-      // terrain; the light-pole envelopes below protect the few taller objects.
-      const solidFraction = sunset ? 0.425 : 0.38;
-      const clearFraction = sunset ? 0.505 : 0.46;
-      const solidUntil = Math.min(originalY + originalHeight * solidFraction, movingY + movingHeight * solidFraction,
-        previousMovingY + previousHeight * zoom * solidFraction) * resolution;
-      const clearBy = Math.min(originalY + originalHeight * clearFraction, movingY + movingHeight * clearFraction,
-        previousMovingY + previousHeight * zoom * clearFraction) * resolution;
-      buffer.globalCompositeOperation = "destination-in";
-      const skyMask = buffer.createLinearGradient(0, solidUntil, 0, Math.max(solidUntil + 1, clearBy));
-      skyMask.addColorStop(0, "rgba(0,0,0,1)");
-      skyMask.addColorStop(0.42, "rgba(0,0,0,.86)");
-      skyMask.addColorStop(1, "rgba(0,0,0,0)");
-      buffer.fillStyle = skyMask;
-      buffer.fillRect(0, 0, bw, bh);
-
-      // Exclude BOTH the fixed tower and the complete possible moving source
-      // tower envelope, including antennas. A fixed mask avoids a breathing
-      // architectural cutout as the pan reaches either end of its range.
-      const maximumZoom = 1.168;
-      const maximumWidth = originalWidth * maximumZoom;
-      const maximumHeight = originalHeight * maximumZoom;
-      const exclusion: Rect = {
-        left: Math.min(originalX + originalWidth * 0.088, w / 2 + maximumWidth * (0.088 - 0.5) - amplitude) * resolution,
-        right: Math.max(originalX + originalWidth * 0.17, w / 2 + maximumWidth * (0.17 - 0.5) + amplitude) * resolution,
-        top: Math.min(originalY + originalHeight * 0.245, h / 2 + maximumHeight * (0.245 - 0.5)) * resolution,
-        bottom: Math.max(originalY + originalHeight * 0.6, h / 2 + maximumHeight * (0.6 - 0.5)) * resolution,
+      if(reduced) { previousImage=null; imageBlend=1; return false; }
+      const step=clamp(dt,0,.1);
+      imageBlend=Math.min(1,imageBlend+step/3.6);
+      if(imageBlend===1) previousImage=null;
+      if(!photoSkyHasMotion(image) && (!previousImage || !photoSkyHasMotion(previousImage))) return false;
+      const target=clamp(reveal);
+      opacity=started?opacity+(target-opacity)*(1-Math.exp(-step/2.2)):target; started=true;
+      if(opacity<.002) return true;
+      const previousPlate=previousImage&&photoSkyHasMotion(previousImage)?plates.get(previousImage):null;
+      const currentPlate=photoSkyHasMotion(image)?plates.get(image):null;
+      // A failed readback must never move source architecture. Leave the safe
+      // static background visible; procedural clouds/fog continue independently.
+      if(photoSkyHasMotion(image)&&!currentPlate) return false;
+      if(!canvas) { if(typeof document==="undefined") return false; canvas=document.createElement("canvas"); buffer=canvas.getContext("2d"); }
+      if(!buffer) return false;
+      const resolution=Math.min(1,MAX_WIDTH/w,MAX_HEIGHT/h), bw=Math.max(1,Math.round(w*resolution)), bh=Math.max(1,Math.round(h*resolution));
+      if(canvas.width!==bw || canvas.height!==bh) { canvas.width=bw; canvas.height=bh; }
+      const original=photoSkyGeometry(w,h,image.width,image.height);
+      const direction=Math.abs(windX)>=1?Math.sign(windX):1;
+      const speed=Math.max(Math.min(Math.abs(windX),40)*.9,14+clamp(storm)*12);
+      travel+=direction*speed/Math.max(1,original.width)*step; evolution+=step;
+      const {offset,mix}=photoSkySamples(travel), zoom=1.16+Math.sin(evolution/23)*.008;
+      const drawSource=(source: SkyImage, plate: typeof currentPlate, pan: number, alpha: number) => {
+        if(alpha<=0) return;
+        const g=photoSkyGeometry(w,h,source.width,source.height), moving=!!plate;
+        const z=moving?zoom:1;
+        const x=g.x+g.width*(1-z)/2+(moving?pan*g.width:0), y=g.y+g.height*(1-z)/2;
+        buffer!.globalAlpha=alpha;
+        buffer!.drawImage(plate?.image || source,x*resolution,y*resolution,g.width*z*resolution,g.height*z*resolution);
       };
-      if (previousImage) {
-        const previousMaxWidth = previousWidth * maximumZoom;
-        const previousMaxHeight = previousHeight * maximumZoom;
-        exclusion.left = Math.min(exclusion.left, (w / 2 + previousMaxWidth * (0.088 - 0.5) - previousWidth * 0.058) * resolution);
-        exclusion.right = Math.max(exclusion.right, (w / 2 + previousMaxWidth * (0.17 - 0.5) + previousWidth * 0.058) * resolution);
-        exclusion.top = Math.min(exclusion.top, (h / 2 + previousMaxHeight * (0.245 - 0.5)) * resolution);
-        exclusion.bottom = Math.max(exclusion.bottom, (h / 2 + previousMaxHeight * (0.6 - 0.5)) * resolution);
+      buffer.globalAlpha=1; buffer.globalCompositeOperation="source-over"; buffer.clearRect(0,0,bw,bh); buffer.imageSmoothingEnabled=true;
+      // Exact four-weight crossfade, using source-over without allocating a
+      // second per-frame surface. Both source and recycle transitions stay opaque.
+      const blend=previousImage?imageBlend:1;
+      if(previousImage) drawSource(previousImage,previousPlate,offset,1);
+      drawSource(image,currentPlate,offset,blend);
+      if(previousImage && mix>0) drawSource(previousImage,previousPlate,offset-PAN*2,((1-blend)*mix)/Math.max(1e-9,1-blend*mix));
+      if(mix>0) drawSource(image,currentPlate,offset-PAN*2,blend*mix);
+      buffer.globalAlpha=1;
+      // Keep star points fixed while the cloud plate travels beneath them.
+      for(const [source,plate,alpha] of [[previousImage,previousPlate,1-blend],[image,currentPlate,blend]] as const) {
+        if(!source || !plate?.stars || alpha<=0) continue;
+        const g=photoSkyGeometry(w,h,source.width,source.height);
+        buffer.globalCompositeOperation="screen"; buffer.globalAlpha=alpha; buffer.drawImage(plate.stars,g.x*resolution,g.y*resolution,g.width*resolution,g.height*resolution);
       }
-      if (exclusion.right > -bw * 0.06 && exclusion.left < bw) eraseTower(buffer, exclusion, Math.max(3, originalWidth * resolution * 0.045));
-      if (sunset) {
-        // Fixed masks cover both the stable photograph and every possible pan of
-        // the source poles. They do not chase individual frames or make moving
-        // cutouts. Positions are original-photo coordinates, as for the tower.
-        for (const [x, top] of [[0.174, 0.465], [0.211, 0.49], [0.833, 0.465], [0.929, 0.485], [0.958, 0.49]]) {
-          const pole: Rect = {
-            left: Math.min(originalX + originalWidth * (x - 0.006), w / 2 + maximumWidth * (x - 0.506) - amplitude) * resolution,
-            right: Math.max(originalX + originalWidth * (x + 0.006), w / 2 + maximumWidth * (x - 0.494) + amplitude) * resolution,
-            top: Math.min(originalY + originalHeight * top, h / 2 + maximumHeight * (top - 0.5)) * resolution,
-            bottom: Math.max(originalY + originalHeight * 0.6, h / 2 + maximumHeight * 0.1) * resolution,
-          };
-          if (previousImage) {
-            const pw = previousWidth * maximumZoom, ph = previousHeight * maximumZoom;
-            pole.left = Math.min(pole.left, (w / 2 + pw * (x - 0.506) - previousWidth * 0.058) * resolution);
-            pole.right = Math.max(pole.right, (w / 2 + pw * (x - 0.494) + previousWidth * 0.058) * resolution);
-            pole.top = Math.min(pole.top, (h / 2 + ph * (top - 0.5)) * resolution);
-            pole.bottom = Math.max(pole.bottom, (h / 2 + ph * 0.1) * resolution);
+      buffer.globalAlpha=1; buffer.globalCompositeOperation="source-over";
+      const closedDeck=clamp((coverage-.8)/.2);
+      if(closedDeck>0) { buffer.globalCompositeOperation="saturation"; buffer.globalAlpha=closedDeck; buffer.fillStyle="rgb(160,160,160)"; buffer.fillRect(0,0,bw,bh); buffer.globalAlpha=1; }
+      // Source-space skyline follows every viewport crop. Cleaning the sky plate
+      // lets this mask protect just the fixed tower, not its entire swept path.
+      let solid=Infinity, clear=Infinity;
+      for(const source of [image,previousImage]) {
+        if(!source) continue;
+        const g=photoSkyGeometry(w,h,source.width,source.height), scene=photoSkyScene(source);
+        const bottom=scene==="snow-night"?.49:scene==="fog-night"?.54:.505;
+        solid=Math.min(solid,g.y+g.height*(bottom-.08),g.y+g.height*((1-MAX_ZOOM)/2+MAX_ZOOM*(bottom-.08)));
+        clear=Math.min(clear,g.y+g.height*bottom,g.y+g.height*((1-MAX_ZOOM)/2+MAX_ZOOM*bottom));
+      }
+      buffer.globalCompositeOperation="destination-in";
+      const mask=buffer.createLinearGradient(0,solid*resolution,0,Math.max(solid+1,clear)*resolution);
+      mask.addColorStop(0,"rgba(0,0,0,1)");mask.addColorStop(.42,"rgba(0,0,0,.86)");mask.addColorStop(1,"rgba(0,0,0,0)");
+      buffer.fillStyle=mask; buffer.fillRect(0,0,bw,bh);
+      const maskKey=[w,h,image.width,image.height,photoSkyScene(image),previousImage?.width,previousImage?.height,previousImage?photoSkyScene(previousImage):""].join(":");
+      if(!architecture){architecture=document.createElement("canvas");architectureCtx=architecture.getContext("2d");}
+      if(architectureCtx&&maskKey!==architectureKey){
+        architecture.width=bw;architecture.height=bh;architectureCtx.clearRect(0,0,bw,bh);architectureCtx.globalCompositeOperation="source-over";architectureCtx.fillStyle="white";architectureCtx.fillRect(0,0,bw,bh);
+        for(const source of [image,previousImage]) {
+          if(!source) continue;
+          const g=photoSkyGeometry(w,h,source.width,source.height),scene=photoSkyScene(source);
+          eraseTowerSilhouette(architectureCtx,g,scene,resolution);
+          for(const [left,top,right,bottom] of landmarks(scene).slice(1)) {
+            const r={left:(g.x+g.width*left)*resolution,top:(g.y+g.height*top)*resolution,right:(g.x+g.width*right)*resolution,bottom:(g.y+g.height*bottom)*resolution};
+            if(r.right>0&&r.left<bw&&r.top<bh) eraseRect(architectureCtx,r,Math.max(1,g.width*resolution*.0015));
           }
-          if (pole.right > 0 && pole.left < bw) eraseTower(buffer, pole, Math.max(2, originalWidth * resolution * 0.004));
         }
+        architectureKey=maskKey;
       }
-      ctx.save();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.globalAlpha = opacity;
-      ctx.drawImage(canvas, 0, 0, w, h);
-      ctx.restore();
+      // If a second context cannot be acquired, keep the original photo safe.
+      if(!architectureCtx) return false;
+      buffer.globalCompositeOperation="destination-in";buffer.drawImage(architecture,0,0,bw,bh);
+      ctx.save(); ctx.globalCompositeOperation="source-over";ctx.globalAlpha=opacity;ctx.drawImage(canvas,0,0,w,h);ctx.restore();return true;
     },
-    dispose() {
-      disposed = true;
-      if (canvas) { canvas.width = 1; canvas.height = 1; }
-      canvas = null;
-      buffer = null;
-      currentImage = null;
-      previousImage = null;
-    },
+    dispose() { disposed=true; if(canvas) {canvas.width=1;canvas.height=1;}canvas=null;buffer=null;if(architecture){architecture.width=1;architecture.height=1;}architecture=null;architectureCtx=null;currentImage=null;previousImage=null;plates.dispose(); },
   };
 }
