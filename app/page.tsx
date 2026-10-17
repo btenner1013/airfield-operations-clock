@@ -10,7 +10,7 @@ import PreviewLab from "./PreviewLab";
 import { NO_LIGHTNING, compactLightningDisplay, lightningForAnimation, lightningPlacement, parseCurrentLightning, type LightningLevel, type LightningReport, type LightningTone } from "./lightning";
 import { useLightningScheduler } from "./useLightning";
 import { applyStructuredTaf, extractAviationPhenomena, parseAviationSky, parseStructuredTaf, resolveOperationalWeather } from "./aviationWeatherPriority";
-import { withOptionalWeatherDeadline, classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
+import { withOptionalWeatherDeadline, classifyMetarFreshness, classifyTafFreshness, createRefreshCoordinator, installWeatherRefreshLifecycle, mergeWeather, parseMetarObservedAt, parseTafTimes, restoreRunwayOperationsCache, restoreWeatherCache, serializeWeatherCache } from "./weatherRefresh";
 import { calculateBirdObservationAge, formatBwcCalendarStamp, parseAhasTimestampIso } from "./birdWatch";
 import type { CloudCoverage, Forecast, SolarDay, Theme, Weather, WeatherFetchResult } from "./weatherTypes";
 import { sceneFor, sceneForEffects, type SolarPhase } from "./wallpaper";
@@ -19,7 +19,7 @@ import { applyNwsPrecipitation, describePrecipitationSource, parseNwsHourlyPreci
 import { parseStandardWind, resolveCurrentWind, type CurrentWindRecord } from "./currentWind";
 import WindInstrument from "./WindInstrument";
 import RunwayPlacement from "./RunwayPlacement";
-import { normalizeRunwayOperations } from "./runwayOperations";
+import { markRunwayOperationsLastKnown, normalizeRunwayOperations } from "./runwayOperations";
 import WeatherIcon from "./WeatherIcon";
 import SolarLunarInstrument from "./SolarLunarInstrument";
 import BirdWatchGlyph from "./BirdWatchGlyph";
@@ -407,8 +407,11 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const exact = params.get("debugExactTime");
       const displayNow = exact ? new Date(Number(exact)) : new Date();
-      const cached=restoreWeatherCache(localStorage.getItem("kmem-weather"), displayNow);
-      if(cached) commit(cached);
+      const rawCache=localStorage.getItem("kmem-weather");
+      const cached=restoreWeatherCache(rawCache, displayNow);
+      const retainedRunways=restoreRunwayOperationsCache(rawCache, displayNow);
+      if(cached) commit({...cached,runwayOperations:retainedRunways});
+      else if(retainedRunways) commit({...weatherRef.current,runwayOperations:retainedRunways});
     }catch{}
     const coordinator=createRefreshCoordinator<WeatherFetchResult>({
       fetcher:signal=>getWeather(signal),
@@ -420,7 +423,7 @@ export default function Home() {
         const merged=mergeWeather(prior,{...result,weather:candidate}); commit(merged);
         try{const stored=serializeWeatherCache(merged,atIso);if(stored)localStorage.setItem("kmem-weather",stored);}catch{}
       },
-      onError:(_error,_reason,_atIso,timedOut)=>{ commit({...weatherRef.current,currentOpsWeather:null,forecast:weatherRef.current.forecast.map(row=>({...row,forecastWind:null})),requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}); },
+      onError:(_error,_reason,_atIso,timedOut)=>{ commit({...weatherRef.current,runwayOperations:markRunwayOperationsLastKnown(weatherRef.current.runwayOperations),currentOpsWeather:null,forecast:weatherRef.current.forecast.map(row=>({...row,forecastWind:null})),requestStatus:"ERROR",feedStatus:navigator.onLine?"DEGRADED":"OFFLINE",feedError:timedOut?"REQUEST TIMEOUT":"REFRESH FAILED"}); },
       timeoutMs:12000
     });
     const removeLifecycle=installWeatherRefreshLifecycle(reason=>{void coordinator.refresh(reason);},CONFIG.weatherRefreshMinutes*60000);

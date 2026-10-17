@@ -40,11 +40,13 @@ test('actual markup contains both ARR and DEP arrows and suppresses closed physi
  assert.doesNotMatch(html,/data-end="(?:18R|36L)"/);
  assert.doesNotMatch(html,/<rect|<header|<foreignObject/);
 });
-test('stale and absent data render four gray runways without operational arrows or red X',()=>{
- for(const html of [render(input,time+91*60000),render(null)]){
-  assert.equal((html.match(/data-state="unknown"/g)||[]).length,4);
-  assert.doesNotMatch(html,/data-operation=|runway-closure/);
- }
+test('stale ATIS preserves diagram and closure while absent data remains unknown',()=>{
+ const stale=render(input,time+91*60000);
+ assert.match(stale,/data-atis-current="false"/);assert.match(stale,/Last-known ATIS configuration/);
+ assert.equal((stale.match(/data-operation="arrival"/g)||[]).length,2);
+ assert.match(stale,/runway-closure/);
+ const absent=render(null);assert.equal((absent.match(/data-state="unknown"/g)||[]).length,4);
+ assert.doesNotMatch(absent,/data-operation=|runway-closure/);
 });
 test('diagram occupies header right and Julian group sits below both clocks',()=>{
  const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
@@ -138,14 +140,11 @@ test('CLSD box disappears completely when nothing is closed; empty ARR and DEP a
  assert.equal(status({...input,atisReportedArrRunways:null,atisReportedDepRunways:null,atisReportedClosedRunways:null}),'');
 });
 
-test('unknown, stale, cached and failed sources leave no status rows or placeholder container',()=>{
+test('stale and cached valid ATIS keep status rows while invalid reports do not invent them',()=>{
  assert.equal(status(null),'');
- for(const overrides of [
-  {atisObservedZ:'2026-10-16T12:00:00Z'}, {atisObservedZ:null}, {atisObservedZ:'2026-10-16T16:00:00Z'},
-  {atisFetchStatus:'ERROR'}, {atisSelectedSource:'CACHE'}, {atisSourceIsCurrent:false}, {lastKnownGoodUsed:{atis:true}},
- ])assert.equal(status({...input,...overrides}),'');
- assert.notEqual(status(input,Date.parse(input.atisObservedZ)+90*60000),'');
- assert.equal(status(input,Date.parse(input.atisObservedZ)+90*60000+1),'');
+ for(const overrides of [{atisObservedZ:null},{atisObservedZ:'2026-10-16T16:00:00Z'},{atisFetchStatus:'ERROR'}])assert.equal(status({...input,...overrides}),'');
+ for(const overrides of [{atisObservedZ:'2026-10-16T12:00:00Z'},{atisSourceIsCurrent:false},{lastKnownGoodUsed:{atis:true}}])assert.notEqual(status({...input,...overrides}),'');
+ assert.notEqual(status(input,Date.parse(input.atisObservedZ)+90*60000+1),'');
  assert.equal(status({windDirDeg:360,arrRunways:'36R',depRunways:'36C'}),'');
 });
 
@@ -164,10 +163,10 @@ test('status rows share diagram closure precedence and cannot repeat conflicting
  assert.match(placement,/<RunwayStatus operations=\{operations\}/);
 });
 
-test('ATIS and NOTAM age independently and only effective fresh closures get a CLSD row',()=>{
+test('ATIS closures persist while NOTAM acquisition and effective dates remain independent',()=>{
  const staleAtis={...input,...notams,atisObservedZ:'2026-10-16T12:00:00Z'};
  const closureOnly=status(staleAtis);
- assert.equal(row(closureOnly,'ARR'),'');assert.equal(row(closureOnly,'DEP'),'');assert.match(row(closureOnly,'CLSD'),/18R\/36L/);
+ assert.match(row(closureOnly,'ARR'),/36R/);assert.match(row(closureOnly,'DEP'),/36C/);assert.match(row(closureOnly,'CLSD'),/18R\/36L/);
  const staleNotam=status({...input,...notams,atisReportedClosedRunways:null,atisReportedArrRunways:'36L / 36R',milNotamUpdatedZ:'2026-10-16T12:00:00Z'});
  assert.equal(row(staleNotam,'CLSD'),'');assert.doesNotMatch(row(staleNotam,'ARR'),/36L/);assert.match(row(staleNotam,'ARR'),/36R/);
  for(const change of [{effectiveStart:'202610161600'},{effectiveEnd:'202610161500'},{effectiveEnd:null}]){
@@ -175,7 +174,7 @@ test('ATIS and NOTAM age independently and only effective fresh closures get a C
   assert.equal(row(html,'CLSD'),'');
  }
  const bothStale=status({...staleAtis,milNotamUpdatedZ:'2026-10-16T12:00:00Z'});
- assert.equal(bothStale,'');
+ assert.match(row(bothStale,'CLSD'),/18R\/36L/);assert.match(row(bothStale,'ARR'),/36R/);
 });
 
 test('status colors are green for use and red for closed, preserving the original SVG palette and footprint',()=>{
@@ -311,4 +310,40 @@ test('clock heads retain LOCAL and ZULU while redundant badges and dots are remo
  const placement=readFileSync(new URL('../app/RunwayPlacement.tsx',import.meta.url),'utf8');
  assert.match(placement,/querySelectorAll<HTMLElement>\('\.clock-head'\)/);
  assert.doesNotMatch(placement,/clock-head b|clock-head i|ON STATION|UNIVERSAL/);
+});
+
+const cueSource=readFileSync(new URL('../app/RunwayReportCue.tsx',import.meta.url),'utf8');
+const cueCompiled=ts.transpileModule(cueSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const cueModule={exports:{}};
+new Function('require','module','exports',cueCompiled)(require,cueModule,cueModule.exports);
+const cue=(data=input,at=time)=>renderToStaticMarkup(React.createElement(cueModule.exports.default,{operations:operations.resolveRunwayOperations(operations.normalizeRunwayOperations(data),at)}));
+test('compact ATIS cue labels fresh, stale, failed-retained, and missing provenance',()=>{
+ assert.match(cue({...input,atisLetter:'U'}),/ATIS U · 6m ago/);
+ assert.match(cue(input,time+2*60*60000),/2h 6m ago · STALE/);
+ assert.match(cue({...input,lastKnownGoodUsed:{atis:true}}),/LAST KNOWN/);
+ assert.match(cue(null),/ATIS UNAVAILABLE/);
+ assert.match(cue(input,time+2*86400000),/2d 0h ago · STALE/);
+ assert.match(cue(input),/2026-10-16T14:54:00.000Z/);
+ assert.match(cueSource,/not a current operational clearance/);
+});
+test('provenance line does not resize the diagram or change runway colors',()=>{
+ const css=readFileSync(new URL('../app/runway-diagram.css',import.meta.url),'utf8');
+ assert.match(css,/\.runway-report-cue \{[\s\S]*?position:absolute;left:0;right:0;top:-4px/);
+ assert.match(css,/font:600 min\(13px,3.4cqw\)/);
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ assert.match(page,/onError:[\s\S]*?runwayOperations:markRunwayOperationsLastKnown\(weatherRef.current.runwayOperations\)/);
+});
+
+test('long provenance cues scale within narrow and TV panel widths',()=>{
+ const longest='ATIS 1454Z · 23h 59m ago · LAST KNOWN';
+ for(const width of [120,180,240,320,385]){
+  const font=Math.min(13,width*.034);
+  assert.ok(longest.length*font*.61<width,`cue fits ${width}px panel using monospace advance`);
+ }
+});
+
+test('startup restores validated ATIS independently when dated weather cache is unusable',()=>{
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ assert.match(page,/restoreRunwayOperationsCache\(rawCache, displayNow\)/);
+ assert.match(page,/else if\(retainedRunways\) commit\(\{\.\.\.weatherRef.current,runwayOperations:retainedRunways\}\)/);
 });

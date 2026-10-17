@@ -2,6 +2,7 @@
 import {useLayoutEffect,useRef,useState} from 'react';
 import RunwayDiagram from './RunwayDiagram';
 import RunwayStatus from './RunwayStatus';
+import RunwayReportCue from './RunwayReportCue';
 import {runwayPanelWidth,runwayPlacementHeight} from './runwayGeometry';
 import {resolveRunwayOperations,type RunwayOperationsSnapshot} from './runwayOperations';
 
@@ -30,6 +31,7 @@ export default function RunwayPlacement(props:{snapshot:RunwayOperationsSnapshot
     return()=>{observer.disconnect();window.removeEventListener('resize',measure);};
   },[]);
   return <div ref={ref} className="runway-placement" style={{height,width}} data-ready={height>0}>
+    <RunwayReportCue operations={operations}/>
     <div className="runway-graphic" style={{height,width:height*300/280}}>
       <RunwayDiagram {...props} operations={operations}/>
     </div>

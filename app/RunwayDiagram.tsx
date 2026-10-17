@@ -8,8 +8,8 @@ function arrowPath(start:RunwayPoint,end:RunwayPoint) {
 export default function RunwayDiagram({snapshot,nowMs,operations:resolved}:{snapshot:RunwayOperationsSnapshot|null|undefined;nowMs:number;operations?:ResolvedRunwayOperations}) {
   const operations=resolved??resolveRunwayOperations(snapshot??null,nowMs);
   const description=operations.runways.map(r=>`${r.id}: ${r.state==='closed'?'closed':r.state==='active'?'reported in use':'status unknown'}${r.arrivals.length?`; arrivals ${r.arrivals.join(', ')}`:''}${r.departures.length?`; departures ${r.departures.join(', ')}`:''}`).join('. ');
-  return <svg className="runway-diagram" viewBox="20 0 300 280" role="img" aria-label={`KMEM runway operations. ${description}. Schematic reference only.`} data-atis-current={operations.atisCurrent} data-notams-current={operations.notamsCurrent}>
-    <title>KMEM runway operations</title><desc>{description}. Arrival arrows point toward the landing threshold; departure arrows point away from the opposite end. Gray means unknown or stale.</desc>
+  return <svg className="runway-diagram" viewBox="20 0 300 280" role="img" aria-label={`KMEM runway operations. ${operations.atisLastKnown?"Last-known ATIS configuration. ":""}${description}. Schematic reference only.`} data-atis-current={operations.atisCurrent} data-notams-current={operations.notamsCurrent}>
+    <title>KMEM runway operations</title><desc>{description}. Arrival arrows point toward the landing threshold; departure arrows point away from the opposite end. Gray means unknown or an unresolved closure conflict. ATIS colors describe the latest valid report, including when marked last known; they do not provide operational clearance.</desc>
     {RUNWAY_GEOMETRY.map(geometry=>{
       const state=operations.runways.find(r=>r.id===geometry.id)!;
       const [a,b]=geometry.points;const east=geometry.id==='18L/36R',cross=geometry.id==='09/27';

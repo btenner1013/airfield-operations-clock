@@ -9,9 +9,12 @@ import {
   mergeWeather,
   parseMetarObservedAt,
   parseTafTimes,
+  restoreRunwayOperationsCache,
   restoreWeatherCache,
   serializeWeatherCache,
 } from "../app/weatherRefresh.ts";
+
+import { normalizeRunwayOperations, resolveRunwayOperations } from "../app/runwayOperations.ts";
 
 const iso="2026-07-20T06:00:00.000Z";
 function weather(overrides={}) {
@@ -283,4 +286,57 @@ test("canonical current JSON metrics are cleared on cache restore, including mal
   assert.ok(restored);assert.equal(restored.currentOpsWeather,null);assert.equal(restored.temperatureF,snapshot.temperatureF);
   const corrupt=JSON.parse(raw);corrupt.weather.currentOpsWeather="untrusted cached extension";
   assert.equal(restoreWeatherCache(JSON.stringify(corrupt),new Date("2026-07-20T06:02:00Z")).currentOpsWeather,null);
+});
+
+
+const runwayFeed = {
+  atisReportedArrRunways:"36R",atisReportedDepRunways:"36C",atisReportedClosedRunways:"18R / 36L",
+  atisObservedZ:"2026-07-20T05:54:00Z",atisReportedLetter:"U",atisFetchStatus:"OK",atisSelectedSource:"ATIS_INFO_API",
+};
+test("weather merge retains latest ATIS independently of fresh or failed weather sources", () => {
+  const prior = weather({runwayOperations:normalizeRunwayOperations(runwayFeed)});
+  for (const [candidate,feedReached] of [[undefined,false],[normalizeRunwayOperations(null),true],[normalizeRunwayOperations({...runwayFeed,atisObservedZ:"2026-07-20T05:00:00Z"}),true]]) {
+    const result = {weather:weather({runwayOperations:candidate}),metarValid:true,tafValid:true,modelValid:true,windValid:true,feedReached};
+    const merged = mergeWeather(prior,result);
+    assert.deepEqual(merged.runwayOperations.arrivals,["36R"]);
+    assert.equal(merged.runwayOperations.atisObservedAt,prior.runwayOperations.atisObservedAt);
+    assert.equal(resolveRunwayOperations(merged.runwayOperations,Date.parse(iso)).atisLastKnown,true);
+  }
+  const empty = normalizeRunwayOperations({...runwayFeed,atisObservedZ:"2026-07-20T05:59:00Z",atisReportedArrRunways:"--",atisReportedDepRunways:"--",atisReportedClosedRunways:"NONE"});
+  const replacement = mergeWeather(prior,{weather:weather({runwayOperations:empty}),metarValid:false,tafValid:false,modelValid:false,windValid:false,feedReached:true});
+  assert.deepEqual(replacement.runwayOperations.arrivals,[]);
+  assert.deepEqual(replacement.runwayOperations.closed,[]);
+  assert.equal(resolveRunwayOperations(replacement.runwayOperations,Date.parse(iso)).atisAvailable,true);
+});
+
+test("cache reload retains validated last-known ATIS without reviving unrelated current metrics", () => {
+  const prior = weather({runwayOperations:normalizeRunwayOperations(runwayFeed),solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:00"}]});
+  const raw = serializeWeatherCache(prior,"2026-07-20T06:02:00Z");
+  const restored = restoreWeatherCache(raw,new Date("2026-07-20T11:00:00Z"));
+  const operations = resolveRunwayOperations(restored.runwayOperations,new Date("2026-07-20T11:00:00Z"));
+  assert.equal(operations.atisLastKnown,true);
+  assert.equal(operations.atisAgeMinutes,306);
+  assert.equal(operations.atisLetter,"U");
+  assert.deepEqual(operations.runways.find(runway=>runway.id==="18L/36R").arrivals,["36R"]);
+  assert.equal(restored.currentOpsWeather,null);
+  const corrupt = JSON.parse(raw);
+  corrupt.weather.runwayOperations.arrivals=["36R",{}];
+  const safe = restoreWeatherCache(JSON.stringify(corrupt),new Date("2026-07-20T11:00:00Z"));
+  assert.ok(safe);
+  assert.equal(safe.runwayOperations,null);
+  assert.equal(safe.temperatureF,prior.temperatureF);
+});
+
+test("ATIS-only cache restore survives local-day and TAF guards without weakening weather guards", () => {
+  const prior = weather({runwayOperations:normalizeRunwayOperations(runwayFeed),solarDays:[{date:"2026-07-20",sunriseLocal:"06:00",sunsetLocal:"20:00"}]});
+  const raw = serializeWeatherCache(prior,"2026-07-20T06:02:00Z");
+  const tomorrow = new Date("2026-07-21T11:00:00Z");
+  assert.equal(restoreWeatherCache(raw,tomorrow),null);
+  const restored = restoreRunwayOperationsCache(raw,tomorrow);
+  assert.equal(resolveRunwayOperations(restored,tomorrow).atisLastKnown,true);
+  assert.equal(resolveRunwayOperations(restored,tomorrow).atisAgeMinutes,1746);
+  const missingTaf = JSON.parse(raw);missingTaf.weather.tafValidStartIso=null;missingTaf.weather.tafValidEndIso=null;
+  assert.equal(restoreWeatherCache(JSON.stringify(missingTaf),new Date("2026-07-20T11:00:00Z")),null);
+  assert.ok(restoreRunwayOperationsCache(JSON.stringify(missingTaf),tomorrow));
+  for (const invalid of [null,"{bad",JSON.stringify({...JSON.parse(raw),version:999}),JSON.stringify({...JSON.parse(raw),savedAtIso:"bad"}),JSON.stringify({...JSON.parse(raw),savedAtIso:"2026-07-22T00:00:00Z"}),JSON.stringify({...JSON.parse(raw),savedAtIso:"2026-07-20T04:00:00Z"})]) assert.equal(restoreRunwayOperationsCache(invalid,tomorrow),null);
 });

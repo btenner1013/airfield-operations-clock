@@ -3,7 +3,7 @@
 .clocks { position:relative; }
 .runway-placement {
   position:absolute;right:0;top:0;
-  pointer-events:none;z-index:3;visibility:hidden;
+  pointer-events:none;z-index:3;visibility:hidden;container-type:inline-size;
 }
 /* Paint outside the measured SVG: 8px breathing room without shrinking arrows.
    Existing 12px vertical / 24px horizontal collision gaps cover this rim. */
@@ -61,3 +61,11 @@
   .clock .clock-foot { flex-wrap:wrap; }
   .clock .clock-foot span { text-align:right;margin-left:auto; }
 }
+
+/* Small provenance line in the existing empty top margin; no diagram rescaling. */
+.runway-report-cue {
+  position:absolute;left:0;right:0;top:-4px;z-index:1;text-align:center;
+  font:600 min(13px,3.4cqw)/1.15 Consolas,"DejaVu Sans",monospace;
+  color:#c2d3dc;white-space:nowrap;pointer-events:auto;
+}
+.runway-report-cue[data-last-known="true"] { color:#ffd489; }

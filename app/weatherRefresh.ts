@@ -1,5 +1,6 @@
 import { ATIS_WIND_CURRENT_MINUTES, METAR_WIND_CURRENT_MINUTES, type CurrentWindRecord } from "./currentWind.ts";
 import { matchPeriodPrecipitation } from "./futureWeather.ts";
+import { mergeRunwayOperations, restoreRunwayOperations, type RunwayOperationsSnapshot } from "./runwayOperations.ts";
 import type { Weather, WeatherFetchResult } from "./weatherTypes";
 
 export type MetarFreshness = { state:"CURRENT"|"STALE"|"UNAVAILABLE"; ageMinutes:number|null };
@@ -137,6 +138,7 @@ export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weathe
   const merged={...previous,...result.weather,currentOpsWeather:result.feedReached?result.weather.currentOpsWeather:null};
   if(!result.modelValid) preserve(merged,previous,MODEL_KEYS);
   const reference=Date.parse(result.weather.lastRefreshAttemptIso||"")||Date.now();
+  merged.runwayOperations=mergeRunwayOperations(previous.runwayOperations,result.weather.runwayOperations,reference,result.feedReached);
   // A lagging CDN generation must not roll the canonical values or their arrows
   // backwards. Retain the prior snapshot atomically; render-time age checks still apply.
   const priorOps=previous.currentOpsWeather,nextOps=result.weather.currentOpsWeather;
@@ -262,6 +264,20 @@ export function serializeWeatherCache(weather:Weather, savedAtIso:string):string
   return JSON.stringify({version:CACHE_VERSION,savedAtIso,weather});
 }
 
+/** Runway provenance is independent of the whole-weather TAF and local-day guards. */
+export function restoreRunwayOperationsCache(raw:string|null, displayNow:Date):RunwayOperationsSnapshot|null {
+  if(!raw||!Number.isFinite(displayNow.getTime())) return null;
+  try {
+    const parsed=JSON.parse(raw) as {version?:number;savedAtIso?:string;weather?:{runwayOperations?:unknown}};
+    if(![1,2,3,CACHE_VERSION].includes(parsed.version||0)||!validDate(parsed.savedAtIso)||!parsed.weather||typeof parsed.weather!=="object") return null;
+    const savedAt=Date.parse(parsed.savedAtIso);
+    if(savedAt>displayNow.getTime()+5*60000) return null;
+    const snapshot=restoreRunwayOperations(parsed.weather.runwayOperations,displayNow.getTime());
+    if(!snapshot||Date.parse(snapshot.atisObservedAt!)>savedAt+5*60000) return null;
+    return snapshot;
+  } catch { return null; }
+}
+
 export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|null {
   if(!raw) return null;
   try {
@@ -284,9 +300,10 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     const aged=refreshPrecipitationAges(migrated,displayNow.getTime());
     const candidate={...aged,currentLightning:{...LEGACY_NO_LIGHTNING,...(aged.currentLightning&&typeof aged.currentLightning==="object"?aged.currentLightning:{})}};
     if(!isWeather(candidate)) return null;
-    // Operations are re-established from a fetched source after reload. Never trust
-    // an unvalidated cached extension to advertise a runway as in use.
-    return {...candidate,currentOpsWeather:null,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations:null,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    // ATIS may survive reload only as a validated, explicitly last-known report.
+    // Current weather metrics and forecast wind still require a fetched source.
+    const runwayOperations=restoreRunwayOperationsCache(raw,displayNow);
+    return {...candidate,currentOpsWeather:null,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 
