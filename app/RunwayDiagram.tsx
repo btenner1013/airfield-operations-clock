@@ -1,5 +1,6 @@
 import {RUNWAY_GEOMETRY,runwayArrow,type RunwayPoint} from './runwayGeometry';
 import {resolveRunwayOperations,type RunwayOperationsSnapshot,type ResolvedRunwayOperations} from './runwayOperations';
+import RunwayAircraft from './RunwayAircraft';
 const colors={active:'#62e5a6',closed:'#ff7179',unknown:'#87949e'};
 function arrowPath(start:RunwayPoint,end:RunwayPoint) {
   const d=Math.hypot(end.x-start.x,end.y-start.y),ux=(end.x-start.x)/d,uy=(end.y-start.y)/d;
@@ -9,7 +10,7 @@ export default function RunwayDiagram({snapshot,nowMs,operations:resolved}:{snap
   const operations=resolved??resolveRunwayOperations(snapshot??null,nowMs);
   const description=operations.runways.map(r=>`${r.id}: ${r.state==='closed'?'closed':r.state==='active'?'reported in use':'status unknown'}${r.arrivals.length?`; arrivals ${r.arrivals.join(', ')}`:''}${r.departures.length?`; departures ${r.departures.join(', ')}`:''}`).join('. ');
   return <svg className="runway-diagram" viewBox="20 0 300 280" role="img" aria-label={`KMEM runway operations. ${operations.atisLastKnown?"Last-known ATIS configuration. ":""}${description}. Schematic reference only.`} data-atis-current={operations.atisCurrent} data-notams-current={operations.notamsCurrent}>
-    <title>KMEM runway operations</title><desc>{description}. Arrival arrows point toward the landing threshold; departure arrows point away from the opposite end. Gray means unknown or an unresolved closure conflict. ATIS colors describe the latest valid report, including when marked last known; they do not provide operational clearance.</desc>
+    <title>KMEM runway operations</title><desc>{description}. Arrival arrows point toward the landing threshold; departure arrows point away from the opposite end. Aircraft illustrate reported runway use, not real traffic, flight procedures or operational separation. Gray means unknown or an unresolved closure conflict. ATIS colors describe the latest valid report, including when marked last known; they do not provide operational clearance.</desc>
     {RUNWAY_GEOMETRY.map(geometry=>{
       const state=operations.runways.find(r=>r.id===geometry.id)!;
       const [a,b]=geometry.points;const east=geometry.id==='18L/36R',cross=geometry.id==='09/27';
@@ -25,5 +26,6 @@ export default function RunwayDiagram({snapshot,nowMs,operations:resolved}:{snap
         }))}
       </g>;
     })}
+    <RunwayAircraft operations={operations}/>
   </svg>;
 }

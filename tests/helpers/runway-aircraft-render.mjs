@@ -1,0 +1,10 @@
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import ts from 'typescript';
+import * as aircraft from '../../app/runwayAircraft.ts';
+const require=createRequire(import.meta.url);
+const source=readFileSync(new URL('../../app/RunwayAircraft.tsx',import.meta.url),'utf8');
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const module={exports:{}};
+new Function('require','module','exports',compiled)(name=>name==='./runwayAircraft'?aircraft:require(name),module,module.exports);
+export const Aircraft=module.exports.default;

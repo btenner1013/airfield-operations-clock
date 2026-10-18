@@ -1,0 +1,16 @@
+/* Decorative, source-resolved runway-use symbols. Native SVG owns the clock. */
+.runway-aircraft { pointer-events:none; }
+.runway-diagram .runway-aircraft-body {
+  fill:#fff4dc;stroke:#06151d;stroke-width:2.1px;
+  stroke-linejoin:round;paint-order:stroke fill;
+}
+.runway-diagram .runway-aircraft-engines {
+  fill:#fff4dc;stroke:#06151d;stroke-width:.55px;stroke-linejoin:round;
+}
+.runway-aircraft-static { display:none; }
+[data-reduced-motion="1"] .runway-aircraft-motion { display:none; }
+[data-reduced-motion="1"] .runway-aircraft-static { display:inline; }
+@media (prefers-reduced-motion:reduce) {
+  .runway-aircraft-motion { display:none; }
+  .runway-aircraft-static { display:inline; }
+}
