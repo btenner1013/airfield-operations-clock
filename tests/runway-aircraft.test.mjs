@@ -13,6 +13,11 @@ const resolve=(...args)=>resolveRunwayOperations(snapshot(...args),now);
 const render=operations=>renderToStaticMarkup(React.createElement(Aircraft,{operations}));
 const selected=o=>runwayAircraftGroups(o).flatMap(g=>g.ends);
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} ≈ ${b}`);
+const aircraftCss=readFileSync(new URL('../app/runway-aircraft.css',import.meta.url),'utf8');
+const bodyRadius=Number(aircraftCss.match(/runway-aircraft-body \{[^}]*stroke-width:([\d.]+)px/)[1])/2;
+// The micro-shadow is local/tailward; include a conservative three-sigma blur
+// envelope in addition to the drawn body, with no change to route coordinates.
+const visualLayers=[{dy:0,radius:bodyRadius},{dy:.6,radius:bodyRadius+.6}];
 // Body control-point hull plus outer engine extents. An empty bounding rectangle
 // overstates the wings near the nose when rotated; this bounds the drawn paths.
 const outline=[[-2.1,-11],[2.1,-11],[-2.1,-6],[2.1,-6],[-8.8,1.2],[8.8,1.2],[-8.8,3.8],[8.8,3.8],[-8.15,4.3],[8.15,4.3],[-4.8,10.3],[4.8,10.3]];
@@ -47,10 +52,11 @@ test('outer routes curve in/out while center and cross-runway routes stay straig
 test('all 3216 outlined aircraft poses remain within the unchanged panel',()=>{
  for(const end of ends)for(const op of ['arrival','departure'])for(let i=0;i<=200;i++){
   const a=runwayAircraftPose(end,op,i/200),r=a.angle*Math.PI/180;
-  for(const [x,y] of outline){
+  for(const layer of visualLayers)for(const [x,rawY] of outline){
+   const y=rawY+layer.dy;
    const xx=a.x+a.scale*(x*Math.cos(r)-y*Math.sin(r)),yy=a.y+a.scale*(x*Math.sin(r)+y*Math.cos(r));
    const xp=10+(350-300*(300/280))/2+(xx-20)*(300/280),yp=20+yy*(300/280);
-   const stroke=1.05*a.scale*300/280;
+   const stroke=layer.radius*a.scale*300/280;
    assert.ok(xp-stroke>=0&&xp+stroke<=385&&yp-stroke>=20&&yp+stroke<=328,`${end} ${op} ${i}: ${xp},${yp}`);
   }
  }
@@ -61,15 +67,17 @@ test('the complete departure silhouette extends beyond every arrowhead before fa
   const distance=Math.hypot(arrow.end.x-arrow.start.x,arrow.end.y-arrow.start.y),u={x:(arrow.end.x-arrow.start.x)/distance,y:(arrow.end.y-arrow.start.y)/distance};
   const closest=Math.min(...outline.map(([x,y])=>{
    const xx=a.x+a.scale*(x*Math.cos(r)-y*Math.sin(r)),yy=a.y+a.scale*(x*Math.sin(r)+y*Math.cos(r));
-   return (xx-arrow.end.x)*u.x+(yy-arrow.end.y)*u.y-1.05*a.scale;
+   return (xx-arrow.end.x)*u.x+(yy-arrow.end.y)*u.y-bodyRadius*a.scale;
   }));
   assert.ok(closest>1,`${end}: full silhouette clears arrowhead by ${closest}`);
+  // Even the tailward shadow's conservative three-sigma envelope clears it.
+  assert.ok(closest-1.2*a.scale>0,`${end}: shadow also clears arrowhead`);
   const tracks=runwayAircraftTracks(end,'departure',0,1),times=tracks.translate.keyTimes.split(';').map(Number);
   assert.ok(times.at(-2)<tracks.opacity.keyTimes.split(';').map(Number).at(-2));
  }
  // Center departure passes over the cross-strip, but keeps the cue clear.
  const center=runwayAircraftPose('36C','departure',1);
- assert.ok(center.y-(11+1.05)*center.scale>14);
+ assert.ok(center.y-(11+bodyRadius)*center.scale>14);
  assert.equal(center.scale,.72);
 });
 test('groups come only from resolved reported operations, including one-sided and mixed-axis reports',()=>{
@@ -156,13 +164,25 @@ test('freshness ticks do not restart memoized motion, but changed routes invalid
  assert.equal(Aircraft.compare(fresh,{operations:resolve('18R','18C')}),false);
  assert.equal(Aircraft.compare(fresh,{operations:resolve('36L / 36R','36L / 36C / 36R','36R')}),false);
 });
-test('ivory contrast and reduced-motion rules stay scoped without changing runway geometry or arrow colors',()=>{
+test('near-white contrast and reduced-motion rules stay scoped without changing runway geometry or arrow colors',()=>{
  const css=readFileSync(new URL('../app/runway-aircraft.css',import.meta.url),'utf8'),diagram=readFileSync(new URL('../app/RunwayDiagram.tsx',import.meta.url),'utf8'),layout=readFileSync(new URL('../app/layout.tsx',import.meta.url),'utf8');
- assert.match(css,/fill:#fff4dc;stroke:#06151d;stroke-width:2\.1px/);assert.match(css,/@media \(prefers-reduced-motion:reduce\)/);
+ assert.match(css,/fill:#fffefa;stroke:#02070b;stroke-width:2\.8px/);
+ assert.match(css,/paint-order:stroke fill/);
+ assert.match(css,/\.runway-aircraft-symbol \{ filter:drop-shadow\(0 \.6px \.2px rgba\(0,0,0,\.65\)\); \}/);
+ assert.doesNotMatch(css,/non-scaling-stroke/);assert.match(css,/@media \(prefers-reduced-motion:reduce\)/);
  assert.match(css,/\[data-reduced-motion="1"\] \.runway-aircraft-motion \{ display:none; \}/);
  assert.match(css,/\[data-reduced-motion="1"\] \.runway-aircraft-static \{ display:inline; \}/);
  assert.match(css,/\.runway-aircraft-motion \{ display:none; \}/);assert.match(css,/\.runway-aircraft-static \{ display:inline; \}/);
- assert.doesNotMatch(css,/(?:^|[;{\s])(?:filter|width|height|position):|drop-shadow/);
+ assert.doesNotMatch(css,/(?:^|[;{\s])(?:width|height|position):/);
  assert.match(diagram,/viewBox="20 0 300 280"/);assert.match(diagram,/operation==='arrival'\?'#9fe8ff':'#ffd489'/);
  assert.ok(layout.indexOf('./runway-aircraft.css')>layout.indexOf('./runway-diagram.css'));
+});
+
+test('strong light-or-dark aircraft boundary contrast survives every panel color',()=>{
+ const luminance=hex=>{const rgb=hex.match(/[a-f0-9]{2}/gi).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
+ const contrast=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+ const fill='fffefa',edge='02070b';
+ assert.ok(contrast(fill,edge)>contrast('fff4dc','06151d'));
+ for(const background of ['dfe7ee','07131e','62e5a6','9fe8ff','ffd489'])assert.ok(Math.max(contrast(fill,background),contrast(edge,background))>7);
+ assert.ok(bodyRadius>=1.4);
 });
