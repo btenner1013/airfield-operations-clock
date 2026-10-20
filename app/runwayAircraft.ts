@@ -4,8 +4,11 @@ import type {ResolvedRunwayOperations,RunwayEnd} from './runwayOperations';
 export type RunwayAircraftOperation='arrival'|'departure';
 export type RunwayAircraftGroup={operation:RunwayAircraftOperation;heading:string;ends:RunwayEnd[]};
 export type RunwayAircraftPose=RunwayPoint&{angle:number;scale:number};
-export const RUNWAY_AIRCRAFT_SMALL=.40;
-export const RUNWAY_AIRCRAFT_LARGE=.72;
+export const RUNWAY_AIRCRAFT_SMALL=.64;
+export const RUNWAY_AIRCRAFT_LARGE=1.0;
+// A substantially larger shared silhouette stays legible across the room.
+// Route/arrow margins reserve room for the same maximum on every runway.
+export const RUNWAY_AIRCRAFT_WIDTH=1.0;
 export const RUNWAY_AIRCRAFT_SLOT_SECONDS=8;
 export const RUNWAY_AIRCRAFT_SAMPLES=128;
 export const RUNWAY_AIRCRAFT_BODY='M0 -11 C1.2 -10.9 2.1 -8.9 2.1 -6 L2.1 -3 L8.8 1.2 L8.8 3.8 L2.1 1.8 L1.8 6.9 L4.8 8.6 L4.8 10.3 L0 9.1 L-4.8 10.3 L-4.8 8.6 L-1.8 6.9 L-2.1 1.8 L-8.8 3.8 L-8.8 1.2 L-2.1 -3 L-2.1 -6 C-2.1 -8.9 -1.2 -10.9 0 -11 Z';
@@ -35,7 +38,7 @@ export function runwayAircraftPose(end:RunwayEnd,operation:RunwayAircraftOperati
  let point:ReturnType<typeof line>;
  if(cross){
   const anchor=operation==='arrival'?threshold:opposite;
-  point=line(add(anchor,u,operation==='arrival'?-37:-44),add(anchor,u,operation==='arrival'?43:53),p);
+  point=line(add(anchor,u,operation==='arrival'?-55:-20),add(anchor,u,operation==='arrival'?25:60),p);
  }else if(operation==='arrival'){
   const finish=add(threshold,u,30);
   if(center)point=line(add(threshold,u,north?-33:-9.3),finish,p);
@@ -45,10 +48,10 @@ export function runwayAircraftPose(end:RunwayEnd,operation:RunwayAircraftOperati
    point=p<.56?curve(start,control1,control2,bend,p/.56):line(bend,finish,(p-.56)/.44);
   }
  }else{
-  const start=add(opposite,u,-58);
-  if(center)point=line(start,add(opposite,u,north?30.8:43),p);
+  const start=add(opposite,u,center&&!north?-28:-58);
+  if(center)point=line(start,add(opposite,u,north?27:39),p);
   else {
-   const bend=add(opposite,u,north?20:11),finish=add(opposite,u,north?47:43);finish.x+=side*35;
+   const bend=add(opposite,u,north?20:11),finish=add(opposite,u,north?47:39);finish.x+=side*35;
    const control1=add(bend,u,north?13:12),control2=add(finish,u,-7);control2.x-=side*14;
    point=p<.68?line(start,bend,p/.68):curve(bend,control1,control2,finish,(p-.68)/.32);
   }

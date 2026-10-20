@@ -1,11 +1,11 @@
 /* Decorative, source-resolved runway-use symbols. Native SVG owns the clock. */
 .runway-aircraft { pointer-events:none; }
 .runway-diagram .runway-aircraft-body {
-  fill:#fffefa;stroke:#02070b;stroke-width:2.8px;
+  fill:#ffffff;stroke:#02070b;stroke-width:3px;
   stroke-linejoin:round;paint-order:stroke fill;
 }
 .runway-diagram .runway-aircraft-engines {
-  fill:#fffefa;stroke:#02070b;stroke-width:.65px;stroke-linejoin:round;
+  fill:#ffffff;stroke:#02070b;stroke-width:.65px;stroke-linejoin:round;
 }
 /* Tailward micro-shadow separates the tiny glyph from bright scenery without
    pushing its nose past the existing panel rim. It scales with the aircraft. */

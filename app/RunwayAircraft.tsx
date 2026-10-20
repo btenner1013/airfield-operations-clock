@@ -1,9 +1,9 @@
 import {memo} from 'react';
 import type {ResolvedRunwayOperations} from './runwayOperations';
-import {RUNWAY_AIRCRAFT_BODY,runwayAircraftGroups,runwayAircraftSignature,runwayAircraftStatic,runwayAircraftTracks} from './runwayAircraft';
+import {RUNWAY_AIRCRAFT_BODY,RUNWAY_AIRCRAFT_WIDTH,runwayAircraftGroups,runwayAircraftSignature,runwayAircraftStatic,runwayAircraftTracks} from './runwayAircraft';
 
 /** One transport silhouette, including engine pods, for every end and operation. */
-function Aircraft(){return <g className="runway-aircraft-symbol">
+function Aircraft(){return <g className="runway-aircraft-symbol" transform={`scale(${RUNWAY_AIRCRAFT_WIDTH} 1)`}>
  <path className="runway-aircraft-body" d={RUNWAY_AIRCRAFT_BODY}/>
  <path className="runway-aircraft-engines" d="M4.9 -1.8 H4.95 Q5.75 -1.8 5.75 -.98 V1.88 Q5.75 2.7 4.95 2.7 H4.9 Q4.1 2.7 4.1 1.88 V-.98 Q4.1 -1.8 4.9 -1.8 Z M7.4 -.2 H7.45 Q8.15 -.2 8.15 .5 V3.6 Q8.15 4.3 7.45 4.3 H7.4 Q6.7 4.3 6.7 3.6 V.5 Q6.7 -.2 7.4 -.2 Z M-4.9 -1.8 H-4.95 Q-5.75 -1.8 -5.75 -.98 V1.88 Q-5.75 2.7 -4.95 2.7 H-4.9 Q-4.1 2.7 -4.1 1.88 V-.98 Q-4.1 -1.8 -4.9 -1.8 Z M-7.4 -.2 H-7.45 Q-8.15 -.2 -8.15 .5 V3.6 Q-8.15 4.3 -7.45 4.3 H-7.4 Q-6.7 4.3 -6.7 3.6 V.5 Q-6.7 -.2 -7.4 -.2 Z"/>
  </g>;}

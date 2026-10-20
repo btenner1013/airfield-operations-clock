@@ -24,8 +24,8 @@ export function runwayArrow(runway:RunwayGeometry,end:string,operation:'arrival'
   const anchor=operation==='arrival'?threshold:opposite;
   // The center north threshold is close to 09/27. Keep its outbound arrow in
   // the gap rather than crossing the perpendicular runway or its label.
-  const near=operation==='arrival'?-9:5;
-  const far=operation==='arrival'?-35:end==='36C'?16:33;
+  const near=operation==='arrival'?-9:end==='36C'?2:5;
+  const far=operation==='arrival'?-35:end==='36C'?10:end.startsWith('18')?22:33;
   const start=operation==='arrival'?far:near,finish=operation==='arrival'?near:far;
   return {start:{x:anchor.x+ux*start,y:anchor.y+uy*start},end:{x:anchor.x+ux*finish,y:anchor.y+uy*finish},ux,uy};
 }

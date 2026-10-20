@@ -18,7 +18,7 @@ export default function RunwayDiagram({snapshot,nowMs,operations:resolved}:{snap
       return <g key={geometry.id} data-runway={geometry.id} data-state={state.state}>
         <path d={`M${a.x} ${a.y} L${b.x} ${b.y}`} className="runway-outline" />
         <path d={`M${a.x} ${a.y} L${b.x} ${b.y}`} stroke={color} className="runway-strip" />
-        {geometry.points.map((p,i)=><text key={geometry.ends[i]} x={p.x+(cross?0:east?9:-9)} y={p.y+(cross?-10:4)} textAnchor={cross?'middle':east?'start':'end'}>{geometry.ends[i]}</text>)}
+        {geometry.points.map((p,i)=><text key={geometry.ends[i]} x={p.x+(cross?0:east?15:geometry.id==='18C/36C'?-13:-15)} y={p.y+(cross?-10:4)} textAnchor={cross?'middle':east?'start':'end'}>{geometry.ends[i]}</text>)}
         {state.state==='closed'&&<g className="runway-closure" aria-label={`${geometry.id} closed`}><path d={`M${x-7} ${y-8} L${x+7} ${y+8} M${x+7} ${y-8} L${x-7} ${y+8}`} stroke="#ffe3e5" strokeWidth="7"/><path d={`M${x-7} ${y-8} L${x+7} ${y+8} M${x+7} ${y-8} L${x-7} ${y+8}`} stroke="#ad0928" strokeWidth="5"/></g>}
         {(['arrival','departure'] as const).flatMap(operation=>(operation==='arrival'?state.arrivals:state.departures).map(end=>{
           const arrow=runwayArrow(geometry,end,operation);if(!arrow)return null;const path=arrowPath(arrow.start,arrow.end);
