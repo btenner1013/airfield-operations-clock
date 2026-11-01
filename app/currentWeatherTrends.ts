@@ -16,10 +16,11 @@ export type CurrentOpsWeatherSnapshot = {
 export type CurrentWeatherTrends = Record<CurrentTrendMetric,TrendComparison|null>;
 type CurrentReading<T> = { value:T; display:string; title:string };
 export type CurrentWeatherReadings = {
-  usesOps:boolean; ceiling:CurrentReading<CeilingReading>|null; visibility:CurrentReading<number>|null; temperature:CurrentReading<number>|null; trends:CurrentWeatherTrends;
+  usesOps:boolean; feedDelayed:boolean; ceiling:CurrentReading<CeilingReading>|null; visibility:CurrentReading<number>|null; temperature:CurrentReading<number>|null; trends:CurrentWeatherTrends;
 };
 
-// Two normal ten-minute updater cadences. Fetching an old JSON does not renew it.
+// Two normal ten-minute updater cadences. A delayed JSON suppresses trend arrows,
+// but does not erase a still-current observation. Source timestamps expire independently.
 export const OPS_CURRENT_JSON_MAX_AGE_MINUTES = 20;
 const SOURCE_MAX_AGE_MINUTES = { METAR:75, ATIS:90 };
 const object = (value:unknown):Record<string,unknown> => value!==null&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
@@ -129,9 +130,13 @@ function validReference(snapshot:CurrentOpsWeatherSnapshot):boolean {
 
 /** Recheck generation and each selected observation on every render, including after sleep. */
 export function resolveCurrentWeatherReadings(weather:Weather,nowMs:number,simulated=false):CurrentWeatherReadings {
-  const snapshot=weather.currentOpsWeather,result:CurrentWeatherReadings={usesOps:!simulated&&snapshot!==undefined,ceiling:null,visibility:null,temperature:null,trends:emptyTrends()};
-  if(simulated||!snapshot||weather.requestStatus==="ERROR"||weather.feedStatus==="OFFLINE"||!isCurrent(snapshot.updatedAt,nowMs,OPS_CURRENT_JSON_MAX_AGE_MINUTES)) return result;
-  const updatedAt=snapshot.updatedAt!,hasReference=validReference(snapshot);
+  const snapshot=weather.currentOpsWeather,result:CurrentWeatherReadings={usesOps:!simulated&&snapshot!==undefined,feedDelayed:false,ceiling:null,visibility:null,temperature:null,trends:emptyTrends()};
+  if(simulated||!snapshot||weather.requestStatus==="ERROR"||weather.feedStatus==="OFFLINE") return result;
+  // Missing/malformed/future generations are not evidence. An older generation can
+  // still contain a current METAR/ATIS; never renew that observation's own age.
+  if(!isCurrent(snapshot.updatedAt,nowMs,Infinity)) return result;
+  result.feedDelayed=!isCurrent(snapshot.updatedAt,nowMs,OPS_CURRENT_JSON_MAX_AGE_MINUTES);
+  const updatedAt=snapshot.updatedAt!,hasReference=!result.feedDelayed&&validReference(snapshot);
   const read=<T>(metric:ReportedMetric<T>,name:string,display:string|null):CurrentReading<T>|null=>{
     if(metric.value===null||display===null||!usableSource(metric.source,updatedAt,nowMs)) return null;
     return {value:metric.value,display,title:`Ops JSON ${name}; ${metric.source.source} ${metric.source.observedAt} (${metric.source.status}); JSON updated ${updatedAt}`};

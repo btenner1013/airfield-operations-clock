@@ -156,6 +156,9 @@ function fogProfile(type: string, night: boolean): FogProfile {
 }
 
 function makeBolt(random: () => number, level: AtmosphereSpec["lightningLevel"]): Bolt {
+  // Distant activity is an illustrative cloud glow, never a ground strike.
+  if (level === "distant") return { trunk: [], branches: [], x: .2 + random() * .6,
+    y: .3 + random() * .08, radius: .12, energy: .18 + random() * .08 };
   const near = level === "station" || level === "severe";
   const x = 0.19 + random() * 0.65, y = near ? 0.1 + random() * 0.17 : 0.27 + random() * 0.13;
   const endY = near ? 0.48 + random() * 0.075 : 0.46 + random() * 0.04;
@@ -452,8 +455,9 @@ export function createAtmosphereRenderer(): {
       if (canFlash && lightEnergy > 0.003 && bolt) {
         // Limited light scattering around the strike bridges gaps between cloud
         // alpha without a whole-screen exposure change. The runway stays untouched.
-        const x = bolt.x * w, y = Math.min(bolt.y, 0.27) * h;
-        const radius = Math.min(w * 0.23, h * 0.31);
+        const distant = spec.lightningLevel === "distant";
+        const x = bolt.x * w, y = (distant ? bolt.y : Math.min(bolt.y, 0.27)) * h;
+        const radius = distant ? Math.min(w * .1, h * .16) : Math.min(w * 0.23, h * 0.31);
         const halo = ctx.createRadialGradient(x, y, 0, x, y, radius);
         halo.addColorStop(0, `rgba(216,234,255,${lightEnergy * 0.33})`);
         halo.addColorStop(0.36, `rgba(142,180,241,${lightEnergy * 0.16})`);
@@ -462,7 +466,7 @@ export function createAtmosphereRenderer(): {
         ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
       }
       drawClouds(ctx, w, h, spec);
-      if (canFlash && lightning.bolt && lightning.pulse > 0) drawBolt(ctx, w, h, lightEnergy, spec.quality === "low");
+      if (canFlash && spec.lightningLevel !== "distant" && lightning.bolt && lightning.pulse > 0) drawBolt(ctx, w, h, lightEnergy, spec.quality === "low");
       ctx.globalAlpha = 1;
       drawFog(ctx, w, h, spec);
       ctx.restore();

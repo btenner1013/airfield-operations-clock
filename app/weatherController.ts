@@ -61,7 +61,8 @@ export function buildWeatherEffects(input: WeatherEffectInput) {
     }
   }
   const obscuration = buildObscurationSpec(fx, visibility, wind.x, wind.speed, input.quality, input.reduced);
-  const observedThunder = available && lightningAnimationEligible(input.lightning) && !input.lightning.isStale && !input.lightning.isUnavailable;
+  const observedLightning = available && lightningAnimationEligible(input.lightning) && !input.lightning.isStale && !input.lightning.isUnavailable;
+  const observedThunder = observedLightning && input.lightning.level !== "distant";
   const thunder = available && input.phenomena.some(token => /^[+-]?(?:VC)?TS/.test(token));
   const storm = observedThunder || thunder ? (fx.intensity === "heavy" || input.lightning.level === "severe" ? 1 : .68) :
     fx.liquidPresent ? (fx.intensity === "heavy" ? .46 : fx.intensity === "moderate" ? .22 : .08) : 0;
@@ -72,7 +73,7 @@ export function buildWeatherEffects(input: WeatherEffectInput) {
     horizon: obscuration.horizon, veil: Math.max(obscuration.veil, spec?.veil || 0),
     windX: wind.x * (1.5 + wind.speed * .6), windY: wind.y * wind.speed * .12,
     gust: wind.gust, night: input.night, reduced: input.reduced, quality: input.quality,
-    lightningLevel: observedThunder ? input.lightning.level : "none",
+    lightningLevel: observedLightning ? input.lightning.level : "none",
   };
   return { fx, spec, obscuration, atmosphere };
 }

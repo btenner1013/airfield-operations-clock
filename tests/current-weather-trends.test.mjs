@@ -62,8 +62,11 @@ test('bad or fallback trend reference suppresses arrows, while independently val
 test('generation age is rechecked on ticks and frozen JSON cannot renew observations',()=>{
  const w=weather(payload({metarObservedZ:'2026-10-16T22:54:00Z',metarAgeMinutes:2}));
  assert.deepEqual(directions(resolveCurrentWeatherReadings(w,Date.parse('2026-10-16T23:14:59.999Z'))),expected);
- assert.deepEqual(fields(resolveCurrentWeatherReadings(w,Date.parse('2026-10-16T23:15:00Z'))),none);
- for(const updated of [undefined,'bad','2026-10-16T22:55:00','2026-02-30T22:55:00Z','2026-10-16T22:35:00Z','2026-10-16T23:01:00.001Z']) assert.deepEqual(fields(read(payload({allFeedsUpdatedZ:updated}))),none,String(updated));
+ const delayed=resolveCurrentWeatherReadings(w,Date.parse('2026-10-16T23:15:00Z'));
+ assert.deepEqual(fields(delayed),fields(read()));assert.equal(delayed.feedDelayed,true);
+ assert.deepEqual(directions(delayed),none); // delayed JSON cannot advertise a current trend
+ assert.deepEqual(fields(resolveCurrentWeatherReadings(w,Date.parse('2026-10-17T00:24:00Z'))),none);
+ for(const updated of [undefined,'bad','2026-10-16T22:55:00','2026-02-30T22:55:00Z','2026-10-16T23:01:00.001Z']) assert.deepEqual(fields(read(payload({allFeedsUpdatedZ:updated}))),none,String(updated));
  assert.deepEqual(directions(read(payload({allFeedsUpdatedZ:'2026-10-16T23:01:00Z',trendReferenceTimestampZ:'2026-10-16T20:05:00Z'}))),expected);
 });
 
@@ -136,7 +139,9 @@ test('lagging CDN JSON cannot roll a known canonical generation backwards, inclu
  const merged=mergeWeather(prior,{weather:incoming,...flags});
  assert.equal(merged.currentOpsWeather,prior.currentOpsWeather);
  const r=resolveCurrentWeatherReadings(merged,Date.parse('2026-10-16T23:01:00Z'));assert.equal(r.temperature.display,'64');assert.equal(r.trends.temperature.direction,'down');
- assert.equal(resolveCurrentWeatherReadings(merged,Date.parse('2026-10-16T23:20:00Z')).temperature,null);
+ const delayed=resolveCurrentWeatherReadings(merged,Date.parse('2026-10-16T23:20:00Z'));
+ assert.equal(delayed.temperature.display,'64');assert.equal(delayed.feedDelayed,true);
+ assert.equal(delayed.trends.temperature,null);
  const fresh={...incoming,currentOpsWeather:normalizeCurrentOpsWeather(payload({allFeedsUpdatedZ:'2026-10-16T23:02:00Z',tempC:19,trendReferenceTimestampZ:'2026-10-16T20:05:00Z'}))};
  assert.equal(mergeWeather(merged,{weather:fresh,...flags}).currentOpsWeather,fresh.currentOpsWeather);
  const corrected={...incoming,currentOpsWeather:normalizeCurrentOpsWeather(payload({allFeedsUpdatedZ:'2026-10-16T23:00:00Z',tempC:19}))};
@@ -187,4 +192,43 @@ test('temperature triangle scales with the reading without changing other metric
   assert.match(html,/<small>F<\/small><i class="current-wx-trend"/);
   assert.ok(html.includes(`data-tone="${direction}"`));
  }
+});
+
+
+test('November 1 regression: delayed Pages JSON keeps independently current observed temperature, not feels-like',()=>{
+ const data=payload({allFeedsUpdatedZ:'2026-11-01 08:05Z',metarObservedZ:'2026-11-01T07:54:00Z',atisObservedZ:'2026-11-01T07:54:00Z',metarAgeMinutes:12,atisAgeMinutes:12,tempC:17});
+ const at=Date.parse('2026-11-01T08:29:00Z');
+ const r=read(data,at,{feelsLikeF:99});
+ assert.equal(r.temperature.display,'63');assert.equal(r.feedDelayed,true);
+ assert.match(r.temperature.title,/actual temperature; ATIS 2026-11-01T07:54/);
+ assert.deepEqual(directions(r),none);
+ // Fetching the same JSON again never renews the ATIS observation.
+ assert.equal(read(data,Date.parse('2026-11-01T09:24:00Z')).temperature,null);
+ const fresh=read({...data,allFeedsUpdatedZ:'2026-11-01 08:25Z',trendReferenceTimestampZ:'2026-11-01T05:35:49Z'},at);
+ assert.equal(fresh.feedDelayed,false);assert.equal(fresh.temperature.display,'63');assert.equal(fresh.trends.temperature.direction,'up');
+});
+
+test('delayed JSON preserves zero/negative temperatures, but rejects missing, malformed, stale or failed source data',()=>{
+ const delayed=payload({allFeedsUpdatedZ:'2026-10-16 22:35Z',metarObservedZ:'2026-10-16T22:30:00Z',atisObservedZ:'2026-10-16T22:30:00Z'});
+ for(const [tempC,display] of [[0,'32'],[-10,'14'],[-40,'-40'],[17,'63']]) {
+  const r=read({...delayed,tempC});assert.equal(r.temperature.display,display);assert.equal(r.feedDelayed,true);assert.equal(r.trends.temperature,null);
+ }
+ for(const tempC of [undefined,null,'17',NaN,Infinity,80]) assert.equal(read({...delayed,tempC}).temperature,null);
+ for(const overrides of [{atisFetchStatus:'ERROR'},{atisSourceIsCurrent:false},{lastKnownGoodUsed:{atis:true}},{atisAgeMinutes:90},{atisObservedZ:'2026-10-16T21:26:00Z'},{atisObservedZ:'2026-10-16T23:02:00Z'},{allFeedsUpdatedZ:'bad'},{allFeedsUpdatedZ:'2026-10-16T23:02:00Z'}]) assert.equal(read({...delayed,...overrides}).temperature,null);
+ for(const state of [{requestStatus:'ERROR'},{feedStatus:'OFFLINE'}]) assert.equal(read(delayed,now,state).temperature,null);
+});
+
+test('weather card explicitly marks the delayed JSON while preserving feels-like display',()=>{
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ assert.match(page,/currentReadings.feedDelayed \? "FEED DELAYED"/);
+ assert.match(page,/currentReadings.feedDelayed \? "stale"/);
+ assert.match(page,/FEELS LIKE<\/span><strong>\{!modelMetricsAvailable \? "—" : weather.feelsLikeF\}/);
+});
+
+test('ATIS temperature priority and restrictive METAR visibility remain exactly as selected by Ops Board',()=>{
+ const data=payload({tempC:17,visibilitySm:2,visibilityDisplay:'2 SM',metarVisibilitySm:2,atisVisibilitySm:6,
+  obsFieldSources:{ceiling:'METAR',visibility:'METAR',tempDp:'ATIS'}});
+ const r=read(data,now,{temperatureF:80,feelsLikeF:99});
+ assert.equal(r.temperature.display,'63');assert.match(r.temperature.title,/ATIS/);
+ assert.equal(r.visibility.display,'2 SM');assert.match(r.visibility.title,/METAR/);
 });

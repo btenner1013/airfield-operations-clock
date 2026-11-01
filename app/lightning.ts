@@ -131,21 +131,22 @@ export type LightningScheduler={start:()=>void;stop:()=>void;pendingCount:()=>nu
 
 export function lightningQuietRange(level:LightningLevel, frequency:LightningFrequency=null):[number,number] {
   let range:[number,number] = level==="distant"?[20000,45000]:level==="vicinity"?[10000,25000]:level==="station"?[5000,12000]:level==="severe"?[3000,7000]:[0,0];
+  // Distant activity stays occasional visually, even when the report says FRQ/CONS.
+  if(level==="distant") return range;
   if(frequency==="frequent") return [Math.round(range[0]*0.45),Math.round(range[1]*0.45)];
   if(frequency==="continuous") return [Math.round(range[0]*0.22),Math.round(range[1]*0.22)];
   return range;
 }
 
-/**
- * Animation belongs to an observed thunderstorm at or near the field. The source
- * check exists to keep TAF/model products out; the ops feed relays the same
- * current METAR/ATIS observation the board already trusts for the awareness row,
- * so it qualifies on the strength of its code. Remarks-only lightning still
- * carries an LTG code and fails the test below, as does a distant report.
- */
+/** Current observed thunderstorms animate near the field; explicit distant lightning
+ * receives only a restrained cloud flicker. TAF/model products never qualify. */
 export function lightningAnimationEligible(report:LightningReport):boolean {
+  if(report.isStale||report.isUnavailable) return false;
+  if(report.level==="distant") {
+    return ((report.source==="metar-remarks"||report.source==="debug")&&/^LTG/.test(report.code||"")) || report.source==="ops-feed";
+  }
   if(report.source!=="metar-body"&&report.source!=="debug"&&report.source!=="ops-feed") return false;
-  if(report.level==="none"||report.level==="distant") return false;
+  if(report.level==="none") return false;
   return /^(?:VCTS|[+-]?TS)/.test(report.code||"");
 }
 
@@ -170,8 +171,8 @@ export function createLightningScheduler(report:LightningReport,options:Lightnin
   const runCluster=()=>{
     if(stopped||!visible()){emit(false);return;} cluster++;
     const doublePulse=options.flashTest||random()<(report.level==="distant"?.25:report.level==="vicinity"?.52:report.level==="station"?.68:.85);
-    const boltEligible=report.level==="station"||report.level==="severe"||(report.level==="distant"&&report.frequency==="frequent");
-    const bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.82:report.level==="distant"?.22:.55));
+    const boltEligible=report.level==="station"||report.level==="severe";
+    const bolt=boltEligible&&(options.flashTest||random()<(report.level==="severe"?.82:.55));
     const firstDuration=options.flashTest?115:90+Math.round(random()*65);
     const secondStart=options.flashTest?235:firstDuration+95+Math.round(random()*85);
     const secondDuration=options.flashTest?110:70+Math.round(random()*75);

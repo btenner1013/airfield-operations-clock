@@ -53,12 +53,12 @@ test("visible lightning wording matches the compact Ops Board display",()=>{
   assert.equal(compactLightningDisplay("⛈️ TSRA ACTIVE NOW"),"⛈️ TSRA ACTIVE");
 });
 
-test("only explicit body thunderstorms own animated lightning",()=>{
+test("observed thunderstorms and explicit distant lightning own their separate animation levels",()=>{
   assert.equal(lightningAnimationEligible(metar("TS BKN030CB")),true);
   assert.equal(lightningAnimationEligible(metar("TSRA BKN030CB")),true);
   assert.equal(lightningAnimationEligible(metar("+TSRA BKN015CB")),true);
   assert.equal(lightningAnimationEligible(metar("VCTS SCT040CB")),true);
-  assert.equal(lightningAnimationEligible(metar("SCT040 RMK FRQ LTGCG DSNT W")),false);
+  assert.equal(lightningAnimationEligible(metar("SCT040 RMK FRQ LTGCG DSNT W")),true);
   assert.equal(lightningAnimationEligible(metar("SCT040 RMK LTGCG OHD")),false);
   assert.equal(lightningAnimationEligible({...metar("TSRA BKN030CB"),source:"none"}),false);
 });
@@ -70,8 +70,8 @@ test("the live ops feed animates an observed field thunderstorm the same as a di
   assert.equal(lightningAnimationEligible(feed("TS BKN030CB")),true);
   assert.equal(lightningAnimationEligible(feed("TSRA BKN030CB")),true);
   assert.equal(lightningAnimationEligible(feed("VCTS SCT040CB","vicinity")),true);
-  // Remarks-only and distant reports stay unanimated on the feed path too.
-  assert.equal(lightningAnimationEligible(feed("SCT040 RMK FRQ LTGCG DSNT W","distant")),false);
+  // Distant feed reports receive restrained cloud flicker; overhead remarks alone do not imply TS.
+  assert.equal(lightningAnimationEligible(feed("SCT040 RMK FRQ LTGCG DSNT W","distant")),true);
   assert.equal(lightningAnimationEligible(feed("SCT040 RMK LTGCG OHD")),false);
   assert.equal(lightningAnimationEligible({...feed("TS BKN030CB"),level:"none"}),false);
 });
@@ -94,13 +94,25 @@ class FakeVisibility {
 }
 const station=metar("TS BKN030CB");
 
-test("distant remark lightning has no flash timers, pulses, bolts, or visibility listener",()=>{
+test("distant lightning flickers softly at restrained intervals, never draws bolts, and cancels cleanly",()=>{
   const timers=new FakeTimers(),visibility=new FakeVisibility(),states=[];
   const distant=metar("SCT040 RMK FRQ LTGCG DSNT W");
-  const scheduler=createLightningScheduler(distant,{setTimer:timers.set,clearTimer:timers.clear,visibilityTarget:visibility,onState:s=>states.push(s)});
-  scheduler.start();timers.advance(120000);
-  assert.equal(scheduler.pendingCount(),0);assert.equal(visibility.listeners.size,0);
-  assert.ok(states.every(s=>s.pulse===0&&!s.bolt&&!s.active));scheduler.stop();
+  const scheduler=createLightningScheduler(distant,{random:()=>0,setTimer:timers.set,clearTimer:timers.clear,visibilityTarget:visibility,onState:s=>states.push({...s,at:timers.now})});
+  scheduler.start();timers.advance(19999);assert.ok(states.every(s=>s.pulse===0));
+  timers.advance(1);assert.equal(states.at(-1).pulse,1);
+  timers.advance(500);assert.deepEqual(states.filter(s=>s.pulse>0).map(s=>s.pulse),[1,2]);
+  assert.ok(states.every(s=>!s.bolt));assert.equal(scheduler.pendingCount(),1);
+  visibility.visibilityState="hidden";visibility.fire();assert.equal(scheduler.pendingCount(),0);
+  scheduler.stop();assert.equal(visibility.listeners.size,0);
+  for(const frequency of [null,"occasional","frequent","continuous"]) assert.deepEqual(lightningQuietRange("distant",frequency),[20000,45000]);
+});
+
+test("stale, unavailable, model-like or reduced-motion distant lightning never animates",()=>{
+  const distant=metar("SCT040 RMK LTG DSNT NE");
+  for(const report of [{...distant,isStale:true},{...distant,isUnavailable:true},{...distant,source:"none"}]) assert.equal(lightningAnimationEligible(report),false);
+  const timers=new FakeTimers(),states=[];
+  const scheduler=createLightningScheduler(distant,{reduced:true,setTimer:timers.set,clearTimer:timers.clear,onState:s=>states.push(s)});
+  scheduler.start();timers.advance(120000);assert.equal(scheduler.pendingCount(),0);assert.ok(states.every(s=>!s.active&&!s.bolt&&s.pulse===0));scheduler.stop();
 });
 
 test("one scheduler cancels hidden timers and restores only a future cluster",()=>{

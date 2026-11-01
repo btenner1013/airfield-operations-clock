@@ -226,7 +226,6 @@ test("only fresh, available observed thunderstorms activate atmospheric lightnin
     { ...station, isStale: true },
     { ...station, isUnavailable: true },
     { ...station, source: "none" },
-    parseCurrentLightning("METAR KMEM 151653Z 27012KT 10SM SCT050 RMK FRQ LTGCG DSNT W"),
     parseCurrentLightning("TAF KMEM 151600Z 1518/1624 27012KT 3SM TSRA BKN020CB"),
   ]) assert.equal(effects([], { lightning }).atmosphere.lightningLevel, "none");
   const staleWithThunder = effects(["TSRA"], { lightning: { ...station, isStale: true } });
@@ -303,4 +302,18 @@ test("controller remains pure, deterministic and independent of clock, network a
   assert.doesNotMatch(source, /\b(?:document|window|localStorage|navigator)\./);
   assert.doesNotMatch(source, /\b(?:fetch|setTimeout|setInterval|requestAnimationFrame|useState|useEffect)\s*\(/);
   assert.doesNotMatch(source, /from\s+["'][^"']*useClock/);
+});
+
+
+test("distant lightning adds cloud flicker without manufacturing field thunderstorm shading or weather",()=>{
+  const distant=parseCurrentLightning("METAR KMEM 010754Z 07012KT 7SM -RA BKN006 OVC010 17/16 A3014 RMK LTG DSNT NW-E");
+  for(const source of [distant.source,"ops-feed","debug"]) {
+    const report={...distant,source};
+    const quiet=effects(["-RA"],{coverage:"BKN"});
+    const flicker=effects(["-RA"],{coverage:"BKN",lightning:report});
+    assert.equal(flicker.atmosphere.lightningLevel,"distant");
+    assert.equal(flicker.atmosphere.storm,quiet.atmosphere.storm);
+    assert.deepEqual(flicker.fx,quiet.fx);assert.deepEqual(flicker.spec,quiet.spec);
+    assert.equal(effects([], {lightning:{...report,isStale:true}}).atmosphere.lightningLevel,"none");
+  }
 });

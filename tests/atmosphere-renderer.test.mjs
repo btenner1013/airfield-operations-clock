@@ -324,3 +324,18 @@ test("calm overcast and scattered skies both have gentle layered drift", () => {
   assert.ok(overcast > 20 && overcast < 50, "Overcast detail drifts visibly and gently over three seconds");
   assert.ok(scattered > 20 && scattered < 50, "Scattered also remains visibly in motion");
 });
+
+
+test("distant flicker is a small low-energy cloud patch with no bolt even if a frame requests one",()=>{
+  withRenderer((renderer,h)=>{
+    renderer.draw(h.ctx,1920,1080,0,1/60,{...BASE,coverage:.7,lightningLevel:"distant"},{pulse:1,bolt:true,cluster:1});
+    assert.equal(h.commands.filter(c=>c.name==="stroke").length,0);
+    const halo=h.commands.find(c=>c.id==="output"&&c.name==="fillRect"&&c.fill?.kind==="createRadialGradient");
+    assert.ok(halo);assert.ok(halo.fill.coordinates[5]<=1080*.16);
+    const centerAlpha=Number(halo.fill.stops[0][1].match(/,([\d.]+)\)/)[1]);
+    assert.ok(centerAlpha>0&&centerAlpha<.09);
+    assert.ok(halo.args[1]+halo.args[3]<1080*.55,"localized glow leaves runway untouched");
+    h.reset();renderer.draw(h.ctx,1920,1080,20,1/60,{...BASE,coverage:.7,reduced:true,lightningLevel:"distant"},{pulse:1,bolt:true,cluster:2});
+    assert.equal(h.commands.filter(c=>c.id==="output"&&c.name==="fillRect"&&c.fill?.kind==="createRadialGradient").length,0);
+  });
+});

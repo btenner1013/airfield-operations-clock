@@ -642,8 +642,8 @@ export default function Home() {
         <article className="weather-card panel">
           <div className="panel-title">
             <span>{currentPresentation.simulated ? "PREVIEW WEATHER" : currentReadings.usesOps ? "CURRENT WEATHER" : metarState === "STALE" ? "LAST OBSERVATION" : "CURRENT WEATHER"}</span>
-            <b className={`metar-title-badge health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : metarState.toLowerCase()}`}>
-              {currentPresentation.simulated ? "SIMULATED" : feed !== "OK" ? `METAR FEED ${feed}` : `METAR ${metarState}`}
+            <b className={`metar-title-badge health-${feed !== "OK" ? (feed === "OFFLINE" ? "unavailable" : "stale") : currentReadings.feedDelayed ? "stale" : metarState.toLowerCase()}`}>
+              {currentPresentation.simulated ? "SIMULATED" : feed !== "OK" ? `METAR FEED ${feed}` : currentReadings.feedDelayed ? "FEED DELAYED" : `METAR ${metarState}`}
             </b>
           </div>
           <div className="current-weather-instrument">
