@@ -1,3 +1,4 @@
+import { retainReportedTemperature } from "./reportedTemperature.ts";
 import { ATIS_WIND_CURRENT_MINUTES, METAR_WIND_CURRENT_MINUTES, type CurrentWindRecord } from "./currentWind.ts";
 import { matchPeriodPrecipitation } from "./futureWeather.ts";
 import { mergeRunwayOperations, restoreRunwayOperations, type RunwayOperationsSnapshot } from "./runwayOperations.ts";
@@ -143,6 +144,7 @@ export function mergeWeather(previous:Weather, result:WeatherFetchResult):Weathe
   // backwards. Retain the prior snapshot atomically; render-time age checks still apply.
   const priorOps=previous.currentOpsWeather,nextOps=result.weather.currentOpsWeather;
   if(result.feedReached&&validDate(priorOps?.updatedAt)&&validDate(nextOps?.updatedAt)&&Date.parse(priorOps.updatedAt)<=reference+5*60000&&Date.parse(nextOps.updatedAt)<Date.parse(priorOps.updatedAt)) merged.currentOpsWeather=priorOps;
+  merged.lastReportedTemperature=retainReportedTemperature(previous.lastReportedTemperature,result.feedReached?merged:{currentOpsWeather:null},reference);
   const previousObservation=Date.parse(previous.metarObsIso||""),incomingObservation=Date.parse(result.weather.metarObsIso||"");
   // CDN edges can return a valid but older report. Never roll a known observation
   // backwards; equal-time corrected reports still replace it. Future-invalid cache

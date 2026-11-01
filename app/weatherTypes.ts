@@ -1,3 +1,4 @@
+import type { ReportedTemperature } from "./reportedTemperature";
 import type { RunwayOperationsSnapshot } from "./runwayOperations";
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
 import type { CurrentWindRecord } from "./currentWind";
@@ -29,6 +30,7 @@ export type WeatherRequestStatus = "IDLE" | "REFRESHING" | "ERROR";
 
 export type Weather = {
   currentOpsWeather?:CurrentOpsWeatherSnapshot|null;
+  lastReportedTemperature?:ReportedTemperature|null;
   runwayOperations?:RunwayOperationsSnapshot|null;
   temperatureF:number;
   feelsLikeF:number;

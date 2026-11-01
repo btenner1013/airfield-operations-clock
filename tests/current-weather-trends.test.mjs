@@ -232,3 +232,92 @@ test('ATIS temperature priority and restrictive METAR visibility remain exactly 
  assert.equal(r.temperature.display,'63');assert.match(r.temperature.title,/ATIS/);
  assert.equal(r.visibility.display,'2 SM');assert.match(r.visibility.title,/METAR/);
 });
+
+// Actual-temperature retention is intentionally separate from model metrics and TAF/cache expiry.
+import {validateReportedTemperature,retainReportedTemperature,restoreReportedTemperature,lastTemperatureLabel} from '../app/reportedTemperature.ts';
+const actualReport={celsius:17,source:'ATIS',observedAt:'2026-10-31T23:54:00.000Z',reportedAt:'2026-11-01T00:05:00.000Z'};
+const retentionNow=Date.parse('2026-11-01T08:45:00Z');
+function reportWeather(overrides={}) {
+ return {currentOpsWeather:normalizeCurrentOpsWeather(payload({allFeedsUpdatedZ:'2026-11-01 00:05Z',atisObservedZ:'2026-10-31T23:54:00Z',atisAgeMinutes:11,tempC:17,...overrides}))};
+}
+
+test('last actual temperature retains Celsius and original source timestamps across day/month rollover',()=>{
+ const report=retainReportedTemperature(null,reportWeather(),retentionNow);
+ assert.deepEqual(report,actualReport);
+ for(const at of [retentionNow,Date.parse('2026-11-02T02:00:00Z'),Date.parse('2027-01-01T02:00:00Z')]) {
+  assert.deepEqual(validateReportedTemperature(report,at),actualReport);
+  assert.deepEqual(retainReportedTemperature(report,{currentOpsWeather:null},at),actualReport);
+ }
+ assert.match(lastTemperatureLabel(report,retentionNow),/LAST ATIS 312354Z.*531M OLD.*STALE/);
+ assert.equal(Math.round(report.celsius*9/5+32),63);
+});
+
+test('retention never borrows model, feels-like, or default zero and accepts actual zero/negative readings',()=>{
+ const modelOnly={temperatureF:84,feelsLikeF:99,currentOpsWeather:undefined};
+ assert.equal(retainReportedTemperature(null,modelOnly,retentionNow),null);
+ assert.deepEqual(retainReportedTemperature(actualReport,modelOnly,retentionNow),actualReport);
+ for(const [tempC,fahrenheit] of [[0,32],[-10,14],[-40,-40],[17,63]]) {
+  const r=retainReportedTemperature(null,reportWeather({tempC}),retentionNow);
+  assert.equal(r.celsius,tempC);assert.equal(Math.round(r.celsius*9/5+32),fahrenheit);
+ }
+ for(const tempC of [undefined,null,'17',NaN,Infinity,80,-101]) assert.equal(retainReportedTemperature(null,reportWeather({tempC}),retentionNow),null);
+});
+
+test('newer actual report replaces retained reading, older reports do not roll it back, same-time correction is allowed',()=>{
+ const newer=reportWeather({allFeedsUpdatedZ:'2026-11-01 08:40Z',atisObservedZ:'2026-11-01T08:30:00Z',tempC:18});
+ const r=retainReportedTemperature(actualReport,newer,retentionNow);
+ assert.equal(r.celsius,18);assert.equal(r.observedAt,'2026-11-01T08:30:00.000Z');
+ assert.deepEqual(retainReportedTemperature(r,reportWeather({tempC:0}),retentionNow),r);
+ const corrected=retainReportedTemperature(r,reportWeather({allFeedsUpdatedZ:'2026-11-01 08:42Z',atisObservedZ:'2026-11-01T08:30:00Z',tempC:19}),retentionNow);
+ assert.equal(corrected.celsius,19);assert.equal(corrected.observedAt,r.observedAt);
+});
+
+test('last actual report restores independently of expired TAF/full cache and calendar rollover',()=>{
+ for(const version of [1,2,3,4]) {
+  const raw=JSON.stringify({version,savedAtIso:'2026-11-01T00:06:00Z',weather:{lastReportedTemperature:actualReport,tafValidEndIso:'2026-11-01T01:00:00Z'}});
+  assert.deepEqual(restoreReportedTemperature(raw,retentionNow),actualReport);
+ }
+ const legacy=JSON.stringify({version:4,savedAtIso:'2026-11-01T00:06:00Z',weather:reportWeather()});
+ assert.deepEqual(restoreReportedTemperature(legacy,retentionNow),actualReport);
+ const noActual=JSON.stringify({version:4,savedAtIso:'2026-11-01T00:06:00Z',weather:{temperatureF:84,feelsLikeF:99}});
+ assert.equal(restoreReportedTemperature(noActual,retentionNow),null);
+ for(const raw of [null,'{bad}',JSON.stringify({version:99,savedAtIso:'2026-11-01T00:06:00Z',weather:{lastReportedTemperature:actualReport}}),JSON.stringify({version:4,savedAtIso:'2026-11-02T00:06:00Z',weather:{lastReportedTemperature:actualReport}})]) assert.equal(restoreReportedTemperature(raw,retentionNow),null);
+});
+
+test('retained report rejects malformed dates, untrusted sources, future observations and nonfinite now',()=>{
+ for(const change of [{source:'MODEL'},{source:'UNKNOWN'},{celsius:null},{celsius:'17'},{celsius:NaN},{celsius:Infinity},{observedAt:'2026-02-30T23:54:00Z'},{reportedAt:'2026-02-30T23:54:00Z'},{observedAt:'2026-11-01T00:54:00'},{observedAt:'bad'},{reportedAt:'bad'},{observedAt:'2026-11-02T00:00:00Z'},{reportedAt:'2026-11-02T00:00:00Z'},{observedAt:'2026-11-01T00:11:00Z'}]) assert.equal(validateReportedTemperature({...actualReport,...change},retentionNow),null,JSON.stringify(change));
+ for(const at of [NaN,Infinity,-Infinity]) assert.equal(validateReportedTemperature(actualReport,at),null,String(at));
+});
+
+test('weather merge retains only the actual report on feed failure then updates it on recovery',()=>{
+ const flags={metarValid:false,tafValid:false,modelValid:true,windValid:false,feedReached:false};
+ const prior={...weather(),lastReportedTemperature:actualReport,forecast:[],birdRisk:'LOW'};
+ const incoming={...weather(),temperatureF:84,feelsLikeF:99,forecast:[],birdRisk:'LOW',lastRefreshAttemptIso:'2026-11-01T08:45:00Z'};
+ const failed=mergeWeather(prior,{weather:incoming,...flags});
+ assert.deepEqual(failed.lastReportedTemperature,actualReport);assert.equal(failed.currentOpsWeather,null);
+ const recovered=mergeWeather(failed,{weather:{...incoming,...reportWeather({allFeedsUpdatedZ:'2026-11-01 08:40Z',atisObservedZ:'2026-11-01T08:30:00Z',tempC:18})},...flags,feedReached:true});
+ assert.equal(recovered.lastReportedTemperature.celsius,18);
+});
+
+test('display uses retained actual temperature even without a canonical snapshot and does not convert twice',()=>{
+ const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+ const expression=page.match(/<strong className="current-temperature"[^>]*>\{([^\n]+?)\}°<small>/)?.[1];
+ assert.ok(expression,'actual temperature rendering expression is present');
+ const render=new Function('currentReadings','retainedTemperature','currentPresentation','metarState','weather',`return (${expression});`);
+ for(const usesOps of [true,false]) for(const metarState of ['CURRENT','STALE','UNAVAILABLE']) {
+  const display=render({usesOps,temperature:null},actualReport,{simulated:false},metarState,{temperatureF:84,feelsLikeF:99});
+  assert.equal(String(display),'63',`${usesOps}/${metarState}`);
+ }
+ assert.equal(String(render({usesOps:true,temperature:{display:'66'}},actualReport,{simulated:false},'CURRENT',{temperatureF:84,feelsLikeF:99})),'66');
+ assert.equal(String(render({usesOps:true,temperature:null},null,{simulated:false},'UNAVAILABLE',{temperatureF:84,feelsLikeF:99})),'--');
+});
+
+test('cold start can retain a structurally valid stale/last-good actual report without inventing a current reading',()=>{
+ for(const status of ['OK','WARN_SOURCE','STALE_SOURCE','USED_LAST_GOOD','STALE']) {
+  const w=reportWeather({atisFetchStatus:status,atisSourceIsCurrent:false,lastKnownGoodUsed:{atis:true},atisAgeMinutes:531});
+  assert.deepEqual(retainReportedTemperature(null,w,retentionNow),actualReport,status);
+  assert.equal(resolveCurrentWeatherReadings({...w,requestStatus:'IDLE',feedStatus:'DEGRADED'},retentionNow).temperature,null);
+ }
+ for(const atisFetchStatus of ['ERROR','UNKNOWN','',undefined]) assert.equal(retainReportedTemperature(null,reportWeather({atisFetchStatus}),retentionNow),null);
+ for(const atisAgeMinutes of [-1,'11',NaN,Infinity]) assert.equal(retainReportedTemperature(null,reportWeather({atisAgeMinutes}),retentionNow),null,String(atisAgeMinutes));
+});

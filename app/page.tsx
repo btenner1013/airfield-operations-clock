@@ -1,5 +1,6 @@
 "use client";
 
+import { restoreReportedTemperature, validateReportedTemperature, lastTemperatureLabel } from "./reportedTemperature";
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
 import { formatClockStatus } from "./clockSync";
@@ -410,8 +411,9 @@ export default function Home() {
       const rawCache=localStorage.getItem("kmem-weather");
       const cached=restoreWeatherCache(rawCache, displayNow);
       const retainedRunways=restoreRunwayOperationsCache(rawCache, displayNow);
-      if(cached) commit({...cached,runwayOperations:retainedRunways});
-      else if(retainedRunways) commit({...weatherRef.current,runwayOperations:retainedRunways});
+      const lastReportedTemperature=restoreReportedTemperature(rawCache,displayNow.getTime());
+      if(cached) commit({...cached,runwayOperations:retainedRunways,lastReportedTemperature});
+      else if(retainedRunways||lastReportedTemperature) commit({...weatherRef.current,currentOpsWeather:null,runwayOperations:retainedRunways,lastReportedTemperature});
     }catch{}
     const coordinator=createRefreshCoordinator<WeatherFetchResult>({
       fetcher:signal=>getWeather(signal),
@@ -476,6 +478,7 @@ export default function Home() {
     simulated:Boolean((debug && !(["night","sunrise","sunset"] as Theme[]).includes(debug)) || debugPhenomena !== null || debugCloud !== null || debugCloudBase !== null || debugVisibility !== null || debugIntensity !== null),
     phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
   });
+  const retainedTemperature=!currentPresentation.simulated&&clock.source!=="PREVIEW"?validateReportedTemperature(weather.lastReportedTemperature,now.getTime()):null;
   const currentReadings=resolveCurrentWeatherReadings(weather,now.getTime(),currentPresentation.simulated||clock.source==="PREVIEW");
   const currentTrends=currentReadings.trends;
   const lightning=currentLightningPresentation({preview:debugLightning,simulated:currentPresentation.simulated,phenomena:effPhenomena,live:weather.currentLightning});
@@ -648,9 +651,10 @@ export default function Home() {
           </div>
           <div className="current-weather-instrument">
             <div className="current-weather-hero">
-              <strong className="current-temperature" title={currentReadings.temperature?.title}>{currentReadings.usesOps ? currentReadings.temperature?.display??"--" : !currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small><CurrentWeatherTrend metric="temperature" comparison={currentTrends.temperature} /></strong>
+              <strong className="current-temperature" title={currentReadings.temperature?.title??(retainedTemperature?`Last reported actual temperature; ${retainedTemperature.source} ${retainedTemperature.observedAt}`:undefined)}>{(currentReadings.usesOps||retainedTemperature) ? currentReadings.temperature?.display??(retainedTemperature?String(Math.round(retainedTemperature.celsius*9/5+32)):"--") : !currentPresentation.simulated && metarState === "UNAVAILABLE" ? "--" : weather.temperatureF ?? "--"}°<small>F</small><CurrentWeatherTrend metric="temperature" comparison={currentTrends.temperature} /></strong>
               <span className="current-weather-glyph"><WeatherIcon condition={currentPresentation.condition} codes={currentPresentation.codes} night={!effSolar.daylight || phase === "night"} /></span>
             </div>
+            {!currentPresentation.simulated&&clock.source!=="PREVIEW"&&!currentReadings.temperature&&(currentReadings.usesOps||retainedTemperature)&&<small className="temperature-last-report" style={{display:"block",fontSize:"0.55rem",lineHeight:1.3,color:"#efc677"}}>{retainedTemperature?lastTemperatureLabel(retainedTemperature,now.getTime()):"Awaiting first temperature report"}</small>}
             <b className="current-condition">{currentPresentation.label}{currentPresentation.secondaryLabel && <span className="weather-modifier"> · {currentPresentation.secondaryLabel}</span>}</b>
             <div className="current-weather-stats">
               <div><span>FEELS LIKE</span><strong>{!modelMetricsAvailable ? "—" : weather.feelsLikeF}°F</strong></div>

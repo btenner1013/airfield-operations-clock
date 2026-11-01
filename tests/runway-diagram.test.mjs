@@ -346,5 +346,5 @@ test('long provenance cues scale within narrow and TV panel widths',()=>{
 test('startup restores validated ATIS independently when dated weather cache is unusable',()=>{
  const page=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
  assert.match(page,/restoreRunwayOperationsCache\(rawCache, displayNow\)/);
- assert.match(page,/else if\(retainedRunways\) commit\(\{\.\.\.weatherRef.current,runwayOperations:retainedRunways\}\)/);
+ assert.match(page,/else if\(retainedRunways\|\|lastReportedTemperature\) commit\(\{\.\.\.weatherRef.current,currentOpsWeather:null,runwayOperations:retainedRunways,lastReportedTemperature\}\)/);
 });
