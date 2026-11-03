@@ -8,6 +8,8 @@
 .ops-warning[data-kind="current"].alert-pulse .ops-warning-body { animation: opsAlertPulse .95s ease-in-out infinite; }
 .ops-warning[data-kind="weather"].alert-pulse .ops-warning-body { animation: opsAlertPulse .82s ease-in-out infinite; }
 .ops-warning.alert-flash .ops-warning-body { animation: opsAlertFlash 1s step-start infinite; }
+.ops-warning[data-kind="weather"] .ops-warning-body.segment-pulse { animation: opsAlertPulse .82s ease-in-out infinite; }
+.ops-warning .ops-warning-body.segment-flash { animation: opsAlertFlash 1s step-start infinite; }
 [data-reduced-motion="1"] .ops-warning .ops-warning-body { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .ops-warning .ops-warning-body { animation: none !important; }

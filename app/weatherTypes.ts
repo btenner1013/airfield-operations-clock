@@ -47,6 +47,8 @@ export type Weather = {
   operationalWeather:OperationalWeather|null;
   currentLightning:LightningReport;
   tafHazards:TafHazard[];
+  wxPrimaryAlert?:unknown;
+  wxSecondaryAlert?:unknown;
   wxAlertText:string;
   wxAlertTone:string;
   wxAlertPulse:boolean;

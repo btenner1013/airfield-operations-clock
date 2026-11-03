@@ -112,8 +112,8 @@ test("OS and debug reduced motion disable warning animation; normalized reduced 
 test("production wiring keeps original no-alert gates and passes normalized text/flags/metadata directly", () => {
   assert.match(page, /lightningDisplay\.severity!=="none"&&\(\s*<OperationalWarning kind="current" text=\{lightningDisplay.text\}/);
   assert.match(page, /pulse=\{lightningDisplay.shouldPulse\} flash=\{lightningDisplay.shouldFlash\} stale=\{lightningDisplay.isStale\}/);
-  assert.match(page, /const hasHazard=alertDisplay.severity!=="none"/);
-  assert.match(page, /hasHazard && \(\s*<OperationalWarning kind="weather" text=\{alertDisplay.text\} icon=\{alertDisplay.icon\} tone=\{hazardTone\}/);
+  assert.match(page, /const hasHazard=alertSegments.length>0/);
+  assert.match(page, /hasHazard && \(\s*<OperationalWarning kind="weather" segments=\{alertSegments\} text=\{alertDisplay.text\} icon=\{alertDisplay.icon\} tone=\{hazardTone\}/);
   assert.match(page, /pulse=\{alertDisplay.shouldPulse\} flash=\{alertDisplay.shouldFlash\}/);
   assert.match(page, /sourceTime=\{lightningDisplay.sourceTime\} sourceStamp=\{aviationStamp\(lightningDisplay.sourceTime\)\}/);
 });
@@ -126,4 +126,29 @@ test("responsive warning and cohesion styles avoid clipping fields or changing c
   assert.match(cohesion, /@media \(max-height: 700px\)[\s\S]*\.info \{ max-height: none; \}/);
   assert.match(cohesion, /\.bird-watch-glyph \{ max-width: 100%; height: auto; \}/);
   assert.doesNotMatch(css + cohesion, /\.(?:clock[\w-]*|clocks|burn-shift|wind-(?:dial|needle|bearing|speed|instrument)[\w-]*)\s*[{,:]/);
+});
+
+test('structured current and forecast keep independent colors and effects in one warning', () => {
+  const html = render({segments:[
+    {text:'-RA ATIS',icon:'🌧️',colorClass:'alert-blue',severity:'informational',shouldPulse:false,shouldFlash:false},
+    {text:'-TSRA PSBL 04 NOV 00-04Z',icon:'⛈️',colorClass:'alert-yellow',severity:'caution',shouldPulse:true,shouldFlash:false},
+  ]});
+  assert.equal((html.match(/class="ops-warning"/g)||[]).length,1);
+  assert.ok(html.indexOf('-RA ATIS') < html.indexOf('-TSRA PSBL'));
+  assert.match(html,/class="ops-warning-body" data-segment="0" data-tone="blue"/);
+  assert.match(html,/class="ops-warning-body segment-pulse" data-segment="1" data-tone="yellow"/);
+  assert.match(html,/color:#35b7ff/); assert.match(html,/color:#ffcc00/);
+});
+
+test('single structured segment supplies its own tone and motion, not legacy summary', () => {
+ const html=render({tone:'blue',pulse:false,segments:[{text:'TS ATIS',icon:'⛈️',colorClass:'alert-red',severity:'warning',shouldPulse:false,shouldFlash:true}]});
+ assert.match(html,/class="ops-warning alert-flash"/);assert.match(html,/data-tone="red"/);assert.match(html,/color:#ff4444/);
+});
+
+test('structured METAR label and blue static presentation reach the rendered warning unchanged', () => {
+ const d=alerts.resolveWxAlertDisplay({text:'🌧️ RA METAR',tone:'blue',pulse:false,flash:false});
+ const html=render({segments:[d]});
+ assert.ok(visibleText(html).includes('RA METAR'));
+ assert.match(html,/data-segment="0" data-tone="blue"/);assert.match(html,/color:#35b7ff/);
+ assert.doesNotMatch(html,/alert-pulse|alert-flash|segment-pulse|segment-flash/);
 });
