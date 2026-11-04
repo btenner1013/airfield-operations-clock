@@ -47,3 +47,14 @@ test("ceiling label and value grow independently with wrapping and viewport fall
  assert.match(css,/min-width: 0/);
  for(const label of ['UNAVAILABLE','UNLIMITED (UNL)','effBase.toLocaleString()'])assert.ok(page.includes(label));
 });
+
+
+test('compact desktop strip frees window height without clipping or changing five-panel order',()=>{
+ const compact=readFileSync(new URL('../app/compact-information-bar.css',import.meta.url),'utf8');
+ const layout=readFileSync(new URL('../app/layout.tsx',import.meta.url),'utf8');
+ assert.match(compact,/@media \(min-width: 1081px\) and \(min-height: 701px\)/);
+ assert.match(compact,/min-height: 0;\s*height: auto;/);
+ assert.doesNotMatch(compact,/overflow:\s*hidden|text-overflow|line-clamp|display:\s*none|grid-row|order:/);
+ assert.doesNotMatch(compact,/\.(?:sky[\w-]*|clock[\w-]*|clocks|burn-shift|flyby[\w-]*|c17[\w-]*)\s*[{,:]|@keyframes|animation:/);
+ assert.ok(layout.indexOf('./compact-information-bar.css')>layout.indexOf('./information-bar.css'));
+});

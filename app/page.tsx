@@ -27,7 +27,7 @@ import BirdWatchGlyph from "./BirdWatchGlyph";
 import CurrentWeatherTrend from "./CurrentWeatherTrend";
 import { normalizeCurrentOpsWeather, resolveCurrentWeatherReadings } from "./currentWeatherTrends";
 import OperationalWarning from "./OperationalWarning";
-import { resolveWeatherAlertSegments } from "./weatherAlertSegments";
+import { resolveWeatherAlertPlacement } from "./weatherAlertPlacement";
 import { describeForecastSources, formatForecastWind } from "./forecastPresentation";
 import { currentWeatherPresentation, currentLightningPresentation, lightningReportForDisplay } from "./currentWeatherPresentation";
 import { modelWeatherFromCode } from "./modelWeather";
@@ -241,7 +241,7 @@ async function getWeather(signal?:AbortSignal):Promise<WeatherFetchResult> {
   });
   const windValid=currentWind!==null;
   const healthy=metarValid&&tafValid&&metarFetchStatus==="OK"&&tafFetchStatus==="OK";
-  const weather:Weather={...model,currentOpsWeather:normalizeCurrentOpsWeather(ops),runwayOperations:normalizeRunwayOperations(ops),temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxPrimaryAlert:ops.wxPrimaryAlert,wxSecondaryAlert:ops.wxSecondaryAlert,wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
+  const weather:Weather={...model,currentOpsWeather:normalizeCurrentOpsWeather(ops),runwayOperations:normalizeRunwayOperations(ops),temperatureF:metar?.temperatureF??model.temperatureF,condition:metar?.condition??model.condition,description:metar?.description??model.description,operationalWeather:metar?.operationalWeather??model.operationalWeather,currentLightning:metar?.currentLightning??model.currentLightning,currentWind:currentWind??model.currentWind,observationTime:currentWind?.observedAt??(metarValid?metarObsIso:model.observationTime),forecast:tafProduct?.forecast??model.forecast,tafHazards:tafProduct?.hazards??[],wxAlertSourceContext:{metarObservedAt:ops.metarObservedZ,atisObservedAt:ops.atisObservedZ,metarStatus:ops.metarFetchStatus,atisStatus:ops.atisFetchStatus},wxPrimaryAlert:ops.wxPrimaryAlert,wxSecondaryAlert:ops.wxSecondaryAlert,wxAlertText:ops.wxAlertText||"",wxAlertTone:ops.wxAlertTone||"none",wxAlertPulse:!!ops.wxAlertPulse,wxAlertFlash:!!ops.wxAlertFlash,wxAlertVisible:!!ops.wxAlertVisible,birdRisk:(ops.bwcAhasRisk||ops.bwc||"UNAVAILABLE").toUpperCase(),birdBasis:(ops.bwcBasedOn||"AHAS").toUpperCase(),birdUpdated:ops.bwcUpdatedZ||"—",source:metarValid?"METAR":"MODEL",cloudCoverage:sky?.cloudCoverage??model.cloudCoverage,cloudBaseFt:sky?sky.cloudBaseFt:model.cloudBaseFt,visibilitySm:sky?sky.visibilitySm:model.visibilitySm,phenomena:metarValid?(phenomena??[]):model.phenomena,metarObsIso:metarValid?metarObsIso:null,tafIssueIso:tafTimes.issueIso,tafValidStartIso:tafTimes.validStartIso,tafValidEndIso:tafTimes.validEndIso,metarFetchStatus,tafFetchStatus,bwcFetchStatus,feedStatus:healthy?"OK":"DEGRADED",requestStatus:"IDLE",lastRefreshAttemptIso:null,lastRefreshSuccessIso:null,feedError:healthy?null:"UPSTREAM DEGRADED",rawMetar:metarValid?rawMetar:null};
   weather.currentLightning=resolveCurrentLightning(ops,weather.currentLightning);
   return {weather,metarValid,tafValid,modelValid,windValid,feedReached:true};
 }
@@ -513,7 +513,10 @@ export default function Home() {
     warning:{text:"⛈️ TSRA WARNING 05 AUG 21–22Z",tone:"red",pulse:false,flash:true,visible:true}
   } as const)[debugWxAlert]:null;
   const alertDisplay=resolveWxAlertDisplay({text:debugAlert?.text??weather.wxAlertText,tone:debugAlert?.tone??weather.wxAlertTone,pulse:debugAlert?.pulse??weather.wxAlertPulse,flash:debugAlert?.flash??weather.wxAlertFlash,visible:debugAlert?.visible??weather.wxAlertVisible,reducedMotion:reduced});
-  const alertSegments=debugAlert ? [alertDisplay].filter(alert=>alert.severity!=="none") : resolveWeatherAlertSegments(weather.wxPrimaryAlert,weather.wxSecondaryAlert,{text:weather.wxAlertText,tone:weather.wxAlertTone,pulse:weather.wxAlertPulse,flash:weather.wxAlertFlash,visible:weather.wxAlertVisible,reducedMotion:reduced});
+  const placedAlerts=resolveWeatherAlertPlacement(debugAlert?null:weather.wxPrimaryAlert,debugAlert?null:weather.wxSecondaryAlert,{text:debugAlert?.text??weather.wxAlertText,tone:debugAlert?.tone??weather.wxAlertTone,pulse:debugAlert?.pulse??weather.wxAlertPulse,flash:debugAlert?.flash??weather.wxAlertFlash,visible:debugAlert?.visible??weather.wxAlertVisible,reducedMotion:reduced},weather.wxAlertSourceContext,now.getTime());
+  // Never mix live current hazards into a simulated Current Weather instrument.
+  const currentAlertSegments=currentPresentation.simulated&&!debugAlert?[]:placedAlerts.current;
+  const alertSegments=placedAlerts.future;
   const regressionForecast:Forecast[]=[
     ["2026-08-05T20:00:00.000Z",82,"P6SM FEW060",0],
     ["2026-08-06T00:00:00.000Z",79,"P6SM SKC",0],
@@ -665,7 +668,12 @@ export default function Home() {
               <div><span>HUMIDITY</span><strong>{!modelMetricsAvailable ? "—" : weather.humidity}%</strong></div>
               <div className="current-ceiling"><span>CEILING</span><strong title={currentReadings.ceiling?.title}>{currentReadings.usesOps ? currentReadings.ceiling?.display??"UNAVAILABLE" : currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
             </div>
-            {/* Lightning remains an exception: no report means no row. */}
+            {currentAlertSegments.map((alert,index)=>(
+              <OperationalWarning key={index} kind="weather" placement={alert.scope} segments={[alert]} text={alert.text} tone={alert.colorClass.slice(6)}
+                pulse={alert.shouldPulse} flash={alert.shouldFlash} stale={alert.stale||feed==="OFFLINE"} sourceTime={alert.sourceTime}
+                sourceStamp={aviationStamp(alert.sourceTime)} feedStatus={feed} preview={Boolean(debugAlert)} />
+            ))}
+            {/* Lightning retains its own source/timing and any distinct location details. No report means no row. */}
             {lightningDisplay.severity!=="none"&&(
               <OperationalWarning kind="current" text={lightningDisplay.text} tone={lightningDisplay.colorClass.replace("lightning-", "")}
                 pulse={lightningDisplay.shouldPulse} flash={lightningDisplay.shouldFlash} stale={lightningDisplay.isStale}
@@ -735,7 +743,7 @@ export default function Home() {
                 <b className="forecast-source-badge" title={forecastSource.detail}>{forecastSource.label}</b>
               </div>
               {hasHazard && (
-                <OperationalWarning kind="weather" segments={alertSegments} text={alertDisplay.text} icon={alertDisplay.icon} tone={hazardTone}
+                <OperationalWarning kind="weather" placement="forecast" segments={alertSegments} text={alertDisplay.text} icon={alertDisplay.icon} tone={hazardTone}
                   pulse={alertDisplay.shouldPulse} flash={alertDisplay.shouldFlash} preview={Boolean(debugAlert)} feedStatus={feed} />
               )}
           <div className="forecast-list">

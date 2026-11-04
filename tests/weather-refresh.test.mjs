@@ -340,3 +340,29 @@ test("ATIS-only cache restore survives local-day and TAF guards without weakenin
   assert.ok(restoreRunwayOperationsCache(JSON.stringify(missingTaf),tomorrow));
   for (const invalid of [null,"{bad",JSON.stringify({...JSON.parse(raw),version:999}),JSON.stringify({...JSON.parse(raw),savedAtIso:"bad"}),JSON.stringify({...JSON.parse(raw),savedAtIso:"2026-07-22T00:00:00Z"}),JSON.stringify({...JSON.parse(raw),savedAtIso:"2026-07-20T04:00:00Z"})]) assert.equal(restoreRunwayOperationsCache(invalid,tomorrow),null);
 });
+
+
+// Current alert provenance has the same last-known boundary as the other observations.
+import {resolveWeatherAlertPlacement} from '../app/weatherAlertPlacement.ts';
+test('restored current alerts stay visibly retained until Ops fetch replaces source context',()=>{
+ const current={displayText:'🌧️ RA ATIS',code:'RA',sources:['ATIS'],displayTone:'blue',pulse:false,flash:false};
+ const context={atisObservedAt:'2026-07-20T06:00:00Z',atisStatus:'OK'};
+ const fresh=weather({solarDays:[],wxPrimaryAlert:current,wxAlertText:current.displayText,wxAlertVisible:true,wxAlertTone:'blue',wxAlertSourceContext:context});
+ const now=new Date('2026-07-20T06:02:00Z');
+ const resolve=w=>resolveWeatherAlertPlacement(w.wxPrimaryAlert,w.wxSecondaryAlert,{text:w.wxAlertText,visible:w.wxAlertVisible},w.wxAlertSourceContext,now.getTime());
+ const restored=restoreWeatherCache(serializeWeatherCache(fresh,now.toISOString()),now);
+ assert.ok(restored);assert.equal(restored.wxAlertSourceContext.retained,true);assert.equal(resolve(restored).current[0].stale,true);
+ assert.equal(resolve(restored).current[0].sourceTime,context.atisObservedAt);
+ // Optional model failure may leave overall feed degraded, but a real Ops response
+ // re-establishes only its own selected observation and clears the retained marker.
+ const fetched=mergeWeather(restored,{weather:{...fresh,feedStatus:'DEGRADED'},feedReached:true,metarValid:true,tafValid:true,windValid:true,modelValid:false});
+ assert.equal(fetched.wxAlertSourceContext.retained,undefined);assert.equal(resolve(fetched).current[0].stale,false);
+});
+test('old or malformed cache alert provenance is retained without crashing or inventing time',()=>{
+ for(const context of [undefined,null,[],7]) {
+  const fresh=weather({solarDays:[],wxPrimaryAlert:{displayText:'RA ATIS',sources:['ATIS']},wxAlertText:'RA ATIS',wxAlertVisible:true,wxAlertSourceContext:context});
+  const now=new Date('2026-07-20T06:02:00Z');const restored=restoreWeatherCache(serializeWeatherCache(fresh,now.toISOString()),now);
+  assert.ok(restored);const r=resolveWeatherAlertPlacement(restored.wxPrimaryAlert,null,{text:restored.wxAlertText},restored.wxAlertSourceContext,now.getTime());
+  assert.equal(r.current[0].stale,true);assert.equal(r.current[0].sourceTime,null);
+ }
+});

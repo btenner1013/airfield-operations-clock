@@ -1,3 +1,4 @@
+import type { WeatherAlertSourceContext } from "./weatherAlertPlacement";
 import type { ReportedTemperature } from "./reportedTemperature";
 import type { RunwayOperationsSnapshot } from "./runwayOperations";
 import type { OperationalWeather, TafHazard } from "./aviationWeatherPriority";
@@ -47,6 +48,7 @@ export type Weather = {
   operationalWeather:OperationalWeather|null;
   currentLightning:LightningReport;
   tafHazards:TafHazard[];
+  wxAlertSourceContext?:WeatherAlertSourceContext;
   wxPrimaryAlert?:unknown;
   wxSecondaryAlert?:unknown;
   wxAlertText:string;

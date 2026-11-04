@@ -113,7 +113,7 @@ test("production wiring keeps original no-alert gates and passes normalized text
   assert.match(page, /lightningDisplay\.severity!=="none"&&\(\s*<OperationalWarning kind="current" text=\{lightningDisplay.text\}/);
   assert.match(page, /pulse=\{lightningDisplay.shouldPulse\} flash=\{lightningDisplay.shouldFlash\} stale=\{lightningDisplay.isStale\}/);
   assert.match(page, /const hasHazard=alertSegments.length>0/);
-  assert.match(page, /hasHazard && \(\s*<OperationalWarning kind="weather" segments=\{alertSegments\} text=\{alertDisplay.text\} icon=\{alertDisplay.icon\} tone=\{hazardTone\}/);
+  assert.match(page, /hasHazard && \(\s*<OperationalWarning kind="weather" placement="forecast" segments=\{alertSegments\} text=\{alertDisplay.text\} icon=\{alertDisplay.icon\} tone=\{hazardTone\}/);
   assert.match(page, /pulse=\{alertDisplay.shouldPulse\} flash=\{alertDisplay.shouldFlash\}/);
   assert.match(page, /sourceTime=\{lightningDisplay.sourceTime\} sourceStamp=\{aviationStamp\(lightningDisplay.sourceTime\)\}/);
 });
@@ -151,4 +151,33 @@ test('structured METAR label and blue static presentation reach the rendered war
  assert.ok(visibleText(html).includes('RA METAR'));
  assert.match(html,/data-segment="0" data-tone="blue"/);assert.match(html,/color:#35b7ff/);
  assert.doesNotMatch(html,/alert-pulse|alert-flash|segment-pulse|segment-flash/);
+});
+
+
+test('moved current weather retains weather cadence and exact source observation while unverified stays neutral', () => {
+ const current=render({placement:'current',text:'RA METAR',sourceTime:'2026-11-03T23:53:00Z',sourceStamp:'032353Z'});
+ assert.match(current,/CURRENT WX/);assert.match(current,/OBS 032353Z/);assert.match(current,/data-kind="weather"/);assert.match(current,/data-placement="current"/);
+ const stale=render({placement:'current',text:'TS ATIS',sourceStamp:'032100Z',stale:true,flash:true});
+ assert.match(stale,/REPORTED WX/);assert.match(stale,/STALE REPORT/);assert.match(stale,/OBS 032100Z/);
+ const unknown=render({placement:'unverified',text:'MANUAL WARNING'});assert.match(unknown,/TIME UNVERIFIED/);assert.doesNotMatch(unknown,/CURRENT WX|FORECAST WX/);
+ const future=render({placement:'forecast'});assert.match(future,/FORECAST WX/);assert.match(future,/OPS BOARD/);
+});
+
+test('production places observed reports only in current card and forecast reports only in future card',()=>{
+ const current=page.slice(page.indexOf('<article className="weather-card panel">'),page.indexOf('<article className="wind-card panel">'));
+ const forecast=page.slice(page.indexOf('<article className={`forecast-card panel'));
+ assert.match(current,/currentAlertSegments.map/);assert.match(current,/placement=\{alert.scope\}/);assert.match(current,/lightningDisplay.text/);
+ assert.doesNotMatch(forecast,/placedAlerts.current|lightningDisplay.text/);
+ assert.match(page,/const alertSegments=placedAlerts.future/);
+});
+
+
+test('simulated current weather isolates live hazards without hiding forecast or lightning-only previews',()=>{
+ const expression=page.match(/const currentAlertSegments=([^;]+);/)[1];
+ const resolve=new Function('currentPresentation','debugAlert','placedAlerts',`return ${expression};`);
+ const live=[{text:'RA METAR'}];
+ for(const [simulated,debugAlert,expected] of [[false,null,live],[true,null,[]],[true,{text:'EXPLICIT PREVIEW'},live],[false,{text:'EXPLICIT PREVIEW'},live]]) assert.deepEqual(resolve({simulated},debugAlert,{current:live}),expected);
+ assert.match(page,/const alertSegments=placedAlerts.future/);
+ const simulation=page.slice(page.indexOf('const currentPresentation='),page.indexOf('const lightning=currentLightningPresentation'));
+ assert.doesNotMatch(simulation,/debugLightning/);
 });

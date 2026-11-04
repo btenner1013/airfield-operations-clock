@@ -305,7 +305,9 @@ export function restoreWeatherCache(raw:string|null, displayNow: Date):Weather|n
     // ATIS may survive reload only as a validated, explicitly last-known report.
     // Current weather metrics and forecast wind still require a fetched source.
     const runwayOperations=restoreRunwayOperationsCache(raw,displayNow);
-    return {...candidate,currentOpsWeather:null,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
+    // A cached current hazard is a retained report until an Ops fetch re-establishes it.
+    const wxAlertSourceContext={...(candidate.wxAlertSourceContext&&typeof candidate.wxAlertSourceContext==="object"&&!Array.isArray(candidate.wxAlertSourceContext)?candidate.wxAlertSourceContext:{}),retained:true};
+    return {...candidate,currentOpsWeather:null,wxAlertSourceContext,forecast:candidate.forecast.map(row=>({...row,forecastWind:null})),runwayOperations,feedStatus:"DEGRADED",requestStatus:"IDLE",feedError:"RESTORED CACHE"};
   } catch { return null; }
 }
 

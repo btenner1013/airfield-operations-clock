@@ -1,0 +1,79 @@
+/* Keep the desktop instruments a bottom strip, leaving the airport window open.
+   Content, including wrapped warnings, determines height: never crop the rail.
+   The existing short-screen and narrow scrolling layouts are intentionally left alone. */
+@media (min-width: 1081px) and (min-height: 701px) {
+  .info { gap: clamp(10px, .65vw, 18px); }
+  .info > .panel {
+    min-height: 0;
+    height: auto;
+    padding: clamp(10px, .65vw, 16px);
+  }
+  .info > .panel > .panel-title {
+    padding-bottom: 6px;
+    font-size: clamp(11px, .48vw, 15px);
+  }
+
+  .solar-lunar-instrument { gap: 4px; padding-top: 4px; }
+  .solar-dial-wrap { min-height: clamp(104px, 8.5vh, 128px); }
+  .solar-lunar-dial { max-height: 164px; }
+  .solar-lunar-caption { gap: 2px; }
+  .solar-lunar-caption strong { font-size: clamp(14px, 6.5cqw, 22px); }
+  .solar-lunar-caption small { font-size: 10px; }
+  .solar-lunar-times { padding-top: 5px; }
+  .solar-lunar-times span { font-size: clamp(10px, 4.8cqw, 14px); }
+  .solar-lunar-times strong { font-size: clamp(18px, 10cqw, 36px); }
+  .solar-lunar-times small { font-size: clamp(9px, 4cqw, 12px); }
+
+  .current-weather-instrument { gap: 5px; padding-top: 5px; }
+  .current-weather-hero { min-height: 0; gap: 8px; }
+  .current-temperature { font-size: clamp(52px, 12cqw, 76px); }
+  .current-weather-glyph { font-size: clamp(48px, 12cqw, 68px); }
+  .current-condition { font-size: clamp(14px, 3.8cqw, 22px); }
+  .current-weather-stats { gap: 6px; padding-top: 5px; }
+  .current-weather-stats > div { gap: 3px; }
+  .current-weather-stats > div + div { padding-left: 7px; }
+  .current-weather-stats span { font-size: clamp(10px, 2.5cqw, 13px); }
+  .current-weather-stats strong { font-size: clamp(18px, 4.5cqw, 26px); }
+  .current-weather-stats .current-ceiling span { font-size: clamp(12px, 3cqw, 16px); }
+  .current-weather-stats .current-ceiling strong { font-size: clamp(17px, 4.3cqw, 25px); }
+
+  .wind-card .wind-main-stacked { height: auto; flex: 1; gap: 5px; padding-top: 5px; }
+  .wind-dial { max-width: 122px; }
+
+  .bird-watch-instrument { gap: 8px; padding-top: 6px; }
+  .bird-watch-reading { gap: 4px; }
+  .bird-watch-glyph { width: clamp(30px, 16cqw, 48px); max-height: 48px; }
+  .bird-watch-reading .bird-severity { font-size: clamp(18px, 14cqw, 56px); }
+  .bird-card.risk-unknown .bird-severity { font-size: clamp(12px, 5.5cqw, 22px); }
+  .bird-watch-label { font-size: clamp(10px, 4cqw, 13px); }
+  .bird-watch-update { gap: 4px; }
+  .bird-observation-age { padding: 5px 6px; gap: 4px; }
+  .bird-observation-age .bird-watch-label { font-size: clamp(9px, 3.6cqw, 11px); }
+  .bird-watch-update .bird-age { font-size: clamp(18px, 8cqw, 28px); }
+  .bird-observation-age[data-age-state="future"] .bird-age,
+  .bird-observation-age[data-age-state="unavailable"] .bird-age { font-size: clamp(14px, 6cqw, 22px); }
+  .bird-watch-update .bird-timestamp { font-size: clamp(11px, 4.8cqw, 15px); }
+
+  .forecast-card .forecast-list { gap: 4px; padding-top: 5px; }
+  .forecast-card .forecast-item-tile {
+    grid-template-columns: max-content 30px minmax(0, 1fr) max-content;
+    padding: 5px 8px;
+    gap: 7px;
+  }
+  .forecast-card .forecast-time { font-size: clamp(13px, 3.2cqw, 18px) !important; }
+  .forecast-card .forecast-icon .wx-pictogram { font-size: 30px; }
+  .forecast-card .forecast-content-col { gap: 2px; }
+  .forecast-card .forecast-condition { font-size: clamp(12px, 3cqw, 18px); }
+  .forecast-card .forecast-meta-detail,
+  .forecast-card .forecast-wind { font-size: clamp(10px, 2.5cqw, 14px); }
+  .forecast-card .forecast-temp { font-size: clamp(20px, 4.5cqw, 28px) !important; }
+
+  /* Compact the frame, not the warning: all source text and status stay visible. */
+  .info .ops-warning { padding: 5px 8px !important; gap: 4px !important; }
+  .forecast-card .ops-warning { margin-top: 5px; }
+  .info .ops-warning .ops-warning-text { font-size: clamp(14px, 3.4cqw, 21px) !important; }
+  .info .ops-warning .ops-warning-label { font-size: clamp(9px, 2.3cqw, 12px) !important; }
+  .info .ops-warning .ops-warning-status,
+  .info .ops-warning .ops-warning-note { font-size: clamp(8px, 2.1cqw, 10px) !important; }
+  .info .ops-warning .ops-warning-icon { font-size: 21px !important; }
+}
