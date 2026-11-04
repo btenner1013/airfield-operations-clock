@@ -3,7 +3,7 @@ import { matchPeriodPrecipitation } from "./futureWeather.ts";
 import { parseTafWindTimeline, resolveForecastWind } from "./forecastWind.ts";
 import type { TafWindTimelinePeriod } from "./forecastWind";
 
-export type WeatherSourceKind = "METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PROB30"|"TAF_PROB40"|"TAF_PROB30_TEMPO"|"TAF_PROB40_TEMPO"|"MODEL";
+export type WeatherSourceKind = "ATIS"|"METAR"|"TAF_BASE"|"TAF_FM"|"TAF_TEMPO"|"TAF_PROB30"|"TAF_PROB40"|"TAF_PROB30_TEMPO"|"TAF_PROB40_TEMPO"|"MODEL";
 export type WeatherCategory = "severe-convection"|"thunderstorm"|"freezing-precipitation"|"winter-precipitation"|"liquid-precipitation"|"obscuration"|"cloud"|"clear"|"unknown";
 export type SkyCoverage = CloudCoverage|"SKC"|"NSC"|"NCD";
 export type CloudLayer = { coverage:CloudCoverage; baseFt:number|null; summary:string };

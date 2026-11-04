@@ -1,5 +1,6 @@
 "use client";
 
+import { observedSceneWeather } from "./observedSceneWeather";
 import { restoreReportedTemperature, validateReportedTemperature, lastTemperatureLabel } from "./reportedTemperature";
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
 import { useSystemClock, type ClockDebug } from "./useClock";
@@ -443,12 +444,13 @@ export default function Home() {
   
   const modelMetricsAvailable=!!weather.modelObsIso && classifyMetarFreshness(weather.modelObsIso,now.getTime()).state === "CURRENT";
   const metarFreshness=classifyMetarFreshness(weather.metarObsIso,now.getTime()), metarState=metarFreshness.state, metarAgeMin=metarFreshness.ageMinutes;
-  const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:metarState==="CURRENT"?weather.condition:"neutral";
+  const sceneWeather=observedSceneWeather(weather,now.getTime());
+  const condition=debug&&!(["night","sunrise","sunset"] as Theme[]).includes(debug)?debug:sceneWeather!==weather?sceneWeather.condition:metarState==="CURRENT"?weather.condition:"neutral";
   const imageBase=process.env.NEXT_PUBLIC_BASE_PATH||"";
-  const sceneModel=buildScene(weather,condition,phase,!!debug);
+  const sceneModel=buildScene(sceneWeather,condition,phase,!!debug);
   // Phase 2B - effective cloud params (debug overrides win) feed the procedural cloud layers via CSS.
   const effCoverage=debugCloud||sceneModel.cloudCoverage;
-  const visualCoverage=debugCloud||visualCloudCoverage(sceneModel.cloudCoverage,debug?[]:weather.operationalWeather?.cloudLayers);
+  const visualCoverage=debugCloud||visualCloudCoverage(sceneModel.cloudCoverage,debug?[]:sceneWeather.operationalWeather?.cloudLayers);
   const effBase=debugCloudBase!=null?debugCloudBase:sceneModel.cloudBaseFt;
   const debugWindToken=debugWindMode?({variable:"VRB03KT",calm:"00000KT",directional:"21008KT",gust:"21008G18KT",sector:"21008KT 180V240"} as const)[debugWindMode]:null;
   const modeWind=debugWindToken?parseStandardWind(debugWindToken,"METAR",now.toISOString()):null;
@@ -477,7 +479,7 @@ export default function Home() {
   const effPhenomena=debugPhenomena!=null?debugPhenomena.toUpperCase().split(/\s+/).filter(Boolean):sceneModel.phenomena;
   const effVisibility=debugVisibility!=null?debugVisibility:sceneModel.visibilitySm;
   const currentPresentation=currentWeatherPresentation({
-    condition:metarState === "UNAVAILABLE" ? "neutral" : weather.condition,description:metarState === "UNAVAILABLE" ? "OBSERVATION UNAVAILABLE" : weather.description,operationalWeather:weather.operationalWeather,
+    condition:sceneWeather!==weather ? sceneWeather.condition : metarState === "UNAVAILABLE" ? "neutral" : weather.condition,description:sceneWeather!==weather ? sceneWeather.description : metarState === "UNAVAILABLE" ? "OBSERVATION UNAVAILABLE" : weather.description,operationalWeather:sceneWeather.operationalWeather,
     simulated:Boolean((debug && !(["night","sunrise","sunset"] as Theme[]).includes(debug)) || debugPhenomena !== null || debugCloud !== null || debugCloudBase !== null || debugVisibility !== null || debugIntensity !== null),
     phenomena:effPhenomena,coverage:effCoverage,ceiling:effBase,visibility:effVisibility,
   });
@@ -666,7 +668,7 @@ export default function Home() {
             <div className="current-weather-stats">
               <div><span>FEELS LIKE</span><strong>{!modelMetricsAvailable ? "—" : weather.feelsLikeF}°F</strong></div>
               <div><span>HUMIDITY</span><strong>{!modelMetricsAvailable ? "—" : weather.humidity}%</strong></div>
-              <div className="current-ceiling"><span>CEILING</span><strong title={currentReadings.ceiling?.title}>{currentReadings.usesOps ? currentReadings.ceiling?.display??"UNAVAILABLE" : currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!weather.operationalWeather || weather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
+              <div className="current-ceiling"><span>CEILING</span><strong title={currentReadings.ceiling?.title}>{currentReadings.usesOps ? currentReadings.ceiling?.display??"UNAVAILABLE" : currentPresentation.condition === "neutral" || (!currentPresentation.simulated && (!sceneWeather.operationalWeather || sceneWeather.operationalWeather.skyCondition === "unavailable")) ? "UNAVAILABLE" : effCoverage && ["BKN","OVC","VV"].includes(effCoverage) ? effBase !== null ? `${effCoverage} ${effBase.toLocaleString()} FT` : "UNAVAILABLE" : "UNLIMITED (UNL)"}<CurrentWeatherTrend metric="ceiling" comparison={currentTrends.ceiling} /></strong></div>
             </div>
             {currentAlertSegments.map((alert,index)=>(
               <OperationalWarning key={index} kind="weather" placement={alert.scope} segments={[alert]} text={alert.text} tone={alert.colorClass.slice(6)}
