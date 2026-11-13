@@ -101,3 +101,15 @@ test('continuous solar stacks retain adverse weather families through dawn and d
   if(['rain','heavy-rain','thunderstorm','snow'].includes(condition))assert.ok(requests.every(x=>x.scene.startsWith(`${condition==='heavy-rain'?'rain':condition}-`)),'Precipitation priority survives obscuration');
  }
 });
+
+test('smoke preserves cloud-selected continuous sunrise and sunset stacks',async()=>{
+ const {cloudSceneForCoverage,sceneFor,sceneForEffects}=await import('../app/wallpaper.ts');
+ const {solarBlend}=await import('../app/solarTransition.ts');
+ for(const coverage of ['CLR','FEW','SCT'])for(const rising of [true,false])for(const elevation of [-12,-7,-3,-1,2,7]){
+  const weights=solarBlend(elevation),phases=['night',rising?'sunrise':'sunset','day'],values=[weights.night,weights.warm,weights.day];
+  const requests=normalizeSceneRequests(phases.map((phase,i)=>({scene:sceneForEffects(sceneFor('fog',phase,coverage),'smoke',10,phase,coverage),weight:values[i]})));
+  const expected=normalizeSceneRequests(phases.map((phase,i)=>({scene:cloudSceneForCoverage(coverage,phase),weight:values[i]})));
+  assert.deepEqual(requests,expected);assert.ok(requests.every(x=>!x.scene.startsWith('overcast-')));
+  assert.ok(Math.abs(requests.reduce((n,x)=>n+x.weight,0)-1)<1e-9);
+ }
+});

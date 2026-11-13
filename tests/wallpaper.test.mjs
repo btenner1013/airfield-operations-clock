@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { sceneFor, sceneForEffects } from "../app/wallpaper.ts";
+import { cloudSceneForCoverage, sceneFor, sceneForEffects } from "../app/wallpaper.ts";
 import { resolveOperationalWeather } from "../app/aviationWeatherPriority.ts";
 
 const phases=["day","night","sunrise","sunset"];
@@ -63,6 +63,20 @@ test("partly cloudy golden-hour regression uses sunrise and sunset photography",
   assert.equal(sceneFor("partly-cloudy","sunset","SCT"),"sunset");
   assert.equal(sceneForEffects("sunrise","none",10,"sunrise","SCT"),"sunrise");
   assert.equal(sceneForEffects("sunset","none",10,"sunset","SCT"),"sunset");
+});
+
+test("smoke follows reported cloud coverage without inventing an overcast ceiling",()=>{
+  for(const coverage of ["CLR","FEW","SCT","BKN","OVC","VV"]) for(const phase of phases) for(const visibility of [null,10,3,0.5]) {
+    // The weather decoder groups FU under the broad fog theme. The background
+    // must use sky coverage while the separate smoke renderer handles visibility.
+    const scene=sceneForEffects(sceneFor("fog",phase),"smoke",visibility,phase,coverage);
+    assert.equal(scene,cloudSceneForCoverage(coverage,phase),`${coverage}/${phase}/${visibility}`);
+    assert.equal(assetExists(scene),true,scene);
+  }
+  assert.equal(sceneForEffects("fog-day","smoke",10,"day","FEW"),"partly-cloudy-day");
+  assert.equal(sceneForEffects("fog-night","smoke",10,"night","CLR"),"clear-night");
+  assert.equal(sceneForEffects("fog-day","smoke",10,"sunrise","FEW"),"sunrise");
+  assert.equal(sceneForEffects("fog-day","smoke",10,"sunset","SCT"),"sunset");
 });
 
 test("successful wallpaper load still commits when decode rejects",()=>{

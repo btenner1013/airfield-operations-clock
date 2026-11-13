@@ -34,8 +34,10 @@ export function sceneForEffects(baseScene:string,obscuration:ObscurationType,vis
   if(obscuration==="shallow-fog"||obscuration==="patchy-fog"||obscuration==="partial-fog") return sceneFor("partly-cloudy",phase,"SCT");
   if(obscuration==="fog") return visibility>=1.5?`overcast-${light}`:`fog-${light}`;
   if(obscuration==="freezing-fog") return `fog-${light}`;
-  if(obscuration==="haze") return cloudSceneForCoverage(coverage,phase);
-  if(obscuration==="smoke"||obscuration==="volcanic-ash") return `overcast-${light}`;
+  // Smoke is a separate visibility-driven atmospheric layer, not cloud cover.
+  // Keep the reported sky and solar phase beneath its charcoal billows.
+  if(obscuration==="haze"||obscuration==="smoke") return cloudSceneForCoverage(coverage,phase);
+  if(obscuration==="volcanic-ash") return `overcast-${light}`;
   if(["dust","blowing-dust","drifting-dust","sand","blowing-sand","drifting-sand","dust-storm","sandstorm","dust-whirl"].includes(obscuration)) return sceneFor("partly-cloudy",phase,"SCT");
   return baseScene;
 }
