@@ -339,3 +339,22 @@ test("distant flicker is a small low-energy cloud patch with no bolt even if a f
     assert.equal(h.commands.filter(c=>c.id==="output"&&c.name==="fillRect"&&c.fill?.kind==="createRadialGradient").length,0);
   });
 });
+
+test('continuous night strength overrides legacy phase and keeps intermediate fog lighting',()=>{
+ const render=overrides=>{let result;withRenderer((renderer,h)=>{renderer.draw(h.ctx,1920,1080,0,0,{...BASE,reduced:true,obscuration:'fog',density:.8,horizon:.6,veil:.12,...overrides},QUIET);result=h.snapshot();});return result;};
+ const day=render({night:false}),night=render({night:true});
+ assert.deepEqual(render({night:true,nightStrength:0}),day);
+ assert.deepEqual(render({night:false,nightStrength:1}),night);
+ assert.deepEqual(render({night:true,nightStrength:.5}),render({night:false,nightStrength:.5}));
+ assert.notDeepEqual(render({nightStrength:.5}),day);assert.notDeepEqual(render({nightStrength:.5}),night);
+ assert.deepEqual(render({night:true,nightStrength:NaN}),night);
+});
+
+test('continuous warm strength retains legacy endpoints and an intermediate cloud treatment',()=>{
+ const render=overrides=>{let result;withRenderer((renderer,h)=>{renderer.draw(h.ctx,1920,1080,0,0,{...BASE,reduced:true,coverage:.76,ceiling:6500,phase:'sunset',...overrides},QUIET);result=h.snapshot();});return result;};
+ const warm=render({}),day=render({phase:'day'});
+ assert.deepEqual(render({warmStrength:1}),warm);assert.deepEqual(render({warmStrength:0}),day);
+ assert.notDeepEqual(render({warmStrength:.5}),warm);assert.notDeepEqual(render({warmStrength:.5}),day);
+ assert.deepEqual(render({warmStrength:NaN}),warm);
+ for(const overrides of [{obscuration:'fog',density:.7},{storm:.5},{ceiling:15000}])assert.deepEqual(render({...overrides,warmStrength:0}),render({...overrides,warmStrength:1}));
+});

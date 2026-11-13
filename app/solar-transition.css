@@ -1,0 +1,16 @@
+/* Continuous sun-position imagery. Static plates and the moving photographic
+   composite share cover geometry, exact weights and one interpolated grade. */
+.solar-wallpaper-stack{position:absolute;inset:0;filter:var(--solar-photo-filter);transition:filter 1s linear;pointer-events:none}
+.solar-wallpaper-plate{position:absolute;inset:0;background-position:center;background-size:cover;transition:opacity 1s linear;will-change:opacity}
+.display[data-solar-lighting="continuous"] .sky-base{visibility:hidden}
+/* Keep a consistent contrast pool instead of changing at legacy phase edges. */
+.display[data-solar-lighting="continuous"]{--scrim:.6}
+.display[data-solar-lighting="continuous"].theme-overcast,
+.display[data-solar-lighting="continuous"].theme-rain,
+.display[data-solar-lighting="continuous"].theme-heavy-rain,
+.display[data-solar-lighting="continuous"].theme-thunderstorm,
+.display[data-solar-lighting="continuous"].theme-fog,
+.display[data-solar-lighting="continuous"].theme-snow{--scrim:.72}
+.display[data-solar-lighting="continuous"] .sky::after{background:linear-gradient(180deg,rgba(1,6,9,.04),transparent 45%,rgba(0,4,7,.13))!important}
+/* Weather darkness/obscuration still comes from its own photographs and canvas. */
+.display[data-solar-lighting="continuous"] .photographic-sky-canvas{transition:none}

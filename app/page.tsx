@@ -1,5 +1,8 @@
 "use client";
 
+import { solarLighting, solarPhotoFilter } from "./solarTransition";
+import { useSolarWallpaper } from "./useSolarWallpaper";
+import { sourceOverOpacities } from "./solarWallpaper";
 import { observedSceneWeather } from "./observedSceneWeather";
 import { restoreReportedTemperature, validateReportedTemperature, lastTemperatureLabel } from "./reportedTemperature";
 import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties } from "react";
@@ -440,7 +443,9 @@ export default function Home() {
   
   // Phase 1 - Unify solar calculations
   const solar=solarWindow(now,local,weather.solarDays||[],weather.sunriseLocal,weather.sunsetLocal);
-  const phase=debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solar.phase);
+  const continuousSolar=!debugPhase && (!debug || (debug!=="night"&&debug!=="sunrise"&&debug!=="sunset"&&typeof clockDebug?.exact==="number"));
+  const lighting=solarLighting(now,CONFIG.latitude,CONFIG.longitude);
+  const phase=continuousSolar?lighting.phase:debugPhase||(debug?(debug==="night"||debug==="sunrise"||debug==="sunset"?debug:"day"):solar.phase);
   
   const modelMetricsAvailable=!!weather.modelObsIso && classifyMetarFreshness(weather.modelObsIso,now.getTime()).state === "CURRENT";
   const metarFreshness=classifyMetarFreshness(weather.metarObsIso,now.getTime()), metarState=metarFreshness.state, metarAgeMin=metarFreshness.ageMinutes;
@@ -491,7 +496,7 @@ export default function Home() {
   const lightningPoint=lightningPlacement(lightning),flashTest=debugLightning==="flash-test";
   const {fx,spec:fxSpec,obscuration,atmosphere}=buildWeatherEffects({
     phenomena:effPhenomena,coverage:visualCoverage,ceiling:effBase,visibility:effVisibility,
-    windDirection:effWindDir,windSpeed:effWindSpd,gust:effGust,lightning:visualLightning,night:phase==="night",
+    windDirection:effWindDir,windSpeed:effWindSpd,gust:effGust,lightning:visualLightning,night:continuousSolar?lighting.night>=.5:phase==="night",
     quality:perf,reduced,intensity:debugIntensity,paneDrops,available:currentPresentation.simulated||condition!=="neutral",
   });
 
@@ -506,6 +511,19 @@ export default function Home() {
   }
 
   const scene=sceneForEffects(visualBaseScene,obscuration.type,effVisibility,phase,effCoverage);
+  const resolveSolarScene=(targetPhase:SolarPhase)=>{
+    let base=currentPresentation.simulated?sceneFor(currentPresentation.condition,targetPhase,visualCoverage):buildScene(sceneWeather,condition,targetPhase,!!debug).baseScene;
+    if(isHighCeiling&&!isSevereWx&&base.startsWith("overcast-"))base=sceneFor("partly-cloudy",targetPhase,effCoverage);
+    return sceneForEffects(base,obscuration.type,effVisibility,targetPhase,effCoverage);
+  };
+  const solarLayers=useSolarWallpaper([
+    {scene:resolveSolarScene("night"),weight:lighting.night},
+    {scene:resolveSolarScene(lighting.rising?"sunrise":"sunset"),weight:lighting.warm},
+    {scene:resolveSolarScene("day"),weight:lighting.day},
+  ],imageBase,continuousSolar,now.getTime());
+  const solarAlphas=sourceOverOpacities(solarLayers.map(layer=>layer.weight));
+  const solarFilter=solarPhotoFilter(condition,lighting);
+  const solarReady=continuousSolar&&solarLayers.length>0;
   const displayLightning=lightningReportForDisplay(lightning,weather.metarObsIso,now.getTime());
   const lightningDisplay=resolveLightningDisplay({text:lightning.awareness?compactLightningDisplay(lightning.awareness):"NONE",level:lightning.level,tone:lightning.tone,pulse:lightning.pulse,flash:lightning.flash,isStale:displayLightning.isStale,isUnavailable:lightning.isUnavailable,sourceTime:displayLightning.sourceTime,reducedMotion:reduced});
   const debugAlert=debugWxAlert?({
@@ -530,7 +548,7 @@ export default function Home() {
   });
   const displayForecast=debugFutureWeather?regressionForecast:weather.forecast;
   useLightningScheduler(mainRef,visualLightning,reduced,flashTest);
-  const sceneStyle={...cloudStyle,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction,"--lightning-x":`${lightningPoint.x}%`,"--lightning-y":`${lightningPoint.y}%`} as unknown as CSSProperties;
+  const sceneStyle={...cloudStyle,"--solar-photo-filter":solarFilter,"--obsc-opacity":obscuration.density,"--obsc-horizon":obscuration.horizon,"--obsc-veil":obscuration.veil,"--obsc-duration":`${obscuration.duration}s`,"--obsc-direction":obscuration.direction,"--lightning-x":`${lightningPoint.x}%`,"--lightning-y":`${lightningPoint.y}%`} as unknown as CSSProperties;
   
   // Crossfade the wallpaper between two ping-pong layers using a race-safe state machine.
   // We preload the incoming image and swap only after a successful load. A decode rejection is
@@ -629,7 +647,7 @@ export default function Home() {
     setShowSim(true);
   };
   const activeWallpaper=active==="a"?aScene:bScene;
-  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}
+  return <main ref={mainRef} className={`display theme-${condition} phase-${phase}`} style={sceneStyle} data-solar-lighting={solarReady?"continuous":"legacy"} data-solar-elevation={continuousSolar?lighting.elevation?.toFixed(3):undefined} data-solar-day={continuousSolar?lighting.day.toFixed(4):undefined} data-solar-warm={continuousSolar?lighting.warm.toFixed(4):undefined} data-solar-night={continuousSolar?lighting.night.toFixed(4):undefined} data-wallpaper-scene={activeWallpaper} data-wallpaper-requested={scene} data-lightning-level={lightning.level} data-lightning-source={lightning.source} data-lightning-frequency={lightning.frequency||"none"} data-lightning-direction={lightning.directions.join("-")||"none"} data-lightning-types={lightning.types.join(",")||"none"} data-lightning-reduced={reduced?"1":"0"}
     data-weather-renderer="cinematic" data-coverage={visualCoverage} data-tier={cloudTierV}
     data-perf={perf} data-performance={perf} data-reduced-motion={reduced?"1":"0"}
     data-precip-type={fx.precip} data-secondary-precip-type={fx.secondaryPrecip} data-precip-intensity={fx.intensity}
@@ -638,7 +656,7 @@ export default function Home() {
     data-obscuration-horizon={obscuration.horizon.toFixed(2)} data-obscuration-veil={obscuration.veil.toFixed(2)}
     data-active-obscuration-layers={obscuration.layers} data-obscuration-direction={obscuration.direction}
     data-winddir={effWindDir??"VRB"} data-wind={effWindSpd} data-nx={atmosphere.windX.toFixed(2)} data-ny={atmosphere.windY.toFixed(2)}>
-    <div className="sky" aria-hidden="true"><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas phase={phase} spec={fxSpec} atmosphere={atmosphere} backgroundSrc={`${imageBase}/assets/backgrounds/${activeWallpaper}.png`} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
+    <div className="sky" aria-hidden="true">{solarReady&&<div className="solar-wallpaper-stack">{solarLayers.map((layer,index)=><i key={layer.src} className="solar-wallpaper-plate" data-scene={layer.scene} data-weight={layer.weight.toFixed(5)} style={{backgroundImage:`url(${layer.src})`,opacity:solarAlphas[index]}}/>)}</div>}<i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${aScene}.png)`,opacity:active==="a"?1:0}}/><i className="sky-base" style={{backgroundImage:`url(${imageBase}/assets/backgrounds/${bScene}.png)`,opacity:active==="b"?1:0}}/><i className="cloud-field"><i className="cloud-layer cl-high"/><i className="cloud-layer cl-mid"/><i className="cloud-layer cl-low"/></i><PrecipCanvas solarLayers={solarReady?solarLayers:undefined} solarFilter={solarReady?solarFilter:undefined} nightStrength={continuousSolar?lighting.night:undefined} warmStrength={continuousSolar?lighting.warm:undefined} phase={phase} spec={fxSpec} atmosphere={atmosphere} backgroundSrc={`${imageBase}/assets/backgrounds/${activeWallpaper}.png`} paused={false} night={phase==="night"}/><i className="obscuration-field"><b/><b/><b/></i>{activeFlyby && debugFlybyEnabled !== false && (<i className="air-traffic"><span className={`flyby flyby-${activeFlyby.direction}`} key={activeFlyby.id} style={{top:`${activeFlyby.top}%`,animationDuration:`${activeFlyby.duration}s`}}><span className="c17-photo-container"><img src={`${imageBase}/assets/c17-source-${activeFlyby.direction}.png`} alt="C-17 Globemaster III" className="c17-photo-img" /><span className="c17-photo-lights"><i className="beacon-tail-red"/><i className="beacon-belly-red"/><i className="nav-port-red"/><i className="nav-starboard-green"/><i className="strobe-wing-white port"/><i className="strobe-wing-white starboard"/></span></span></span></i>)}<i className="lightning-layer"><i className="lightning-glow"/><i className="lightning-horizon-glow"/><i className="lightning-bolt-overlay" style={{backgroundImage:`url(${imageBase}/lightning-bolt-isolated.png)`}}/></i><i className="pavement-reflection"/></div>
     <div className="shade"/><div className="burn-shift">
       <header><div className="brand"><img className="brand-logo" src={`${imageBase}/assets/patch-155.png`} alt="155 Patch" /><div><strong>164AW Airfield Management</strong><small>KMEM - FREDERICK W. SMITH INTERNATIONAL - MEMPHIS, TN</small></div></div><RunwayPlacement snapshot={weather.runwayOperations} nowMs={now.getTime()} /></header>
       <section className="clocks" aria-label="Local and Zulu clocks">

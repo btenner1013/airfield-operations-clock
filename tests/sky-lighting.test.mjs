@@ -21,7 +21,7 @@ test("phase reaches the atmosphere renderer and only cloudy sunset loses the leg
   const canvas = readFileSync(new URL("../app/PrecipCanvas.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/cinematic-weather.css", import.meta.url), "utf8");
   assert.match(page, /<PrecipCanvas[^>]*phase=\{phase\}/);
-  assert.match(canvas, /atmosphereRef\.current=\{\.\.\.atmosphere,phase\}/);
+  assert.match(canvas, /atmosphereRef\.current=\{\.\.\.atmosphere,phase,nightStrength,warmStrength\}/);
   assert.match(canvas, /JSON\.stringify\(\{\.\.\.atmosphere,phase\}\)/, "Static/reduced frames redraw when phase changes");
   for (const coverage of ["BKN", "OVC", "VV"]) assert.ok(css.includes(`.phase-sunset[data-wallpaper-scene="overcast-day"][data-coverage="${coverage}"][data-obscuration="none"] .sky::after`));
   assert.match(css, /\.theme-overcast\.phase-sunset/);

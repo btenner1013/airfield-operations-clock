@@ -198,7 +198,7 @@ test("protected clock, scene, precipitation, and service-worker invariants remai
 test("solar phase properly assigns based on debugExactTime local boundaries", () => {
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /solarWindow\(now,local,weather\.solarDays/);
-  assert.match(page, /phase=debugPhase\|\|\(debug\?\(debug==="night".*?\):solar\.phase\)/);
+  assert.match(page, /phase=continuousSolar\?lighting\.phase:debugPhase\|\|\(debug\?\(debug==="night".*?\):solar\.phase\)/);
   assert.doesNotMatch(page, /solarPhase\(/);
 });
 

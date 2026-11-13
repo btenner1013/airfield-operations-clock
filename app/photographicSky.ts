@@ -2,7 +2,8 @@ import { createPhotographicSkyPlateCache } from "./photographicSkyPlate.ts";
 
 /** Cloud artwork moves independently of the fixed airport photograph.
  * Loading, scheduling, visibility and reduced motion belong to PrecipCanvas. */
-type SkyImage = CanvasImageSource & { width: number; height: number; src?: string; currentSrc?: string; id?: string };
+export type SkyImage = CanvasImageSource & { width: number; height: number; src?: string; currentSrc?: string; id?: string };
+export type WeightedSkyImage = { image: SkyImage; weight: number };
 type Rect = { left: number; top: number; right: number; bottom: number };
 type Geometry = { x: number; y: number; width: number; height: number };
 const MAX_WIDTH = 960, MAX_HEIGHT = 540;
@@ -70,6 +71,7 @@ function landmarks(scene: string): number[][] {
 
 export function createPhotographicSky(): {
   draw: (ctx: CanvasRenderingContext2D,w:number,h:number,dt:number,image:SkyImage,coverage:number,storm:number,windX:number,reduced:boolean,reveal?:number) => boolean;
+  drawWeighted: (ctx: CanvasRenderingContext2D,w:number,h:number,dt:number,layers:readonly WeightedSkyImage[],coverage:number,storm:number,windX:number,reduced:boolean) => boolean;
   dispose: () => void;
 } {
   let canvas: HTMLCanvasElement | null = null, buffer: CanvasRenderingContext2D | null = null;
@@ -77,6 +79,8 @@ export function createPhotographicSky(): {
   let travel = 0, evolution = 0, opacity = 0, started = false, disposed = false;
   let currentImage: SkyImage | null = null, previousImage: SkyImage | null = null, imageBlend = 1;
   const plates = createPhotographicSkyPlateCache();
+  const weightedCaches = new Map<SkyImage, ReturnType<typeof createPhotographicSkyPlateCache>>();
+  let sourceCanvas: HTMLCanvasElement | null = null, sourceCtx: CanvasRenderingContext2D | null = null;
   return {
     draw(ctx,w,h,dt,image,coverage,storm,windX,reduced,reveal=1) {
       if(disposed || w<=0 || h<=0 || image.width<=0 || image.height<=0) return false;
@@ -166,6 +170,97 @@ export function createPhotographicSky(): {
       buffer.globalCompositeOperation="destination-in";buffer.drawImage(architecture,0,0,bw,bh);
       ctx.save(); ctx.globalCompositeOperation="source-over";ctx.globalAlpha=opacity;ctx.drawImage(canvas,0,0,w,h);ctx.restore();return true;
     },
-    dispose() { disposed=true; if(canvas) {canvas.width=1;canvas.height=1;}canvas=null;buffer=null;if(architecture){architecture.width=1;architecture.height=1;}architecture=null;architectureCtx=null;currentImage=null;previousImage=null;plates.dispose(); },
+    drawWeighted(ctx,w,h,dt,layers,coverage,storm,windX,reduced) {
+      if(disposed || !Number.isFinite(w) || !Number.isFinite(h) || w<=0 || h<=0) return false;
+      // Merge repeated identities, ignore zero weights, and bound simultaneous stores.
+      const weights=new Map<SkyImage,number>();
+      for(const {image,weight} of layers) {
+        if(!Number.isFinite(weight)||weight<=0) continue;
+        if(!image || !Number.isFinite(image.width)||!Number.isFinite(image.height)||image.width<=0||image.height<=0) return false;
+        weights.set(image,(weights.get(image)||0)+weight);
+      }
+      if(weights.size>6) return false;
+      for(const [image,cache] of weightedCaches) if(!weights.has(image)||reduced) { cache.dispose();weightedCaches.delete(image); }
+      if(reduced || !weights.size || ![...weights.keys()].some(photoSkyHasMotion)) return false;
+      const total=[...weights.values()].reduce((a,b)=>a+b,0);
+      if(!Number.isFinite(total)) return false;
+      const sources=[...weights].map(([image,weight])=>({image,weight:weight/total}));
+      const prepared=sources.map(layer=>{
+        if(!photoSkyHasMotion(layer.image)) return {...layer,plate:null};
+        let cache=weightedCaches.get(layer.image);
+        if(!cache) { cache=createPhotographicSkyPlateCache();weightedCaches.set(layer.image,cache); }
+        return {...layer,plate:cache.get(layer.image)};
+      });
+      // Never pan unrepaired architecture when any required source cannot be read.
+      if(prepared.some(({image,plate})=>photoSkyHasMotion(image)&&!plate)) return false;
+      if(typeof document==="undefined") return false;
+      if(!canvas) {canvas=document.createElement("canvas");buffer=canvas.getContext("2d");}
+      if(!sourceCanvas) {sourceCanvas=document.createElement("canvas");sourceCtx=sourceCanvas.getContext("2d");}
+      if(!buffer||!sourceCtx) return false;
+      const resolution=Math.min(1,MAX_WIDTH/w,MAX_HEIGHT/h),bw=Math.max(1,Math.round(w*resolution)),bh=Math.max(1,Math.round(h*resolution));
+      if(canvas.width!==bw||canvas.height!==bh){canvas.width=bw;canvas.height=bh;}
+      if(sourceCanvas.width!==bw||sourceCanvas.height!==bh){sourceCanvas.width=bw;sourceCanvas.height=bh;}
+      const step=Number.isFinite(dt)?clamp(dt,0,.1):0;
+      const wind=Number.isFinite(windX)?windX:0;
+      const direction=Math.abs(wind)>=1?Math.sign(wind):1;
+      const speed=Math.max(Math.min(Math.abs(wind),40)*.9,14+clamp(storm)*12);
+      const original=photoSkyGeometry(w,h,sources[0].image.width,sources[0].image.height);
+      travel+=direction*speed/Math.max(1,original.width)*step;evolution+=step;
+      const {offset,mix}=photoSkySamples(travel),zoom=1.16+Math.sin(evolution/23)*.008;
+      buffer.globalAlpha=1;buffer.globalCompositeOperation="source-over";buffer.clearRect(0,0,bw,bh);buffer.imageSmoothingEnabled=true;
+      let cumulative=0;
+      for(const {image,weight,plate} of prepared) {
+        const g=photoSkyGeometry(w,h,image.width,image.height),z=plate?zoom:1;
+        sourceCtx.globalAlpha=1;sourceCtx.globalCompositeOperation="source-over";sourceCtx.clearRect(0,0,bw,bh);sourceCtx.imageSmoothingEnabled=true;
+        const paint=(pan:number,alpha:number)=>{
+          sourceCtx!.globalAlpha=alpha;
+          sourceCtx!.drawImage(plate?.image||image,(g.x+g.width*(1-z)/2+(plate?pan*g.width:0))*resolution,(g.y+g.height*(1-z)/2)*resolution,g.width*z*resolution,g.height*z*resolution);
+        };
+        paint(offset,1);
+        if(plate&&mix>0) paint(offset-PAN*2,mix);
+        if(plate?.stars){sourceCtx.globalCompositeOperation="screen";sourceCtx.globalAlpha=1;sourceCtx.drawImage(plate.stars,g.x*resolution,g.y*resolution,g.width*resolution,g.height*resolution);}
+        // Each source is opaque before blending, including fixed stars. This
+        // cumulative source-over alpha gives exactly the supplied linear weights.
+        cumulative+=weight;buffer.globalAlpha=weight/cumulative;
+        buffer.drawImage(sourceCanvas,0,0,bw,bh);
+      }
+      buffer.globalAlpha=1;buffer.globalCompositeOperation="source-over";
+      const closedDeck=clamp((coverage-.8)/.2);
+      if(closedDeck>0) { buffer.globalCompositeOperation="saturation"; buffer.globalAlpha=closedDeck; buffer.fillStyle="rgb(160,160,160)"; buffer.fillRect(0,0,bw,bh); buffer.globalAlpha=1; }
+      // Source-space skyline follows every viewport crop. Cleaning the sky plate
+      // lets this mask protect just the fixed tower, not its entire swept path.
+      let solid=Infinity, clear=Infinity;
+      for(const source of sources.map(layer=>layer.image)) {
+        if(!source) continue;
+        const g=photoSkyGeometry(w,h,source.width,source.height), scene=photoSkyScene(source);
+        const bottom=scene==="snow-night"?.49:scene==="fog-night"?.54:.505;
+        solid=Math.min(solid,g.y+g.height*(bottom-.08),g.y+g.height*((1-MAX_ZOOM)/2+MAX_ZOOM*(bottom-.08)));
+        clear=Math.min(clear,g.y+g.height*bottom,g.y+g.height*((1-MAX_ZOOM)/2+MAX_ZOOM*bottom));
+      }
+      buffer.globalCompositeOperation="destination-in";
+      const mask=buffer.createLinearGradient(0,solid*resolution,0,Math.max(solid+1,clear)*resolution);
+      mask.addColorStop(0,"rgba(0,0,0,1)");mask.addColorStop(.42,"rgba(0,0,0,.86)");mask.addColorStop(1,"rgba(0,0,0,0)");
+      buffer.fillStyle=mask; buffer.fillRect(0,0,bw,bh);
+      const maskKey=["weighted",w,h,...sources.flatMap(({image})=>[image.width,image.height,photoSkyScene(image)])].join(":");
+      if(!architecture){architecture=document.createElement("canvas");architectureCtx=architecture.getContext("2d");}
+      if(architectureCtx&&maskKey!==architectureKey){
+        architecture.width=bw;architecture.height=bh;architectureCtx.clearRect(0,0,bw,bh);architectureCtx.globalCompositeOperation="source-over";architectureCtx.fillStyle="white";architectureCtx.fillRect(0,0,bw,bh);
+        for(const source of sources.map(layer=>layer.image)) {
+          if(!source) continue;
+          const g=photoSkyGeometry(w,h,source.width,source.height),scene=photoSkyScene(source);
+          eraseTowerSilhouette(architectureCtx,g,scene,resolution);
+          for(const [left,top,right,bottom] of landmarks(scene).slice(1)) {
+            const r={left:(g.x+g.width*left)*resolution,top:(g.y+g.height*top)*resolution,right:(g.x+g.width*right)*resolution,bottom:(g.y+g.height*bottom)*resolution};
+            if(r.right>0&&r.left<bw&&r.top<bh) eraseRect(architectureCtx,r,Math.max(1,g.width*resolution*.0015));
+          }
+        }
+        architectureKey=maskKey;
+      }
+      // If a second context cannot be acquired, keep the original photo safe.
+      if(!architectureCtx) return false;
+      buffer.globalCompositeOperation="destination-in";buffer.drawImage(architecture,0,0,bw,bh);
+      ctx.save(); ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;ctx.drawImage(canvas,0,0,w,h);ctx.restore();return true;
+    },
+    dispose() { disposed=true; if(canvas) {canvas.width=1;canvas.height=1;}canvas=null;buffer=null;if(architecture){architecture.width=1;architecture.height=1;}architecture=null;architectureCtx=null;currentImage=null;previousImage=null;plates.dispose();for(const cache of weightedCaches.values())cache.dispose();weightedCaches.clear();if(sourceCanvas){sourceCanvas.width=1;sourceCanvas.height=1;}sourceCanvas=null;sourceCtx=null; },
   };
 }

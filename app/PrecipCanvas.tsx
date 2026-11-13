@@ -4,7 +4,7 @@
 import { useEffect, useRef } from "react";
 import type { FxSpec, PaneSpec, ParticleClassSpec } from "./weatherFx";
 import { createAtmosphereRenderer, type AtmosphereSpec } from "./atmosphereRenderer";
-import { createPhotographicSky } from "./photographicSky";
+import { createPhotographicSky, photoSkyScene, type WeightedSkyImage } from "./photographicSky";
 import type { SkyPhase } from "./skyLighting";
 import { advanceFrozenImpact, createFrozenImpact, frozenContactHeight, frozenImpactOpacity, frozenShowerOpacity, MAX_FROZEN_IMPACTS, type FrozenImpact } from "./frozenPrecipitation";
 
@@ -12,9 +12,12 @@ type Particle={x:number;y:number;v:number;vx:number;len:number;size:number;phase
 type Drop={x:number;y:number;r:number;rMax:number;vy:number;vx:number;trailY:number;rolling:boolean;wob:number;age:number;rollAfter:number};
 const DPR_CAP=1.5;
 
-export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night,phase}:{spec:FxSpec|null;atmosphere:AtmosphereSpec;backgroundSrc:string;paused?:boolean;night?:boolean;phase?:SkyPhase}) {
+export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night,phase,solarLayers,solarFilter,nightStrength,warmStrength}:{spec:FxSpec|null;atmosphere:AtmosphereSpec;backgroundSrc:string;paused?:boolean;night?:boolean;phase?:SkyPhase;solarLayers?:readonly WeightedSkyImage[];solarFilter?:string;nightStrength?:number;warmStrength?:number}) {
   const ref=useRef<HTMLCanvasElement|null>(null),skyRef=useRef<HTMLCanvasElement|null>(null),specRef=useRef<FxSpec|null>(spec),pausedRef=useRef(!!paused),nightRef=useRef(!!night);
-  const atmosphereRef=useRef(atmosphere);atmosphereRef.current={...atmosphere,phase};
+  const atmosphereRef=useRef(atmosphere);atmosphereRef.current={...atmosphere,phase,nightStrength,warmStrength};
+  const solarRef=useRef(solarLayers);solarRef.current=solarLayers;
+  const solarFilterRef=useRef(solarFilter);solarFilterRef.current=solarFilter;
+  const solarSignature=JSON.stringify([solarLayers?.map(layer=>[layer.image.src,layer.weight]),solarFilter,nightStrength,warmStrength]);
   specRef.current=spec;pausedRef.current=!!paused;nightRef.current=!!night;
   // page.tsx renders once per clock second, so object identity is not a weather-change signal.
   // A value signature prevents those clock renders from reseeding the complete particle field.
@@ -179,16 +182,30 @@ export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night
       const s=renderSpec,{w,h}=dims.current,dropList=drops.current;
       ctx.clearRect(0,0,w,h);
       const lightning={pulse:Number(main?.dataset.lightningPulse||0),bolt:main?.dataset.lightningBolt==="1",cluster:Number(main?.dataset.lightningCluster||0)};
-      const photo=photoRef.current;
+      const photo=photoRef.current,weighted=solarRef.current;
       let photoMotion=false;
       if(skyCtx)skyCtx.clearRect(0,0,w,h);
-      if(photo&&skyCtx){
+      if((photo||weighted?.length)&&skyCtx){
         if(now-filterReadAt>1000){const bases=Array.from(host.querySelectorAll<HTMLElement>(".sky-base"));const visible=bases.find(base=>base.style.opacity==="1")||bases[0];photoFilter=visible&&typeof getComputedStyle!=="undefined"?getComputedStyle(visible).filter||"none":"none";filterReadAt=now;}
         // CSS grading matches the wallpaper on browsers without Canvas filter support.
-        if(skyCanvas)skyCanvas.style.filter=photoFilter;
+        if(skyCanvas){
+          const stack=weighted?.length?host.querySelectorAll<HTMLElement>(".solar-wallpaper-stack")[0]:undefined;
+          skyCanvas.style.filter=stack&&typeof getComputedStyle!=="undefined"?getComputedStyle(stack).filter:solarFilterRef.current??photoFilter;
+        }
         skyCtx.save();
         const photoBlend=reduced?1:Math.min(1,Math.max(0,(now-(photoReadyAt.current??now))/3500));
-        photoMotion=photoPainter.draw(skyCtx,w,h,dt,photo,Math.max(a.coverage,a.storm*.85)*photoBlend,a.storm*photoBlend,a.windX,reduced,photoBlend);
+        let liveLayers=weighted;
+        // Read the actual CSS crossfade alpha so animated clouds exactly follow
+        // the static photographs during the six-second weather-family change.
+        if(weighted?.length&&typeof getComputedStyle!=="undefined"){
+          const plates=Array.from(host.querySelectorAll<HTMLElement>(".solar-wallpaper-plate"));
+          if(plates.length===weighted.length&&plates.every((plate,index)=>plate.dataset.scene===photoSkyScene(weighted[index].image))){
+            let remaining=1;const weights=plates.map(plate=>clamp(Number.parseFloat(getComputedStyle(plate).opacity)||0));
+            for(let index=weights.length-1;index>=0;index--){const alpha=weights[index];weights[index]=alpha*remaining;remaining*=1-alpha;}
+            liveLayers=weighted.map((layer,index)=>({...layer,weight:weights[index]}));
+          }
+        }
+        photoMotion=liveLayers?.length?photoPainter.drawWeighted(skyCtx,w,h,dt,liveLayers,a.coverage,a.storm,a.windX,reduced):photoPainter.draw(skyCtx,w,h,dt,photo!,Math.max(a.coverage,a.storm*.85)*photoBlend,a.storm*photoBlend,a.windX,reduced,photoBlend);
         skyCtx.restore();
       }
       atmospherePainter.draw(ctx,w,h,now,dt,{...a,quality:low?"low":"full"},lightning);
@@ -236,5 +253,7 @@ export default function PrecipCanvas({spec,atmosphere,backgroundSrc,paused,night
   },[backgroundSrc]);
 
   useEffect(()=>{api.current.sync();api.current.start();},[specSignature,atmosphereSignature,paused]);
+  // New light weights wake reduced/idle canvases without reseeding weather.
+  useEffect(()=>{api.current.start();},[solarSignature]);
   return <><canvas ref={skyRef} className="photographic-sky-canvas" aria-hidden="true"/><canvas ref={ref} className="precip-canvas" aria-hidden="true" data-active="0"/></>;
 }

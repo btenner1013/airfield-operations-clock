@@ -32,7 +32,8 @@ function harness({ width = 1920, height = 1080, dpr = 2, unavailableContext = fa
     removeEventListener(type, fn) { const listeners = events.get(type); listeners?.delete(fn); if (!listeners?.size) events.delete(type); },
   });
   const dispatch = (events, type) => { for (const fn of [...(events.get(type) || [])]) fn(); };
-  const host = { getBoundingClientRect: () => ({ width, height }), querySelectorAll: () => [] };
+  let staticPlates=[],staticStack=[];
+  const host = { getBoundingClientRect: () => ({ width, height }), querySelectorAll: selector => selector===".solar-wallpaper-plate"?staticPlates:selector===".solar-wallpaper-stack"?staticStack:[] };
   const main = { dataset: {} };
   const makeCanvas = className => {
     const calls = [], state = { painted: null };
@@ -56,7 +57,7 @@ function harness({ width = 1920, height = 1080, dpr = 2, unavailableContext = fa
   };
   const document = { visibilityState: "visible", ...eventTarget(documentEvents) };
   const sandbox = {
-    exports: {}, structuredClone, performance: { now: () => now }, document,
+    exports: {}, structuredClone, performance: { now: () => now }, document, getComputedStyle: element=>element.computed,
     window: { devicePixelRatio: dpr, ...eventTarget(windowEvents) },
     Image: class {
       width = 0; height = 0; naturalWidth = 0; naturalHeight = 0; complete = false;
@@ -104,6 +105,12 @@ function harness({ width = 1920, height = 1080, dpr = 2, unavailableContext = fa
           const canvas = [...canvases.values()].find(candidate => candidate.ctx === ctx);
           if (usable && canvas) canvas.state.painted = image;
           return usable;
+        }, drawWeighted(ctx,w,h,dt,layers,coverage,storm,windX,reduced) {
+          const usable=!reduced&&layers.some(l=>photographicSky.photoSkyHasMotion(l.image))&&!layers.some(l=>failedPlates.has(l.image));
+          photoDraws.push({w,h,dt,layers,coverage,storm,windX,reduced,usable,weighted:true});
+          const canvas=[...canvases.values()].find(candidate=>candidate.ctx===ctx);
+          if(usable&&canvas)canvas.state.painted=layers;
+          return usable;
         }, dispose() { photoDisposed++; } };
       } };
       throw new Error(`Unexpected component import: ${name}`);
@@ -120,7 +127,8 @@ function harness({ width = 1920, height = 1080, dpr = 2, unavailableContext = fa
     const result = buildWeatherEffects(state);
     hookIndex = 0;
     sandbox.exports.default({ spec: result.spec, atmosphere: result.atmosphere,
-      phase: state.phase, backgroundSrc: state.backgroundSrc, paused: state.paused, night: state.night });
+      phase: state.phase, backgroundSrc: state.backgroundSrc, paused: state.paused, night: state.night,
+      ...(state.solarLayers ? {solarLayers:state.solarLayers,solarFilter:state.solarFilter,nightStrength:state.nightStrength,warmStrength:state.warmStrength}: {}) });
     while (pendingEffects.length) pendingEffects.shift()();
     return result;
   };
@@ -131,6 +139,7 @@ function harness({ width = 1920, height = 1080, dpr = 2, unavailableContext = fa
   };
   return {
     render, tick, frames, images, observers, photoDraws, atmosphereDraws, documentEvents, windowEvents,
+    staticSolar(plates,filter){staticPlates=plates.map(([scene,opacity])=>({dataset:{scene},computed:{opacity:String(opacity)}}));staticStack=[{computed:{filter}}];},
     get canvas() { return canvases.get("precip-canvas"); },
     get sky() { return canvases.get("photographic-sky-canvas"); },
     get maximumFrames() { return maximumFrames; },
@@ -444,4 +453,49 @@ test("missing photographic context idles in clear weather without stopping indep
     assert.equal(h.frames.size, 0, "A new photo does not manufacture a missing output context");
     assert.equal(h.maximumFrames, 1);
   }, { unavailableSkyContext: true });
+});
+
+
+test("solar weight updates use decoded identities without loads or an extra scheduler",()=>{
+ withHarness(h=>{
+  const a={src:photoSource("sunrise"),width:1672,height:941},b={src:photoSource("clear-day"),width:1672,height:941};
+  h.render({solarLayers:[{image:a,weight:.8},{image:b,weight:.2}],solarFilter:"brightness(.95)",nightStrength:.1,warmStrength:.7});h.tick();
+  assert.equal(h.photoDraws.at(-1).weighted,true);assert.equal(h.sky.style.filter,"brightness(.95)");
+  const loads=h.images.length;
+  h.render({solarLayers:[{image:a,weight:.7},{image:b,weight:.3}]});h.tick();
+  assert.equal(h.images.length,loads);assert.equal(h.photoDraws.at(-1).layers[0].image,a);assert.equal(h.photoDraws.at(-1).layers[0].weight,.7);
+  assert.equal(h.atmosphereDraws.at(-1).spec.nightStrength,.1);assert.equal(h.maximumFrames,1);
+ });
+});
+test("reduced and idle solar canvases wake on changed weights and retain static fallback",()=>{
+ withHarness(h=>{
+  const a={src:photoSource("sunrise"),width:1672,height:941};
+  h.render({reduced:true,solarLayers:[{image:a,weight:1}]});h.tick();assert.equal(h.frames.size,0);assert.equal(h.sky.state.painted,null);
+  h.render({solarLayers:[{image:a,weight:.9}],warmStrength:.9});assert.equal(h.frames.size,1);h.tick();assert.equal(h.frames.size,0);
+  h.render({reduced:false});h.tick();assert.ok(h.sky.state.painted);
+  h.failPlate(a);h.tick();assert.equal(h.sky.state.painted,null);h.run(9000);assert.equal(h.frames.size,0);
+  h.render({solarLayers:[{image:a,weight:.8}]});assert.equal(h.frames.size,1);h.tick();assert.equal(h.sky.state.painted,null);
+ });
+});
+test("weighted solar loads stay paused while hidden and resume in one bounded frame",()=>{
+ withHarness(h=>{
+  const a={src:photoSource("sunset"),width:1672,height:941};
+  h.render({solarLayers:[{image:a,weight:1}]});h.tick();h.visibility("hidden");
+  const before=h.photoDraws.length;h.advance(60000);h.render({solarLayers:[{image:a,weight:.5}]});assert.equal(h.frames.size,0);assert.equal(h.photoDraws.length,before);
+  h.visibility("visible");h.tick();assert.ok(h.photoDraws.at(-1).dt<=.1);assert.equal(h.maximumFrames,1);
+ });
+});
+
+
+test("moving solar sky follows actual CSS alphas and static filter rather than target weights",()=>{
+ withHarness(h=>{
+  const images=["clear-night","sunrise","clear-day"].map(scene=>({src:photoSource(scene),width:1672,height:941}));
+  h.staticSolar([["clear-night",1],["sunrise",.6],["clear-day",.5]],"brightness(.97)");
+  h.render({solarLayers:images.map(image=>({image,weight:1/3})),solarFilter:"brightness(.9)"});h.tick();
+  assert.deepEqual(h.photoDraws.at(-1).layers.map(l=>l.weight),[.2,.3,.5]);
+  assert.equal(h.sky.style.filter,"brightness(.97)");
+  h.staticSolar([["clear-night",1],["sunrise",.8],["clear-day",.75]],"brightness(.98)");h.tick();
+  const weights=h.photoDraws.at(-1).layers.map(l=>l.weight);assert.ok(Math.abs(weights[0]-.05)<1e-9);assert.equal(weights[1],.2);assert.equal(weights[2],.75);
+  assert.equal(h.sky.style.filter,"brightness(.98)");assert.equal(h.maximumFrames,1);
+ });
 });

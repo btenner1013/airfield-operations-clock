@@ -18,6 +18,8 @@ export type AtmosphereSpec = {
   gust: number;
   night: boolean;
   phase?: SkyPhase;
+  nightStrength?: number;
+  warmStrength?: number;
   reduced: boolean;
   quality: "full" | "low";
   lightningLevel: "none" | "distant" | "vicinity" | "station" | "severe";
@@ -396,17 +398,19 @@ export function createAtmosphereRenderer(): {
       const target: AtmosphereState = {
         coverage: clamp(spec.coverage), low: spec.ceiling === null ? 0.2 : 1 - clamp(spec.ceiling / 8500),
         storm: clamp(spec.storm), density: clamp(spec.density), horizon: clamp(spec.horizon), veil: clamp(spec.veil),
-        windX: clamp(spec.windX, -120, 120), windY: clamp(spec.windY, -50, 50), gust: clamp(spec.gust), night: spec.night ? 1 : 0,
-        sunset: spec.obscuration === "none" ? cloudSunsetStrength(spec.phase, spec.coverage, spec.ceiling, spec.storm) : 0,
+        windX: clamp(spec.windX, -120, 120), windY: clamp(spec.windY, -50, 50), gust: clamp(spec.gust), night: Number.isFinite(spec.nightStrength)?clamp(spec.nightStrength!):spec.night ? 1 : 0,
+        sunset: spec.obscuration === "none" ? cloudSunsetStrength(spec.phase, spec.coverage, spec.ceiling, spec.storm) * (Number.isFinite(spec.warmStrength)?clamp(spec.warmStrength!):1) : 0,
       };
       // Reduced motion is drawn on demand with dt=0, so new observations must snap
       // to their static appearance rather than leaving the previous weather frozen.
       if (!state || spec.reduced) state = target;
       else for (const key of Object.keys(target) as (keyof AtmosphereState)[]) state[key] = mix(state[key], target[key], ease);
-      const nextFogSignature = `${spec.obscuration}:${spec.night}`;
+      const nextFogSignature = `${spec.obscuration}:${target.night.toFixed(3)}`;
       if (nextFogSignature !== fogSignature || !fogTarget) {
         fogSignature = nextFogSignature;
-        fogTarget = fogProfile(spec.obscuration, spec.night);
+        const dayFog=fogProfile(spec.obscuration,false),nightFog=fogProfile(spec.obscuration,true);
+        fogTarget={...dayFog};
+        for(const key of Object.keys(dayFog) as (keyof FogProfile)[])fogTarget[key]=mix(dayFog[key],nightFog[key],target.night);
       }
       if (!fog || spec.reduced) fog = { ...fogTarget };
       else for (const key of Object.keys(fogTarget) as (keyof FogProfile)[]) fog[key] = mix(fog[key], fogTarget[key], ease);
