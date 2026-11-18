@@ -649,3 +649,12 @@ footer {
     max-height: 150px;
   }
 }
+
+/* Full 360° cloth envelope stays inside the left edge, including flutter.
+   Scales with the clock canvas on phones and large displays. */
+.scenery-windsock{position:absolute;left:0;top:54%;width:12%;height:20%;z-index:1;pointer-events:none;overflow:visible;filter:drop-shadow(1px 3px 2px #0006)}
+
+@media (max-width:720px), (orientation:portrait){
+  .clocks{padding-bottom:120px}
+  .scenery-windsock{width:130px;height:120px;top:0}
+}

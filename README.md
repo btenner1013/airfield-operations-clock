@@ -54,3 +54,8 @@ Site/location settings are grouped in the `CONFIG` object near the top of `app/p
 ### Frozen precipitation motion
 
 Hail/pellet arrivals now remain steady through separate small decaying impacts, with depth-scattered contact points and compact ice shapes. Full-height snow/precipitation starts at distributed cycle positions. See `docs/FROZEN-PRECIPITATION-MOTION.md` for tests, bounded resources, actual native temporal review and limitations.
+
+### Foreground windsock
+The left-edge windsock uses the same current observed wind and freshness gate as the wind instrument; model-only, stale and unavailable observations never animate directional fabric. VRB shows no invented bearing. North-up projection is illustrative, not calibrated to the background runway photo (no surveyed camera heading is available). Gust readings remain on the numerical instrument; fabric flutter is illustrative rather than fabricated live gust measurements. Reduced motion and hidden tabs stop flutter.
+
+FAA AC 150/5345-27F §§3.2.2–3.3 informs full extension at 15 kt, the open mouth and supported first 3/8 length. Intermediate folding is illustrative. https://www.faa.gov/documentLibrary/media/Advisory_Circular/150-5345-27F-Wind-Cone.pdf
