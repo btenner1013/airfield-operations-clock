@@ -14,8 +14,13 @@ export function sockMesh(fromDegrees, speedKt, phase = 0) {
     // The mouth hoop stays open; the downstream fabric collapses in light wind.
     const inflation = 1 - (1 - pressure) * .35 * free;
     const radius = 5.2 * (1 - .69 * t) * inflation;
-    const sway = (Math.sin(phase * frequency - t * 8) + .3 * Math.sin(phase * frequency * 1.7 - t * 13)) * (2.35 * energy) * free * free;
-    const ripple = Math.sin(phase * frequency * 1.3 - t * 10) * .65 * energy * free * free;
+    // Extra visible cloth flick is zero at phase 0: reduced-motion geometry stays identical.
+    // Only unsupported cloth moves; the opening, basket and pole remain rigid.
+    const flutter = Math.sqrt(pressure) * Math.pow(free, 1.5);
+    const flick = (Math.sin(phase * 5.1) + .3 * Math.sin(phase * 11.7)) * 6 * flutter;
+    const heave = Math.sin(phase * 6.7) * 3.2 * flutter;
+    const sway = (Math.sin(phase * frequency - t * 8) + .3 * Math.sin(phase * frequency * 1.7 - t * 13)) * (2.35 * energy) * free * free + flick;
+    const ripple = Math.sin(phase * frequency * 1.3 - t * 10) * .65 * energy * free * free + heave;
     const reach = length * (Math.min(t,.375) + .625 * free * lift);
     const droop = length * .625 * (1 - lift) * Math.pow(free, .85);
     return Array.from({length: 16}, (_, k) => {

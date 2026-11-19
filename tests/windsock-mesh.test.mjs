@@ -38,3 +38,19 @@ test('edge placement has safe left inset at desktop and phone fit scales',()=>{
     }
   }
 });
+
+import {createHash} from 'node:crypto';
+test('stationary and reduced-motion geometry remains byte identical to prior live release',()=>{
+ const data=JSON.stringify([0,90,140,180,270].flatMap(d=>[0,2,6,15,30].map(s=>sockMesh(d,s,0))));
+ assert.equal(createHash('sha256').update(data).digest('hex'),'b3a5d151c042c309cdb479df10454190d1222ad8d71e38ba6569012006441da7');
+});
+test('cloth flick is obvious at office 140/6 and north/6, while rigid support does not move',()=>{
+ for(const d of [0,140]) {
+  const samples=Array.from({length:151},(_,i)=>sockMesh(d,6,i/25));
+  const dx=Math.max(...samples.map(m=>m.tail.x))-Math.min(...samples.map(m=>m.tail.x));
+  const dy=Math.max(...samples.map(m=>m.tail.y))-Math.min(...samples.map(m=>m.tail.y));
+  assert.ok(dx*144/76>12,`horizontal excursion ${dx}`);
+  assert.ok(dy*144/76>7,`vertical excursion ${dy}`);
+  for(const m of samples){assert.equal(m.mouth,samples[0].mouth);assert.equal(m.basket,samples[0].basket);}
+ }
+});
