@@ -6,7 +6,6 @@ export const CLOCK_LIMITS = {
   maxRoundTripMs: 1500,
   requestTimeoutMs: 2500,
   sampleGapMs: 1100,
-  maxCorrectionMs: 5 * 60_000,
   maxSampleSpreadMs: 1000,
   wallJumpMs: 1000,
   requestWallJumpMs: 100,
@@ -16,6 +15,7 @@ export const CLOCK_LIMITS = {
 export type ClockReading = { wallMs: number; monoMs: number };
 export type TimeSample = {
   offsetMs: number;
+  utcMs: number; // absolute network UTC at received.monoMs; independent of host wall time
   roundTripMs: number;
   uncertaintyMs: number;
   serverDateMs: number;
@@ -61,7 +61,7 @@ export function validateHttpSample(response: Pick<Response, "ok" | "headers" | "
   // Center the server's one-second Date bucket and the measured request interval. Path
   // asymmetry and server timestamp placement are uncertain, so expose the estimate's error.
   const uncertaintyMs = 500 + rtt / 2;
-  return { sample: { offsetMs: serverDateMs + 500 - (start.wallMs + rtt / 2), roundTripMs: rtt, uncertaintyMs, serverDateMs, received: end } };
+  return { sample: { offsetMs: serverDateMs + 500 - (start.wallMs + rtt / 2), utcMs: serverDateMs + 500 + rtt / 2, roundTripMs: rtt, uncertaintyMs, serverDateMs, received: end } };
 }
 
 export async function sampleHttpTime(options: {
@@ -102,20 +102,23 @@ export function chooseTimeEstimate(samples: TimeSample[]): TimeEstimate | null {
   // Each request may be internally sound even when Windows changed between requests.
   // Reject the entire batch instead of accidentally treating two sides of that jump as consensus.
   if (chronological.some((s, i) => i > 0 && Math.abs((s.received.wallMs - chronological[i - 1].received.wallMs) - (s.received.monoMs - chronological[i - 1].received.monoMs)) > CLOCK_LIMITS.requestWallJumpMs)) return null;
-  const valid = chronological.filter(s => Number.isFinite(s.offsetMs) && Math.abs(s.offsetMs) <= CLOCK_LIMITS.maxCorrectionMs);
+  const valid = chronological.filter(s => Number.isFinite(s.utcMs) && Math.abs(s.utcMs) <= 8.64e15 && Number.isFinite(s.received.monoMs));
+  // Compare network UTC projected onto the same monotonic origin, not PC offsets.
+  const anchor = (s: TimeSample) => s.utcMs - s.received.monoMs;
   let best: TimeSample[] = [];
   for (const first of valid) {
-    const group = valid.filter(s => s.offsetMs >= first.offsetMs && s.offsetMs - first.offsetMs <= CLOCK_LIMITS.maxSampleSpreadMs);
+    const group = valid.filter(s => anchor(s) >= anchor(first) && anchor(s) - anchor(first) <= CLOCK_LIMITS.maxSampleSpreadMs);
     const datesAdvance = group.length > 1 && group[group.length - 1].serverDateMs > group[0].serverDateMs && group.every((s, i) => i === 0 || s.serverDateMs >= group[i - 1].serverDateMs);
     if (group.length < 2 || !datesAdvance) continue;
     if (group.length > best.length || (group.length === best.length && spread(group) < spread(best))) best = group;
   }
   if (best.length < 2) return null;
   const latest = best.reduce((a, b) => a.received.monoMs > b.received.monoMs ? a : b);
-  const offsetMs = median(best.map(s => s.offsetMs));
-  return { ...latest, offsetMs, roundTripMs: Math.min(...best.map(s => s.roundTripMs)), uncertaintyMs: Math.max(...best.map(s => s.uncertaintyMs + Math.abs(s.offsetMs - offsetMs))), samples: best.length };
+  const utcMs = median(best.map(s => anchor(s))) + latest.received.monoMs;
+  const offsetMs = utcMs - latest.received.wallMs;
+  return { ...latest, utcMs, offsetMs, roundTripMs: Math.min(...best.map(s => s.roundTripMs)), uncertaintyMs: Math.max(...best.map(s => s.uncertaintyMs + Math.abs(anchor(s) - (utcMs - latest.received.monoMs)))), samples: best.length };
 }
-function spread(samples: TimeSample[]): number { return samples.length ? Math.max(...samples.map(s => s.offsetMs)) - Math.min(...samples.map(s => s.offsetMs)) : Infinity; }
+function spread(samples: TimeSample[]): number { return samples.length ? Math.max(...samples.map(s => s.utcMs - s.received.monoMs)) - Math.min(...samples.map(s => s.utcMs - s.received.monoMs)) : Infinity; }
 
 export function waitForSample(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise(resolve => {
@@ -140,7 +143,7 @@ export class ClockDiscipline {
     }
     this.estimate = estimate;
     this.previous = now;
-    this.lastCheckedUtc = estimate.received.wallMs + estimate.offsetMs;
+    this.lastCheckedUtc = estimate.utcMs;
     this.state = "OK"; this.detail = "HTTP ESTIMATE";
     return true;
   }
@@ -169,7 +172,7 @@ export class ClockDiscipline {
     const estimate = this.estimate;
     // Re-read an absolute anchor, never increment a second counter. A delayed tick catches
     // up immediately. A wall-clock change cannot accidentally apply the old offset twice.
-    const nowMs = estimate ? estimate.received.wallMs + estimate.offsetMs + age : now.wallMs;
+    const nowMs = estimate ? estimate.utcMs + age : now.wallMs;
     return { nowMs, recheck, status: {
       source: estimate ? this.state === "OK" ? "GITHUB HTTP" : "HTTP HOLDOVER" : "SYSTEM CLOCK",
       networkSource: "GITHUB EDGE DATE", lastCheckedUtc: this.lastCheckedUtc,
@@ -184,7 +187,7 @@ export class ClockDiscipline {
 export function formatClockStatus(status: ClockStatus): string {
   const prefix = `SRC ${status.source}`;
   if (status.source === "PREVIEW") return `${prefix} · ${status.detail}`;
-  if (status.source === "SYSTEM CLOCK") return `${prefix} · ${status.state === "CHECK" ? status.detail : `NETWORK ${status.state}: ${status.detail}`}`;
+  if (status.source === "SYSTEM CLOCK") return `${prefix} · TIME UNVERIFIED · ${status.state === "CHECK" ? status.detail : `NETWORK ${status.state}: ${status.detail}`}`;
   const offset = status.estimatedOffsetMs ?? 0;
   const correction = `${offset >= 0 ? "+" : "-"}${(Math.abs(offset) / 1000).toFixed(1)}S`;
   const error = status.uncertaintyMs === null ? "" : ` · EST ±${(status.uncertaintyMs / 1000).toFixed(1)}S`;

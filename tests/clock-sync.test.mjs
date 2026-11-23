@@ -7,7 +7,7 @@ const { CLOCK_LIMITS, validateHttpSample, chooseTimeEstimate, ClockDiscipline, s
 const epoch = Date.parse('2026-10-16T16:00:00Z');
 const reading = (wallMs = epoch, monoMs = 1000) => ({ wallMs, monoMs });
 const response = (headers = {}, status = 200) => new Response(null, { status, headers: { Date: new Date(epoch).toUTCString(), ...headers } });
-const sample = (offsetMs = 28000, delta = 0) => ({ offsetMs, roundTripMs: 100, uncertaintyMs: 550, serverDateMs: epoch + delta + 28000, received: reading(epoch + delta, 1000 + delta) });
+const sample = (offsetMs = 28000, delta = 0) => ({ offsetMs, utcMs: epoch + delta + offsetMs, roundTripMs: 100, uncertaintyMs: 550, serverDateMs: epoch + delta + 28000, received: reading(epoch + delta, 1000 + delta) });
 const estimate = (offsetMs = 28000) => ({ ...sample(offsetMs), samples: 3 });
 
 // Network validation executes the production code with deterministic wall/monotonic times.
@@ -80,7 +80,7 @@ test('two advancing consistent dates confirm correction; one or frozen dates can
 test('one outlier is rejected and no coherent pair means no correction', () => {
   assert.equal(chooseTimeEstimate([sample(28000), sample(28100, 1100), sample(-15000, 2200)]).offsetMs, 28050);
   assert.equal(chooseTimeEstimate([sample(28000), sample(-15000, 1100), sample(100000, 2200)]), null);
-  assert.equal(chooseTimeEstimate([sample(400000), sample(400010, 1100)]), null);
+  assert.equal(chooseTimeEstimate([sample(400000), sample(400010, 1100)]).offsetMs, 400005);
   assert.equal(chooseTimeEstimate([sample(NaN), sample(Infinity, 1100)]), null);
 });
 test('system fallback works immediately without any network time', () => {
@@ -117,7 +117,7 @@ test('Windows correcting its own clock does not double-apply the prior network o
   const clock = new ClockDiscipline(); clock.accept(estimate(), reading());
   const correctedSystem = clock.read(reading(epoch + 29000, 2000));
   assert.equal(correctedSystem.nowMs, epoch + 29000); assert.equal(correctedSystem.status.source, 'SYSTEM CLOCK'); assert.equal(correctedSystem.recheck, true);
-  const later = { ...estimate(0), received: reading(epoch + 30000, 3000) };
+  const later = { ...estimate(0), utcMs: epoch + 30000, received: reading(epoch + 30000, 3000) };
   clock.accept(later, later.received); assert.equal(clock.read(reading(epoch + 31000, 4000)).nowMs, epoch + 31000);
 });
 test('sleep where performance clock pauses drops correction; sleep where it ticks catches up', () => {
@@ -150,7 +150,7 @@ const mod = { exports: {} }; new Function('module', 'CONFIG', compiled)(mod, { t
 const { parts, dateLine, julian4 } = mod.exports;
 function correctedDate(iso, correction = 28000) {
   const system = Date.parse(iso), clock = new ClockDiscipline();
-  clock.accept({ ...estimate(correction), received: reading(system, 0) }, reading(system, 0));
+  clock.accept({ ...estimate(correction), utcMs: system + correction, received: reading(system, 0) }, reading(system, 0));
   return new Date(clock.read(reading(system, 0)).nowMs);
 }
 test('corrected UTC New Year and local date remain independent', () => {
@@ -250,4 +250,39 @@ test('an extreme preview offset cannot become Invalid Date after a later tick', 
   h.setReading(reading(wall + 120000, 121000)); h.tick();
   assert.equal(h.states[0], wall + 120000); assert.match(h.states[1].detail, /INVALID OFFSET/);
   assert.ok(Number.isFinite(new Date(h.states[0]).getTime())); h.stop();
+});
+
+test('absolute network UTC accepts PCs one hour ahead or behind without an offset ceiling', () => {
+  for (const skew of [-3600000, 3600000]) {
+    const batch = [0, 1100, 2200].map(delta => validateHttpSample(
+      response({ Date: new Date(epoch + Math.floor(delta / 1000) * 1000).toUTCString() }),
+      reading(epoch + skew + delta, 1000 + delta),
+      reading(epoch + skew + delta + 100, 1100 + delta),
+    ).sample);
+    const result = chooseTimeEstimate(batch);
+    assert.ok(result);
+    assert.equal(result.utcMs, epoch + 2650);
+    const clock = new ClockDiscipline();
+    assert.equal(clock.accept(result, batch[2].received), true);
+    const current = clock.read(reading(epoch + skew + 3300, 4300));
+    assert.equal(current.nowMs, epoch + 3650);
+    assert.equal(current.status.source, 'GITHUB HTTP');
+    assert.ok(Math.abs(current.status.estimatedOffsetMs + skew) < 1000);
+    clock.failed(false, 'NETWORK UNAVAILABLE');
+    assert.equal(clock.read(reading(epoch + skew + 4300, 5300)).nowMs, epoch + 4650);
+  }
+});
+test('startup, missing network time, frozen time and expired holdover are explicitly unverified', () => {
+  const clock = new ClockDiscipline();
+  assert.match(formatClockStatus(clock.read(reading()).status), /TIME UNVERIFIED/);
+  clock.failed(false, 'NETWORK UNAVAILABLE');
+  assert.match(formatClockStatus(clock.read(reading()).status), /TIME UNVERIFIED/);
+  const frozen = [0, 1100, 2200].map(delta => validateHttpSample(response(),
+    reading(epoch + 3600000 + delta, 1000 + delta),
+    reading(epoch + 3600000 + delta + 100, 1100 + delta)).sample);
+  assert.equal(chooseTimeEstimate(frozen), null);
+  clock.accept(estimate(), reading());
+  clock.failed(true, 'NO CONSISTENT FRESH SAMPLES');
+  assert.equal(clock.read(reading(epoch + 1000, 2000)).status.source, 'HTTP HOLDOVER');
+  assert.match(formatClockStatus(clock.read(reading(epoch + CLOCK_LIMITS.holdoverMs, 1000 + CLOCK_LIMITS.holdoverMs)).status), /TIME UNVERIFIED/);
 });
