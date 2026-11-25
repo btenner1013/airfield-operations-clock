@@ -9,6 +9,8 @@ export type WeatherAlertSourceContext = {
 export type PlacedWeatherAlert = WxAlertDisplay & {
   scope: WeatherAlertScope;
   sourceTime: string | null;
+  observationSource: "ATIS" | "METAR" | null;
+  presentationText: string;
   stale: boolean;
 };
 const text = (value: unknown): string => typeof value === "string" ? value.trim() : "";
@@ -24,16 +26,17 @@ export function weatherAlertScope(value: unknown, message: string): WeatherAlert
     Boolean(text(alert.tafWindow) || text(alert.tafStartIso) || text(alert.tafEndIso)) ||
     /\b(?:TAF|PSBL|FORECAST|TEMPO|BECMG|PROB\d{2})\b|\b\d{2}(?::?\d{2})?\s*[-–]\s*\d{2}(?::?\d{2})?Z\b/.test(upper);
   // NOW inside PSBL NOW-04Z is a forecast window, never an observed condition.
-  const observed = labels.some(source => source === "METAR" || source === "ATIS") || /\b(?:METAR|ATIS)\b/.test(upper) || !forecast && /\bNOW\b|\bOVER FIELD\b/.test(upper);
+  const observed = labels.some(source => source === "METAR" || source === "ATIS" || source === "SPECI") || /\b(?:METAR|ATIS)\b/.test(upper) || !forecast && /\bNOW\b|\bOVER FIELD\b/.test(upper);
   return observed === forecast ? "unverified" : forecast ? "forecast" : "current";
 }
 
-function observation(alert: Record<string, unknown>, display: WxAlertDisplay, scope: WeatherAlertScope, context: WeatherAlertSourceContext, nowMs: number): Pick<PlacedWeatherAlert, "sourceTime" | "stale"> {
-  if (scope !== "current") return { sourceTime: null, stale: false };
+function observation(alert: Record<string, unknown>, display: WxAlertDisplay, scope: WeatherAlertScope, context: WeatherAlertSourceContext, nowMs: number): Pick<PlacedWeatherAlert, "sourceTime" | "stale" | "observationSource"> {
+  if (scope !== "current") return { sourceTime: null, stale: false, observationSource: null };
   // The visible suffix identifies Ops' chosen source when both candidates are listed.
-  const suffix = display.text.toUpperCase().match(/\b(ATIS|METAR)\s*$/)?.[1];
-  const listed = sources(alert.sources).filter(source => source === "ATIS" || source === "METAR");
-  const source = suffix || (listed.length === 1 ? listed[0] : null);
+  const suffix = display.text.toUpperCase().match(/\b(ATIS|METAR|SPECI)\s*$/)?.[1];
+  const listed = sources(alert.sources);
+  const source = suffix === "ATIS" ? "ATIS" : suffix === "METAR" || suffix === "SPECI" ? "METAR" :
+    listed.includes("ATIS") ? "ATIS" : listed.includes("METAR") || listed.includes("SPECI") ? "METAR" : null;
   const candidate = source === "ATIS" ? context.atisObservedAt : source === "METAR" ? context.metarObservedAt : null;
   const raw = text(candidate);
   const status = source === "ATIS" ? context.atisStatus : source === "METAR" ? context.metarStatus : null;
@@ -42,7 +45,32 @@ function observation(alert: Record<string, unknown>, display: WxAlertDisplay, sc
   const age = sourceTime ? (nowMs - Date.parse(sourceTime)) / 60000 : NaN;
   const stale = context.retained === true || /STALE|LAST_GOOD|ERROR|FAILED|UNAVAILABLE/.test(text(status).toUpperCase()) ||
     Number.isFinite(age) && (age < -5 || age >= (source === "ATIS" ? 90 : 75));
-  return { sourceTime, stale };
+  return { sourceTime, stale, observationSource: source };
+}
+
+const rainLabels: Record<string, string> = {
+  "-RA": "RAIN", RA: "RAIN", "+RA": "HEAVY RAIN", "-SHRA": "RAIN SHOWERS",
+  SHRA: "RAIN SHOWERS", "+SHRA": "HEAVY SHOWERS", "-DZ": "DRIZZLE", DZ: "DRIZZLE", "+DZ": "HEAVY DRIZZLE",
+};
+
+function boardAlertText(alert: Record<string, unknown>, display: WxAlertDisplay, scope: WeatherAlertScope,
+  obs: Pick<PlacedWeatherAlert, "sourceTime" | "stale" | "observationSource">): string {
+  const body = display.text.replace(/\bTAF\b/gi, "").replace(/\s+/g, " ").trim().toUpperCase();
+  const code = text(alert.code).toUpperCase();
+  if (scope === "forecast") {
+    const window = text(alert.tafWindow);
+    return code && window ? `PSBL ${code} ${window.toUpperCase().replace(/-/g, "–")}` : body;
+  }
+  if (scope !== "current" || !obs.observationSource) return body;
+  const rain = Object.hasOwn(rainLabels, code) ? rainLabels[code] : "";
+  const trimmed = body.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/, "");
+  // A retained or time-unverified report may still be visible, but never claim NOW.
+  if (obs.stale || !obs.sourceTime) return rain || trimmed.replace(/\bNOW\b/g, "").trim();
+  const current = rain ? `${rain} NOW` : trimmed;
+  const timing = text(alert.forecastTiming);
+  if (/^through [0-9 A-Z]+$/.test(timing)) return `${current} – ${timing.slice(8)}`;
+  if (/^TEMPO [0-9 A-Z–]+$/.test(timing)) return `${current} · ${timing}`;
+  return current;
 }
 
 /** Move already-selected Ops hazards; do not recalculate severity, source priority, or TAF windows.
@@ -57,7 +85,9 @@ export function resolveWeatherAlertPlacement(primary: unknown, secondary: unknow
     const display = resolveWxAlertDisplay(input);
     if (display.severity === "none") return;
     const scope = weatherAlertScope(value, display.text);
-    selected.push({ ...display, scope, ...observation(record(value), display, scope, record(context), nowMs) });
+    const alert = record(value);
+    const observed = observation(alert, display, scope, record(context), nowMs);
+    selected.push({ ...display, scope, ...observed, presentationText: boardAlertText(alert, display, scope, observed) });
   };
   for (const value of [primary, secondary]) {
     const alert = record(value), message = text(alert.displayText) || text(alert.text);

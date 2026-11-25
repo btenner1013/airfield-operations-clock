@@ -98,3 +98,17 @@ test('TAF NOW windows remain forecasts rather than becoming current weather',()=
  const r=routed(rain,active,{...legacy,text:rain.displayText+' → '+active.displayText});assert.equal(r.current.length,1);assert.equal(r.current[0].text,'RA METAR');assert.equal(r.future.length,1);assert.equal(r.future[0].text,'VCTS PSBL NOW-04Z');
  assert.equal(scope(null,'RAIN NOW'),'current');
 });
+
+test("Ops Board wording, Zulu dates, and observed source carry into the clock", () => {
+ const atis={...rain,code:"-RA",displayText:"🌧️ -RA ATIS",sources:["ATIS","METAR"],forecastTiming:"through 04 NOV 1000Z"};
+ const r=routed(atis,null,{text:atis.displayText});
+ assert.equal(r.current.length,1);assert.equal(r.future.length,0);
+ assert.equal(r.current[0].observationSource,"ATIS");
+ assert.equal(r.current[0].presentationText,"RAIN NOW – 04 NOV 1000Z");
+ const metar=routed({...rain,forecastTiming:"TEMPO 22–24Z"},null,{text:rain.displayText}).current[0];
+ assert.equal(metar.observationSource,"METAR");assert.equal(metar.presentationText,"RAIN NOW · TEMPO 22–24Z");
+ const possible=routed({...future,tafWindow:"04 NOV 00-04Z"},null,{text:future.displayText}).future[0];
+ assert.equal(possible.observationSource,null);assert.equal(possible.presentationText,"PSBL -TSRA 04 NOV 00–04Z");
+ const stale=routed(atis,null,{text:atis.displayText},{...context,retained:true}).current[0];
+ assert.equal(stale.observationSource,"ATIS");assert.equal(stale.presentationText,"RAIN");
+});

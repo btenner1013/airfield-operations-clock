@@ -156,11 +156,11 @@ test('structured METAR label and blue static presentation reach the rendered war
 
 test('moved current weather retains weather cadence and exact source observation while unverified stays neutral', () => {
  const current=render({placement:'current',text:'RA METAR',sourceTime:'2026-11-03T23:53:00Z',sourceStamp:'032353Z'});
- assert.match(current,/CURRENT WX/);assert.match(current,/OBS 032353Z/);assert.match(current,/data-kind="weather"/);assert.match(current,/data-placement="current"/);
+ assert.match(current,/WX ALERT/);assert.match(current,/OBS 032353Z/);assert.match(current,/data-kind="weather"/);assert.match(current,/data-placement="current"/);
  const stale=render({placement:'current',text:'TS ATIS',sourceStamp:'032100Z',stale:true,flash:true});
- assert.match(stale,/REPORTED WX/);assert.match(stale,/STALE REPORT/);assert.match(stale,/OBS 032100Z/);
+ assert.match(stale,/WX ALERT/);assert.match(stale,/STALE REPORT/);assert.match(stale,/OBS 032100Z/);
  const unknown=render({placement:'unverified',text:'MANUAL WARNING'});assert.match(unknown,/TIME UNVERIFIED/);assert.doesNotMatch(unknown,/CURRENT WX|FORECAST WX/);
- const future=render({placement:'forecast'});assert.match(future,/FORECAST WX/);assert.match(future,/OPS BOARD/);
+ const future=render({placement:'forecast'});assert.match(future,/WX ALERT/);assert.match(future,/OPS BOARD/);
 });
 
 test('production places observed reports only in current card and forecast reports only in future card',()=>{
@@ -180,4 +180,15 @@ test('simulated current weather isolates live hazards without hiding forecast or
  assert.match(page,/const alertSegments=placedAlerts.future/);
  const simulation=page.slice(page.indexOf('const currentPresentation='),page.indexOf('const lightning=currentLightningPresentation'));
  assert.doesNotMatch(simulation,/debugLightning/);
+});
+
+test("clock renders matching alert body and a steady badge in the alert color", () => {
+ const a = {text:"-RA ATIS", presentationText:"RAIN NOW – 26 NOV 1000Z", observationSource:"ATIS", colorClass:"alert-blue", icon:"🌧️", shouldPulse:false, shouldFlash:false};
+ const html = render({placement:"current",segments:[a],sourceStamp:"252054Z"});
+ assert.match(html, /WX ALERT<strong class="ops-warning-source" data-source="ATIS" style="color:#35b7ff/);
+ assert.match(visibleText(html), /RAIN NOW – 26 NOV 1000Z/);
+ assert.doesNotMatch(visibleText(html), /-RA ATIS|\bTAF\b/);
+ assert.doesNotMatch(render({placement:"forecast",segments:[a]}),/ops-warning-source/);
+ const metar = render({placement:"current",segments:[{...a, observationSource:"METAR", colorClass:"alert-red"}]});
+ assert.match(metar, /data-source="METAR" style="color:#/);
 });

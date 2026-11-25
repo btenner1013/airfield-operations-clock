@@ -534,7 +534,7 @@ export default function Home() {
     warning:{text:"⛈️ TSRA WARNING 05 AUG 21–22Z",tone:"red",pulse:false,flash:true,visible:true}
   } as const)[debugWxAlert]:null;
   const alertDisplay=resolveWxAlertDisplay({text:debugAlert?.text??weather.wxAlertText,tone:debugAlert?.tone??weather.wxAlertTone,pulse:debugAlert?.pulse??weather.wxAlertPulse,flash:debugAlert?.flash??weather.wxAlertFlash,visible:debugAlert?.visible??weather.wxAlertVisible,reducedMotion:reduced});
-  const placedAlerts=resolveWeatherAlertPlacement(debugAlert?null:weather.wxPrimaryAlert,debugAlert?null:weather.wxSecondaryAlert,{text:debugAlert?.text??weather.wxAlertText,tone:debugAlert?.tone??weather.wxAlertTone,pulse:debugAlert?.pulse??weather.wxAlertPulse,flash:debugAlert?.flash??weather.wxAlertFlash,visible:debugAlert?.visible??weather.wxAlertVisible,reducedMotion:reduced},weather.wxAlertSourceContext,now.getTime());
+  const placedAlerts=resolveWeatherAlertPlacement(debugAlert?null:weather.wxPrimaryAlert,debugAlert?null:weather.wxSecondaryAlert,{text:debugAlert?.text??weather.wxAlertText,tone:debugAlert?.tone??weather.wxAlertTone,pulse:debugAlert?.pulse??weather.wxAlertPulse,flash:debugAlert?.flash??weather.wxAlertFlash,visible:debugAlert?.visible??weather.wxAlertVisible,reducedMotion:reduced},weather.feedStatus==="OFFLINE"?{...weather.wxAlertSourceContext,retained:true}:weather.wxAlertSourceContext,now.getTime());
   // Never mix live current hazards into a simulated Current Weather instrument.
   const currentAlertSegments=currentPresentation.simulated&&!debugAlert?[]:placedAlerts.current;
   const alertSegments=placedAlerts.future;
