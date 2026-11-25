@@ -40,6 +40,19 @@ test("mixed rain and snow shares one spec, while pane droplets follow every liqu
   assert.equal(classifyEffect(["VCSH"]).vicinity,true);assert.ok(vicinity.count<fx(["SHRA"]).count);
 });
 
+test("on-field rain gains contrast without raising particle density or brightening vicinity showers",()=>{
+  for(const options of [{},{night:true},{perf:"low"},{reduced:true}]){
+    const light=fx(["-RA"],options), rain=fx(["RA"],options), heavy=fx(["+RA"],options);
+    const vicinity=fx(["VCSH"],options);
+    assert.ok(light.count<rain.count&&rain.count<heavy.count);
+    assert.ok(light.len>=37&&light.thick>=1.9&&light.alpha>=.7);
+    assert.ok(vicinity.count<light.count&&vicinity.len<light.len&&vicinity.thick<light.thick&&vicinity.alpha<light.alpha);
+  }
+  assert.equal(fx(["RA"]).count,225);
+  assert.equal(fx(["-RA"]).count,113);
+  assert.equal(fx(["VCSH"]).len,29);
+});
+
 test("pane profiles distinguish drizzle, rain, freezing and vicinity liquid",()=>{
   const drizzle=fx(["-DZ"]),rain=fx(["RA"]),heavy=fx(["+RA"]),freezing=fx(["FZRA"]),vicinity=fx(["VCSH"]),mixed=fx(["RASN"]);
   assert.equal(drizzle.pane.profile,"drizzle");assert.equal(rain.pane.profile,"rain");assert.equal(freezing.pane.profile,"freezing");assert.equal(vicinity.pane.profile,"vicinity");

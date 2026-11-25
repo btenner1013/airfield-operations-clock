@@ -118,7 +118,9 @@ const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,value));
 function particleClass(type:PrecipType,intensity:Intensity,drift:number,perf:"full"|"low",night:boolean,reduced:boolean,vicinity:boolean,secondary=false):ParticleClassSpec {
   let shape:FxShape="streak",count=0,speed=1000,len=26,size=1,sizeMin=.7,sizeMax=1.5,thick=1.3,sway=0,bounce=false,near=false,burst=false,alpha=.5,band:ParticleBand="full",vx=drift;
   if(type==="drizzle"||type==="freezing-drizzle"){count=300;speed=520;len=10;thick=1.05;alpha=.56;}
-  else if(type==="rain"||type==="freezing-rain"){count=225;speed=1120;len=29;thick=1.35;alpha=.6;}
+  // Make observed rain legible at a distance without increasing density or
+  // changing intensity, wind, reduced motion, or the clock-band mask.
+  else if(type==="rain"||type==="freezing-rain"){count=225;speed=1120;len=vicinity?29:37;thick=vicinity?1.35:1.9;alpha=vicinity?.6:.8;}
   else if(type==="snow"){shape="flake";count=190;speed=112;size=3.25;sizeMin=1.5;sizeMax=intensity==="light"?5.1:7;sway=25;alpha=.9;near=true;}
   else if(type==="snow-shower"){shape="flake";count=230;speed=138;size=3.4;sizeMin=1.6;sizeMax=7;sway=30;alpha=.92;near=true;burst=true;}
   else if(type==="blowing-snow"){shape="grain";count=260;speed=42;size=3;sizeMin=1.8;sizeMax=4.6;sway=5;alpha=.92;near=true;band="lower";vx=(drift<0?-1:1)*Math.max(205,Math.abs(drift)*1.45);}
