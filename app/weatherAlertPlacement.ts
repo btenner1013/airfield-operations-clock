@@ -65,6 +65,8 @@ function boardAlertText(alert: Record<string, unknown>, display: WxAlertDisplay,
   if (scope !== "current" || !obs.observationSource) return body;
   const observedCode = /^[+-]?[A-Z]{2,8}(?:\/[+-]?[A-Z]{2,8})*$/.test(code) ? code.replace(/\//g, " / ") : "";
   const trimmed = observedCode || body.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/, "");
+  const named = observedCode ? [...new Set(text(alert.label).toUpperCase().split(/\s+\/\s+/).map(value => value.trim()).filter(Boolean))].join(" / ") : "";
+  if (named) return named;
   return Object.hasOwn(currentPrecipLabels, code) ? currentPrecipLabels[code] : trimmed.replace(/\bNOW\b/g, "").trim();
 }
 

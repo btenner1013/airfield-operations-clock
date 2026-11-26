@@ -114,3 +114,12 @@ test("Current weather uses plain precipitation names while forecasts retain Zulu
  const stale=routed(atis,null,{text:atis.displayText},{...context,retained:true}).current[0];
  assert.equal(stale.observationSource,"ATIS");assert.equal(stale.presentationText,"LIGHT RAIN");
 });
+
+test("non-rain phenomena use the supplied plain label without repeating dual-source labels", () => {
+ const metar={...rain,code:"BR",displayText:"🌫️ BR METAR",label:"MIST / MIST",forecastTiming:"through 04 NOV 1000Z"};
+ const r=routed(metar,null,{text:metar.displayText}).current[0];
+ assert.equal(r.observationSource,"METAR");
+ assert.equal(r.presentationText,"MIST");
+ const ash={...rain,code:"VA/TSRA",displayText:"🌋 VA / TSRA METAR",label:"VOLCANIC ASH / THUNDERSTORM RAIN"};
+ assert.equal(routed(ash,null,{text:ash.displayText}).current[0].presentationText,"VOLCANIC ASH / THUNDERSTORM RAIN");
+});
