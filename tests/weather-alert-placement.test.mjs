@@ -99,18 +99,18 @@ test('TAF NOW windows remain forecasts rather than becoming current weather',()=
  assert.equal(scope(null,'RAIN NOW'),'current');
 });
 
-test("Ops Board wording, Zulu dates, and observed source carry into the clock", () => {
+test("Current weather uses plain precipitation names while forecasts retain Zulu windows", () => {
  const atis={...rain,code:"-RA",displayText:"🌧️ -RA ATIS",sources:["ATIS","METAR"],forecastTiming:"through 04 NOV 1000Z"};
  const r=routed(atis,null,{text:atis.displayText});
  assert.equal(r.current.length,1);assert.equal(r.future.length,0);
  assert.equal(r.current[0].observationSource,"ATIS");
- assert.equal(r.current[0].presentationText,"-RA NOW – 04 NOV 1000Z");
+ assert.equal(r.current[0].presentationText,"LIGHT RAIN");
  const metar=routed({...rain,forecastTiming:"TEMPO 22–24Z"},null,{text:rain.displayText}).current[0];
- assert.equal(metar.observationSource,"METAR");assert.equal(metar.presentationText,"RA NOW · TEMPO 22–24Z");
+ assert.equal(metar.observationSource,"METAR");assert.equal(metar.presentationText,"RAIN");
  const possible=routed({...future,tafWindow:"04 NOV 00-04Z"},null,{text:future.displayText}).future[0];
  assert.equal(possible.observationSource,null);assert.equal(possible.presentationText,"PSBL -TSRA 04 NOV 00–04Z");
  const heavy=routed({...rain,code:"+RA",displayText:"🌧️ +RA METAR"},null,{text:"🌧️ +RA METAR"}).current[0];
- assert.equal(heavy.presentationText,"+RA NOW");
+ assert.equal(heavy.presentationText,"HEAVY RAIN");
  const stale=routed(atis,null,{text:atis.displayText},{...context,retained:true}).current[0];
- assert.equal(stale.observationSource,"ATIS");assert.equal(stale.presentationText,"-RA");
+ assert.equal(stale.observationSource,"ATIS");assert.equal(stale.presentationText,"LIGHT RAIN");
 });

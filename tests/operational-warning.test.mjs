@@ -183,10 +183,10 @@ test('simulated current weather isolates live hazards without hiding forecast or
 });
 
 test("clock renders matching alert body and a steady badge in the alert color", () => {
- const a = {text:"-RA ATIS", presentationText:"-RA NOW – 26 NOV 1000Z", observationSource:"ATIS", colorClass:"alert-blue", icon:"🌧️", shouldPulse:false, shouldFlash:false};
+ const a = {text:"-RA ATIS", presentationText:"LIGHT RAIN", observationSource:"ATIS", colorClass:"alert-blue", icon:"🌧️", shouldPulse:false, shouldFlash:false};
  const html = render({placement:"current",segments:[a],sourceStamp:"252054Z"});
  assert.match(html, /WX ALERT<strong class="ops-warning-source" data-source="ATIS" style="color:#35b7ff/);
- assert.match(visibleText(html), /-RA NOW – 26 NOV 1000Z/);
+ assert.match(visibleText(html), /LIGHT RAIN/);
  assert.doesNotMatch(visibleText(html), /-RA ATIS|\bTAF\b/);
  assert.doesNotMatch(render({placement:"forecast",segments:[a]}),/ops-warning-source/);
  const metar = render({placement:"current",segments:[{...a, observationSource:"METAR", colorClass:"alert-red"}]});

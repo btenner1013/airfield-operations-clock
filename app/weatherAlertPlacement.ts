@@ -48,6 +48,12 @@ function observation(alert: Record<string, unknown>, display: WxAlertDisplay, sc
   return { sourceTime, stale, observationSource: source };
 }
 
+const currentPrecipLabels: Record<string, string> = {
+  "-RA": "LIGHT RAIN", RA: "RAIN", "+RA": "HEAVY RAIN",
+  "-SHRA": "LIGHT RAIN SHOWERS", SHRA: "RAIN SHOWERS", "+SHRA": "HEAVY RAIN SHOWERS",
+  "-DZ": "LIGHT DRIZZLE", DZ: "DRIZZLE", "+DZ": "HEAVY DRIZZLE",
+};
+
 function boardAlertText(alert: Record<string, unknown>, display: WxAlertDisplay, scope: WeatherAlertScope,
   obs: Pick<PlacedWeatherAlert, "sourceTime" | "stale" | "observationSource">): string {
   const body = display.text.replace(/\bTAF\b/gi, "").replace(/\s+/g, " ").trim().toUpperCase();
@@ -59,13 +65,7 @@ function boardAlertText(alert: Record<string, unknown>, display: WxAlertDisplay,
   if (scope !== "current" || !obs.observationSource) return body;
   const observedCode = /^[+-]?[A-Z]{2,8}(?:\/[+-]?[A-Z]{2,8})*$/.test(code) ? code.replace(/\//g, " / ") : "";
   const trimmed = observedCode || body.replace(/\s+(?:ATIS|METAR|SPECI)\s*$/, "");
-  // A retained or time-unverified report may still be visible, but never claim NOW.
-  if (obs.stale || !obs.sourceTime) return trimmed.replace(/\bNOW\b/g, "").trim();
-  const current = /^[+-]?(?:RA|SHRA|DZ)$/.test(code) ? `${trimmed} NOW` : trimmed;
-  const timing = text(alert.forecastTiming);
-  if (/^through [0-9 A-Z]+$/.test(timing)) return `${current} – ${timing.slice(8)}`;
-  if (/^TEMPO [0-9 A-Z–]+$/.test(timing)) return `${current} · ${timing}`;
-  return current;
+  return Object.hasOwn(currentPrecipLabels, code) ? currentPrecipLabels[code] : trimmed.replace(/\bNOW\b/g, "").trim();
 }
 
 /** Move already-selected Ops hazards; do not recalculate severity, source priority, or TAF windows.
